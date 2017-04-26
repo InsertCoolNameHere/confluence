@@ -127,6 +127,8 @@ public class Vertex<L extends Comparable<L>, V> {
     public Vertex<L, V> connect(Vertex<L, V> vertex) {
     	/* label is Feature whose hashcode is based in its name and value */
         L label = vertex.getLabel();
+        
+        /* Finding among its children if a label with this value already exists */
         Vertex<L, V> edge = getNeighbor(label);
         if (edge == null) {
         	/* Edges represent all the vertices connected to this vertex */
@@ -134,7 +136,8 @@ public class Vertex<L extends Comparable<L>, V> {
             return vertex;
         } else {
         	
-        	/* RIKI Add code to update border value here */
+        	/* RIKI Add code to update border value here (maybe not) */
+        	/* value is a set, so no duplicate insertion */
             edge.addValues(vertex.getValues());
             return edge;
         }
@@ -145,9 +148,10 @@ public class Vertex<L extends Comparable<L>, V> {
      */
     public void addPath(Iterator<Vertex<L, V>> path) {
         if (path.hasNext()) {
-        	/* Next vertex in the traversal path */
+        	/* Next vertex in the input traversal path */
             Vertex<L, V> vertex = path.next();
             Vertex<L, V> edge = connect(vertex);
+            /* Repeat the same operation on the child you found with the rest of the vertices in the path */
             edge.addPath(path);
         }
     }

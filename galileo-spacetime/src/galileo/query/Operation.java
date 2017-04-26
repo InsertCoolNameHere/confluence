@@ -62,6 +62,7 @@ public class Operation implements ByteSerializable {
         for (Expression expression : expressions) {
             this.expressions.add(expression);
 
+            /* Operand is the feature name */
             String operand = expression.getOperand();
 
             List<Expression> list = expressionMap.get(operand);

@@ -30,6 +30,8 @@ import java.awt.Rectangle;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -41,7 +43,9 @@ import java.util.TreeSet;
 import galileo.dataset.Coordinates;
 import galileo.dataset.Point;
 import galileo.dataset.SpatialRange;
+import galileo.dataset.TemporalProperties;
 import galileo.dht.Partitioner;
+import galileo.dht.hash.TemporalHash;
 
 /**
  * This class provides an implementation of the GeoHash (http://www.geohash.org)
@@ -427,7 +431,8 @@ public class GeoHash {
 		int y = (int) (yDiff * width / 180);
 		return new Point<>(x, y);
 	}
-
+	
+	
 	public static Coordinates xyToCoordinates(int x, int y) {
 		int width = 1 << MAX_PRECISION;
 		return new Coordinates(90 - y * 180f / width, x * 360f / width - 180f);
@@ -436,6 +441,8 @@ public class GeoHash {
 	public static String[] getIntersectingGeohashes(List<Coordinates> polygon) {
 		Set<String> hashes = new HashSet<String>();
 		Polygon geometry = new Polygon();
+		
+		// Getting MBR out of the POLYGON in geometry object
 		for (Coordinates coords : polygon) {
 			Point<Integer> point = coordinatesToXY(coords);
 			geometry.addPoint(point.X(), point.Y());
@@ -479,6 +486,29 @@ public class GeoHash {
 			}
 		}
 		return hashes.size() > 0 ? hashes.toArray(new String[hashes.size()]) : new String[] {};
+	}
+	
+	public static void main(String arg[]) {
+		
+		SpatialRange range = decodeHash("hp");
+		Coordinates c1 = new Coordinates(range.getLowerBoundForLatitude()+0.01f, range.getLowerBoundForLongitude()+0.01f);
+		Coordinates c2 = new Coordinates(range.getUpperBoundForLatitude(), range.getLowerBoundForLongitude());
+		Coordinates c3 = new Coordinates(range.getUpperBoundForLatitude(), range.getUpperBoundForLongitude());
+		Coordinates c4 = new Coordinates(range.getLowerBoundForLatitude(), range.getUpperBoundForLongitude());
+		
+		
+		List<Coordinates> cl = new ArrayList<Coordinates>();
+		
+		System.out.println(GeoHash.encode(range, 2));
+		cl.add(c1);
+		cl.add(c2);
+		cl.add(c3);
+		cl.add(c4);
+		
+		GeoHash.getIntersectingGeohashes(cl,3);
+	
+		
+		
 	}
 	
 	
@@ -531,7 +561,7 @@ public class GeoHash {
 	
 	
 	
-	
+	/* Same as the previous one. This only lets you add a precision */
 	public static String[] getIntersectingGeohashes(List<Coordinates> polygon, int userPrecision) {
 		Set<String> hashes = new HashSet<String>();
 		Polygon geometry = new Polygon();
@@ -729,9 +759,53 @@ public class GeoHash {
 		
 	}
 	
+	
+	private static long getStartTimeStamp(TemporalProperties tp) {
+		if(tp == null) {
+			return 0;
+		}
+		Date d = new Date(tp.getStart());
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTimeZone(TemporalHash.TIMEZONE);
+		calendar.setTimeInMillis(tp.getStart());
+		
+		calendar.set(Calendar.HOUR_OF_DAY, 23);
+	    calendar.set(Calendar.MINUTE, 59);
+	    calendar.set(Calendar.SECOND, 59);
+	    calendar.set(Calendar.MILLISECOND, 999);
+	    
+	    return calendar.getTimeInMillis();
+		
+	}
+	
+	
+	private static long getEndTimeStamp(TemporalProperties tp) {
+		if(tp == null) {
+			return 0;
+		}
+		Date d = new Date(tp.getStart());
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTimeZone(TemporalHash.TIMEZONE);
+		calendar.setTimeInMillis(tp.getStart());
+		
+		calendar.set(Calendar.HOUR_OF_DAY, 0);
+	    calendar.set(Calendar.MINUTE, 0);
+	    calendar.set(Calendar.SECOND, 0);
+	    calendar.set(Calendar.MILLISECOND, 0);
+	    
+	    return calendar.getTimeInMillis();
+		
+	}
+	
+	
+	
 	/* Get NSEW Geohashes */
 	
-	public static BorderingGeohashes getBorderingGeoHashes(String geoHash, int precision) {
+	public static BorderingProperties getBorderingGeoHashes(String geoHash, int precision, int timeLapse, TemporalProperties tp) {
+		
+		// ADD ACCOMMODATION FOR TIME
+		long startTS = getStartTimeStamp(tp);
+		long endTS = getEndTimeStamp(tp);
 		
 		String[] internalGeohashes = getInternalGeohashes(geoHash, precision);
 		
@@ -739,7 +813,14 @@ public class GeoHash {
 		
 		int count = 0;
 		
-		BorderingGeohashes bg = new BorderingGeohashes();
+		BorderingProperties bg = new BorderingProperties();
+		bg.setUp1(endTS);
+		bg.setUp2(endTS - timeLapse);
+		
+		bg.setDown1(startTS);
+		bg.setDown2(startTS + timeLapse);
+		
+		
 		
 		for(String geo: internalGeohashesList) {
 			String[] nei = getNeighbours(geo);
@@ -795,7 +876,7 @@ public class GeoHash {
 		return bg;
 	}
 	
-	private static void printBorders(BorderingGeohashes bg) {
+	private static void printBorders(BorderingProperties bg) {
 		
 		System.out.println("NE: "+bg.getNe());
 		System.out.println("NW: "+bg.getNw());
@@ -832,7 +913,7 @@ public class GeoHash {
 		
 	}
 
-	public static void main(String arg[]) {
+	public static void Xmain(String arg[]) {
 		
 		SpatialRange range = decodeHash("9r");
 		Coordinates c1 = new Coordinates(range.getLowerBoundForLatitude(), range.getLowerBoundForLongitude());
@@ -847,7 +928,7 @@ public class GeoHash {
 		cl.add(c3);
 		cl.add(c4);
 		
-		GeoHash.getBorderingGeoHashes("9r", 3);
+		//GeoHash.getBorderingGeoHashes("9r", 3, 1);
 		
 		
 	}

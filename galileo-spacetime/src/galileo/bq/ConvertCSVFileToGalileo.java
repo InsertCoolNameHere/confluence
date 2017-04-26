@@ -34,6 +34,7 @@ public class ConvertCSVFileToGalileo {
 	 *            GalileoConnector instance
 	 * @throws Exception
 	 */
+	private static boolean FS_CREATED = false;
 	private static void processFile(String filepath, GalileoConnector gc) throws Exception {
 		
 		//Create a filesystem first.
@@ -84,7 +85,10 @@ public class ConvertCSVFileToGalileo {
 		
 		SpatialHint sp = new SpatialHint("gps_abs_lat", "gps_abs_lon");
 		String temporalHint = "epoch_time";
-		gc.createFS("airview", sp, featureList, temporalHint);
+		//if(!FS_CREATED){
+			gc.createFS("airview", sp, featureList, temporalHint);
+			//FS_CREATED = true;
+		//}
 		
 		FileInputStream inputStream = null;
 		Scanner sc = null;
@@ -171,9 +175,9 @@ public class ConvertCSVFileToGalileo {
 	 */
 	public static void main(String[] args1) {
 		String args[] = new String[3];
-		args[0] = "annapolis";
-		args[1] = "5555";
-		args[2] = "/s/chopin/b/grad/sapmitra/GalileoT/galileo-master/eg.csv";
+		args[0] = "phoenix.cs.colostate.edu";
+		args[1] = "5634";
+		args[2] = "/s/chopin/b/grad/sapmitra/GalileoData/eg.csv";
 		
 		
 		if (args.length != 3) {
@@ -182,7 +186,7 @@ public class ConvertCSVFileToGalileo {
 			System.exit(0);
 		} else {
 			try {
-				GalileoConnector gc = new GalileoConnector(args[0], Integer.parseInt(args[1]));
+				GalileoConnector gc = new GalileoConnector("phoenix.cs.colostate.edu", 5634);
 				System.out.println(args[0] + "," + Integer.parseInt(args[1]));
 				File file = new File(args[2]);
 				if (file.isFile()) {

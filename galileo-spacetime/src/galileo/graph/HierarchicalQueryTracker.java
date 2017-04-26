@@ -50,6 +50,8 @@ public class HierarchicalQueryTracker<T> {
     public HierarchicalQueryTracker(Vertex<Feature, T> root, int numFeatures) {
         int size = numFeatures + 1;
         results = new ArrayList<>(size);
+        
+        /* results is simply the thinner tree we will get as final output once all evaluations are done */
         for (int i = 0; i < size; ++i) {
             results.add(new ArrayList<Path<Feature, T>>());
         }
@@ -63,6 +65,7 @@ public class HierarchicalQueryTracker<T> {
     public void addResults(Path<Feature, T> previousPath,
             Collection<Vertex<Feature, T>> results) {
 
+    	/* Each parent is added to path as a node and its child is added to it as a feature/label*/
         for (Vertex<Feature, T> vertex : results) {
             Path<Feature, T> path = new Path<>(previousPath);
             path.add(vertex);

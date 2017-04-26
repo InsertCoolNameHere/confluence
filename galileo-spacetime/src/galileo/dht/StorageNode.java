@@ -61,6 +61,9 @@ import galileo.bmp.GeoavailabilityQuery;
 import galileo.bmp.QueryTransform;
 import galileo.comm.BlockRequest;
 import galileo.comm.BlockResponse;
+import galileo.comm.DataIntegrationEvent;
+import galileo.comm.DataIntegrationRequest;
+import galileo.comm.DataIntegrationResponse;
 import galileo.comm.FilesystemAction;
 import galileo.comm.FilesystemEvent;
 import galileo.comm.FilesystemRequest;
@@ -256,6 +259,8 @@ public class StorageNode implements RequestListener {
 	@EventHandler
 	public void handleFileSystemRequest(FilesystemRequest request, EventContext context)
 			throws HashException, IOException, PartitionException {
+		
+		logger.info("RECEIVED CREATE FS REQUEST");
 		String name = request.getName();
 		FilesystemAction action = request.getAction();
 		List<NodeInfo> nodes = network.getAllNodes();
@@ -275,6 +280,7 @@ public class StorageNode implements RequestListener {
 
 	@EventHandler
 	public void handleFileSystem(FilesystemEvent event, EventContext context) {
+		logger.info("FORWARDED CREATE FS REQUEST");
 		logger.log(Level.INFO,
 				"Performing action " + event.getAction().getAction() + " for file system " + event.getName());
 		if (event.getAction() == FilesystemAction.CREATE) {
@@ -740,6 +746,7 @@ public class StorageNode implements RequestListener {
 			GeospatialFileSystem fs = fsMap.get(fsName);
 			if (fs != null) {
 				header = fs.getFeaturesRepresentation();
+				/* Feature Query is not needed to list blocks */
 				Map<String, List<String>> blockMap = fs.listBlocks(event.getTime(), event.getPolygon(),
 						event.getMetadataQuery(), event.isDryRun());
 				if (event.isDryRun()) {
@@ -924,6 +931,120 @@ public class StorageNode implements RequestListener {
 
 			System.out.println("Goodbye!");
 		}
+	}
+	
+	
+	@EventHandler
+	public void handleDataIntegrationRequest(DataIntegrationRequest request, EventContext context) {
+		
+		String featureQueryString = request.getFeatureQueryString();
+		logger.log(Level.INFO, "Feature query request: {0}", featureQueryString);
+		
+		String eventId = String.valueOf(System.currentTimeMillis());
+		
+		GeospatialFileSystem gfs;
+		if(request.getPrimaryFS() !=2) {
+			gfs = this.fsMap.get(request.getFsname1());
+		} else {
+			gfs= this.fsMap.get(request.getFsname2());
+		}
+		
+		if(gfs != null) {
+			DataIntegrationResponse response = new DataIntegrationResponse();
+			
+			Metadata data = getQueryMetadata(request, gfs);
+			
+			Partitioner<Metadata> partitioner = gfs.getPartitioner();
+			List<NodeInfo> nodes;
+			
+			try {
+				/* TemporalHierarchyPartitioner */
+				/* ===================Finding the nodes that satisfy the query================== */
+				nodes = partitioner.findDestinations(data);
+				logger.info("destinations: " + nodes);
+				
+				DataIntegrationEvent dintEvent = createDataIntegrationEvent(request);
+				try {
+					ClientRequestHandler reqHandler = new ClientRequestHandler(new ArrayList<NetworkDestination>(nodes),
+							context, this);
+					
+					/* Sending out query to all nodes */
+					reqHandler.handleRequest(dintEvent, response);
+					this.requestHandlers.add(reqHandler);
+					
+				} catch (IOException ioe) {
+					logger.log(Level.SEVERE,
+							"Failed to initialize a ClientRequestHandler. Sending unfinished response back to client",
+							ioe);
+					try {
+						context.sendReply(response);
+					} catch (IOException e) {
+						logger.log(Level.SEVERE, "Failed to send response back to original client", e);
+					}
+				}
+			} catch (HashException | PartitionException hepe) {
+				logger.log(Level.SEVERE,
+						"Failed to identify the destination nodes. Sending unfinished response back to client", hepe);
+				try {
+					context.sendReply(response);
+				} catch (IOException e) {
+					logger.log(Level.SEVERE, "Failed to send response back to original client", e);
+				}
+			}
+		}
+		
+		
+	}
+	
+	private DataIntegrationEvent createDataIntegrationEvent(DataIntegrationRequest request) {
+		DataIntegrationEvent dintEvent = new DataIntegrationEvent();
+		
+		if(request.hasFeatureQuery()) {
+			dintEvent.setFeatureQuery(request.getFeatureQuery());
+		}
+		
+		if (request.isSpatial())
+			dintEvent.setPolygon(request.getPolygon());
+		if (request.isTemporal())
+			dintEvent.setTime(request.getTime());
+		
+		dintEvent.setTimeRelaxation(request.getTimeRelaxation());
+		dintEvent.setSpaceRelaxation(request.getSpaceRelaxation());
+		dintEvent.setFsname1(request.getFsname1());
+		dintEvent.setFsname2(request.getFsname2());
+		dintEvent.setPrimaryFS(request.getPrimaryFS());
+
+		return dintEvent;
+	}
+
+	private Metadata getQueryMetadata(DataIntegrationRequest request,GeospatialFileSystem gfs) {
+		Metadata data = new Metadata();
+		if (request.isTemporal()) {
+			
+			/* Time in request if a - separated string */
+			String[] timeSplit = request.getTime().split("-");
+			int timeIndex = Arrays.asList(TemporalType.values()).indexOf(gfs.getTemporalType());
+			if (!timeSplit[timeIndex].contains("x")) {
+				logger.log(Level.INFO, "Temporal query: {0}", request.getTime());
+				Calendar c = Calendar.getInstance();
+				c.setTimeZone(TemporalHash.TIMEZONE);
+				int year = timeSplit[0].charAt(0) == 'x' ? c.get(Calendar.YEAR) : Integer.parseInt(timeSplit[0]);
+				int month = timeSplit[1].charAt(0) == 'x' ? c.get(Calendar.MONTH)
+						: Integer.parseInt(timeSplit[1]) - 1;
+				int day = timeSplit[2].charAt(0) == 'x' ? c.get(Calendar.DAY_OF_MONTH)
+						: Integer.parseInt(timeSplit[2]);
+				int hour = timeSplit[3].charAt(0) == 'x' ? c.get(Calendar.HOUR_OF_DAY)
+						: Integer.parseInt(timeSplit[3]);
+				c.set(year, month, day, hour, 0);
+				data.setTemporalProperties(new TemporalProperties(c.getTimeInMillis()));
+			}
+		}
+		if (request.isSpatial()) {
+			logger.log(Level.INFO, "Spatial query: {0}", request.getPolygon());
+			data.setSpatialProperties(new SpatialProperties(new SpatialRange(request.getPolygon())));
+		}
+		
+		return data;
 	}
 
 	/**

@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -89,6 +90,7 @@ import galileo.query.Operator;
 import galileo.query.Query;
 import galileo.serialization.SerializationException;
 import galileo.serialization.Serializer;
+import galileo.util.BorderingProperties;
 import galileo.util.GeoHash;
 import galileo.util.Math;
 import galileo.util.Pair;
@@ -146,6 +148,8 @@ public class GeospatialFileSystem extends FileSystem {
 	private static final String SPATIAL_BORDER_FEATURE = "x__spatialborder__x";
 	private static final String TEMPORAL_BORDER_FEATURE = "x__temporalborder__x";
 	
+	private Map<String, BorderingProperties> borderMap;
+	
 	private int spatialUncertaintyPrecision;
 	private int temporalUncertaintyPrecision;
 	
@@ -161,6 +165,8 @@ public class GeospatialFileSystem extends FileSystem {
 		this.nodesPerGroup = nodesPerGroup;
 		this.geohashIndex = new HashSet<>();
 		
+		
+		this.borderMap = new HashMap<String, BorderingProperties>();
 		/* featurelist is a comma separated list of feature names: type(int) */
 		if (featureList != null) {
 			this.featureList = new ArrayList<>();
@@ -232,6 +238,7 @@ public class GeospatialFileSystem extends FileSystem {
 			HashTopologyException {
 		super(storageDirectory, name, ignoreIfPresent);
 		
+		this.borderMap = new HashMap<String, BorderingProperties>();
 		
 		this.spatialUncertaintyPrecision = spatialUncertainty;
 		this.temporalUncertaintyPrecision = temporalUncertainty;
@@ -258,29 +265,23 @@ public class GeospatialFileSystem extends FileSystem {
 		this.temporalType = TemporalType.fromType(temporalType);
 		this.numCores = Runtime.getRuntime().availableProcessors();
 
-		if (nodesPerGroup <= 0) {
-			this.network = new NetworkInfo();
-			List<GroupInfo> groups = networkInfo.getGroups();
-			TemporalHash th = new TemporalHash(this.temporalType);
-			int maxGroups = th.maxValue().intValue();
-			for (int i = 0; i < maxGroups; i++)
-				this.network.addGroup(groups.get(i));
-		} else {
-			this.network = new NetworkInfo();
-			GroupInfo groupInfo = null;
-			List<NodeInfo> allNodes = networkInfo.getAllNodes();
-			Collections.sort(allNodes);
-			TemporalHash th = new TemporalHash(this.temporalType);
-			int maxGroups = th.maxValue().intValue();
-			for (int i = 0; i < allNodes.size(); i++) {
-				if (this.network.getGroups().size() < maxGroups) {
-					if (i % nodesPerGroup == 0) {
-						groupInfo = new GroupInfo(String.valueOf(i / nodesPerGroup));
-						groupInfo.addNode(allNodes.get(i));
-						this.network.addGroup(groupInfo);
-					} else {
-						groupInfo.addNode(allNodes.get(i));
-					}
+		if (nodesPerGroup <= 0) 
+			nodesPerGroup = networkInfo.getGroups().get(0).getSize();
+		
+		this.network = new NetworkInfo();
+		GroupInfo groupInfo = null;
+		List<NodeInfo> allNodes = networkInfo.getAllNodes();
+		Collections.sort(allNodes);
+		TemporalHash th = new TemporalHash(this.temporalType);
+		int maxGroups = th.maxValue().intValue();
+		for (int i = 0; i < allNodes.size(); i++) {
+			if (this.network.getGroups().size() < maxGroups) {
+				if (i % nodesPerGroup == 0) {
+					groupInfo = new GroupInfo(String.valueOf(i / nodesPerGroup));
+					groupInfo.addNode(allNodes.get(i));
+					this.network.addGroup(groupInfo);
+				} else {
+					groupInfo.addNode(allNodes.get(i));
 				}
 			}
 		}
@@ -457,7 +458,7 @@ public class GeospatialFileSystem extends FileSystem {
 	public int getGeohashPrecision() {
 		return this.geohashPrecision;
 	}
-
+	
 	private String getTemporalString(TemporalProperties tp) {
 		if (tp == null)
 			return "xxxx-xx-xx-xx";
@@ -500,6 +501,10 @@ public class GeospatialFileSystem extends FileSystem {
 	public static void main(String arg[]) {
 		System.out.println(String.format("%d-%d-%d-xx", 2017, 12, 25));
 	}
+	
+	
+	
+	
 	/**
 	 * Creates a new block if one does not exist based on the name of the
 	 * metadata or appends the bytes to an existing block in which case the
@@ -789,6 +794,8 @@ public class GeospatialFileSystem extends FileSystem {
 			hashLocations.retainAll(this.geohashIndex);
 			logger.info("baseLocations: " + hashLocations);
 			Query query = new Query();
+			/* Builds an expression for the temporal query asking the top level temporal levels to be 
+			 * equal to whatever is in the time string */
 			List<Expression> temporalExpressions = buildTemporalExpression(temporalProperties);
 			Polygon polygon = GeoHash.buildAwtPolygon(geometry);
 			for (String geohash : hashLocations) {
@@ -815,6 +822,8 @@ public class GeospatialFileSystem extends FileSystem {
 					}
 				}
 			}
+			/* query intersection merges the query with metadata query */
+			/* returns a list of paths matching the query */
 			paths = executeParallelQuery(queryIntersection(query, metaQuery));
 		} else if (temporalProperties != null) {
 			List<Expression> temporalExpressions = buildTemporalExpression(temporalProperties);
@@ -861,6 +870,8 @@ public class GeospatialFileSystem extends FileSystem {
 			// non-chronal non-spatial
 			paths = (metaQuery == null) ? metadataGraph.getAllPaths() : executeParallelQuery(metaQuery);
 		}
+		// Paths look like Path((root,f1,f2,f3,...),payload). Each path represents each DFS traversal of a tree
+		
 		for (Path<Feature, String> path : paths) {
 			String groupKey = group ? getGroupKey(path, space) : getSpaceKey(path);
 			blocks = blockMap.get(groupKey);
@@ -1002,6 +1013,9 @@ public class GeospatialFileSystem extends FileSystem {
 	@Override
 	public void storeMetadata(Metadata metadata, String blockPath) throws FileSystemException, IOException {
 		/* FeaturePath has a list of Vertices, each label in a vertex representing a feature */
+		/* BlockPath is the actual path to the block */
+		
+		/* path represents a single leg of metadata for a block to be inserted */
 		FeaturePath<String> path = createPath(blockPath, metadata);
 		
 		/* Saving the path to disk */
@@ -1177,6 +1191,7 @@ public class GeospatialFileSystem extends FileSystem {
 		boolean skipGridProcessing = false;
 		if (geoQuery.getPolygon() != null && geoQuery.getQuery() != null) {
 			skipGridProcessing = isGridInsidePolygon(grid, geoQuery);
+			// THIS READS THE ACTUAL BLOCK
 			featurePaths = getFeaturePaths(blockPath);
 		} else if (geoQuery.getPolygon() != null) {
 			skipGridProcessing = isGridInsidePolygon(grid, geoQuery);

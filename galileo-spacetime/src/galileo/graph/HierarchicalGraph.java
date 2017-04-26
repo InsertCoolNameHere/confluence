@@ -106,6 +106,9 @@ public class HierarchicalGraph<T> {
     public List<Path<Feature, T>> evaluateQuery(Query query) {
         List<Path<Feature, T>> paths = null;
 
+        /* operation: one for each type. Eg. temporal expressions go into one single operations */
+        
+        /* Operations: OR; Expressions: AND. So create your operations accordingly */
         for (Operation operation : query.getOperations()) {
             HierarchicalQueryTracker<T> tracker
                 = new HierarchicalQueryTracker<>(root, features.size());
@@ -157,17 +160,26 @@ public class HierarchicalGraph<T> {
     public void evaluateOperation(Operation operation,
             HierarchicalQueryTracker<T> tracker) {
 
+    	/* We go through all the features, whether they are queried on or not */
         for (String feature : features) {
+        	
+        	// increments an integer representing level number
             tracker.nextLevel();
 
             /* Find all expressions related to the current Feature (operand) */
+            /* We have previously grouped expression by feature name before */
+            
             List<Expression> expressions = operation.getOperand(feature);
 
+            /* No expression for this particular feature */
             if (expressions == null) {
                 /* No expressions deal with the current feature.  Traverse all
                  * neighbors. */
+            	/* Would return a list with only root for level 0 */
                 for (Path<Feature, T> path : tracker.getCurrentResults()) {
+                	/* The last vertex in the list of vertices contained in a path */
                     Vertex<Feature, T> vertex = path.getTail();
+                    /* Each thing getting added to this level of tracker is a path->neighbor label pair */
                     tracker.addResults(path, vertex.getAllNeighbors());
                 }
             } else {
