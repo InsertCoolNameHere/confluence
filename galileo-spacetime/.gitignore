@@ -4,6 +4,7 @@
 .build
 .settings
 .externalToolBuilders
+.metadata
 
 # Local dev files
 classes
