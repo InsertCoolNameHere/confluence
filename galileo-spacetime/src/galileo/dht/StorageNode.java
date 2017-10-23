@@ -145,6 +145,7 @@ public class StorageNode implements RequestListener {
 	private GalileoEventMap eventMap = new GalileoEventMap();
 	private EventReactor eventReactor = new EventReactor(this, eventMap);
 	private List<ClientRequestHandler> requestHandlers;
+	/* My addition */
 	private List<NeighborRequestHandler> rikiHandlers;
 
 	private ConcurrentHashMap<String, QueryTracker> queryTrackers = new ConcurrentHashMap<>();
