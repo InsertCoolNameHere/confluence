@@ -26,6 +26,8 @@ software, even if advised of the possibility of such damage.
 package galileo.dataset;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import galileo.dataset.feature.Feature;
 import galileo.dataset.feature.FeatureArray;
@@ -226,5 +228,11 @@ public class Metadata implements ByteSerializable {
 		out.writeSerializable(attributes);
 		out.writeSerializable(features);
 		out.writeSerializable(runtimeMetadata);
+	}
+	
+	public static void main(String arg[]) {
+		
+		Date date = new Date();
+		System.out.println(new SimpleDateFormat("yyyy-MM-dd").format(date));
 	}
 }

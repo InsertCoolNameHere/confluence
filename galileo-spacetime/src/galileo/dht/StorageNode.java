@@ -38,12 +38,17 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
@@ -71,6 +76,8 @@ import galileo.comm.GalileoEventMap;
 import galileo.comm.MetadataEvent;
 import galileo.comm.MetadataRequest;
 import galileo.comm.MetadataResponse;
+import galileo.comm.NeighborDataEvent;
+import galileo.comm.NeighborDataResponse;
 import galileo.comm.QueryEvent;
 import galileo.comm.QueryRequest;
 import galileo.comm.QueryResponse;
@@ -79,10 +86,12 @@ import galileo.comm.StorageRequest;
 import galileo.comm.TemporalType;
 import galileo.config.SystemConfig;
 import galileo.dataset.Block;
+import galileo.dataset.Coordinates;
 import galileo.dataset.Metadata;
 import galileo.dataset.SpatialProperties;
 import galileo.dataset.SpatialRange;
 import galileo.dataset.TemporalProperties;
+import galileo.dataset.feature.Feature;
 import galileo.dht.hash.HashException;
 import galileo.dht.hash.HashTopologyException;
 import galileo.dht.hash.TemporalHash;
@@ -92,6 +101,7 @@ import galileo.event.EventHandler;
 import galileo.event.EventReactor;
 import galileo.fs.FileSystemException;
 import galileo.fs.GeospatialFileSystem;
+import galileo.graph.Path;
 import galileo.net.ClientConnectionPool;
 import galileo.net.MessageListener;
 import galileo.net.NetworkDestination;
@@ -99,7 +109,9 @@ import galileo.net.PortTester;
 import galileo.net.RequestListener;
 import galileo.net.ServerMessageRouter;
 import galileo.serialization.SerializationException;
+import galileo.util.BorderingProperties;
 import galileo.util.GeoHash;
+import galileo.util.SuperCube;
 import galileo.util.Version;
 
 /**
@@ -133,6 +145,7 @@ public class StorageNode implements RequestListener {
 	private GalileoEventMap eventMap = new GalileoEventMap();
 	private EventReactor eventReactor = new EventReactor(this, eventMap);
 	private List<ClientRequestHandler> requestHandlers;
+	private List<NeighborRequestHandler> rikiHandlers;
 
 	private ConcurrentHashMap<String, QueryTracker> queryTrackers = new ConcurrentHashMap<>();
 
@@ -164,6 +177,7 @@ public class StorageNode implements RequestListener {
 		}
 		this.numCores = Runtime.getRuntime().availableProcessors();
 		this.requestHandlers = new CopyOnWriteArrayList<ClientRequestHandler>();
+		this.rikiHandlers = new CopyOnWriteArrayList<NeighborRequestHandler>();
 	}
 
 	/**
@@ -877,7 +891,12 @@ public class StorageNode implements RequestListener {
 	public void onRequestCompleted(Event response, EventContext context, MessageListener requestHandler) {
 		try {
 			logger.info("Sending collective response to the client");
-			this.requestHandlers.remove(requestHandler);
+			if(requestHandler instanceof ClientRequestHandler) {
+				this.requestHandlers.remove(requestHandler);
+			} else if (requestHandler instanceof NeighborRequestHandler) {
+				this.rikiHandlers.remove(requestHandler);
+			}
+			
 			context.sendReply(response);
 		} catch (IOException e) {
 			logger.log(Level.SEVERE, "Failed to send response to the client.", e);
@@ -933,7 +952,13 @@ public class StorageNode implements RequestListener {
 		}
 	}
 	
-	
+	/**
+	 * Look into request, find what nodes to query based on space, time values.
+	 * Pass on request to respective nodes. 
+	 * @author sapmitra
+	 * @param request
+	 * @param context
+	 */
 	@EventHandler
 	public void handleDataIntegrationRequest(DataIntegrationRequest request, EventContext context) {
 		
@@ -943,13 +968,16 @@ public class StorageNode implements RequestListener {
 		String eventId = String.valueOf(System.currentTimeMillis());
 		
 		GeospatialFileSystem gfs;
-		if(request.getPrimaryFS() !=2) {
+		
+		if(request.getPrimaryFS() != 2) {
+			
 			gfs = this.fsMap.get(request.getFsname1());
 		} else {
 			gfs= this.fsMap.get(request.getFsname2());
 		}
 		
 		if(gfs != null) {
+			
 			DataIntegrationResponse response = new DataIntegrationResponse();
 			
 			Metadata data = getQueryMetadata(request, gfs);
@@ -958,8 +986,9 @@ public class StorageNode implements RequestListener {
 			List<NodeInfo> nodes;
 			
 			try {
+				/* ===================Finding the nodes that satisfy the query (for primary FS)================== */
+				
 				/* TemporalHierarchyPartitioner */
-				/* ===================Finding the nodes that satisfy the query================== */
 				nodes = partitioner.findDestinations(data);
 				logger.info("destinations: " + nodes);
 				
@@ -996,6 +1025,11 @@ public class StorageNode implements RequestListener {
 		
 	}
 	
+	/**
+	 * @author sapmitra
+	 * @param request
+	 * @return
+	 */
 	private DataIntegrationEvent createDataIntegrationEvent(DataIntegrationRequest request) {
 		DataIntegrationEvent dintEvent = new DataIntegrationEvent();
 		
@@ -1017,24 +1051,33 @@ public class StorageNode implements RequestListener {
 		return dintEvent;
 	}
 
+	/**
+	 * @author sapmitra
+	 * @param request
+	 * @param gfs
+	 * @return
+	 * 
+	 * Creating a metadata object out of the request's temporal and spatial conditions
+	 */
 	private Metadata getQueryMetadata(DataIntegrationRequest request,GeospatialFileSystem gfs) {
 		Metadata data = new Metadata();
 		if (request.isTemporal()) {
 			
-			/* Time in request if a - separated string */
+			/* Time in request if a '-' separated string */
+			
 			String[] timeSplit = request.getTime().split("-");
+			
 			int timeIndex = Arrays.asList(TemporalType.values()).indexOf(gfs.getTemporalType());
 			if (!timeSplit[timeIndex].contains("x")) {
 				logger.log(Level.INFO, "Temporal query: {0}", request.getTime());
+				
 				Calendar c = Calendar.getInstance();
 				c.setTimeZone(TemporalHash.TIMEZONE);
+				
 				int year = timeSplit[0].charAt(0) == 'x' ? c.get(Calendar.YEAR) : Integer.parseInt(timeSplit[0]);
-				int month = timeSplit[1].charAt(0) == 'x' ? c.get(Calendar.MONTH)
-						: Integer.parseInt(timeSplit[1]) - 1;
-				int day = timeSplit[2].charAt(0) == 'x' ? c.get(Calendar.DAY_OF_MONTH)
-						: Integer.parseInt(timeSplit[2]);
-				int hour = timeSplit[3].charAt(0) == 'x' ? c.get(Calendar.HOUR_OF_DAY)
-						: Integer.parseInt(timeSplit[3]);
+				int month = timeSplit[1].charAt(0) == 'x' ? c.get(Calendar.MONTH) : Integer.parseInt(timeSplit[1]) - 1;
+				int day = timeSplit[2].charAt(0) == 'x' ? c.get(Calendar.DAY_OF_MONTH) : Integer.parseInt(timeSplit[2]);
+				int hour = timeSplit[3].charAt(0) == 'x' ? c.get(Calendar.HOUR_OF_DAY) : Integer.parseInt(timeSplit[3]);
 				c.set(year, month, day, hour, 0);
 				data.setTemporalProperties(new TemporalProperties(c.getTimeInMillis()));
 			}
@@ -1046,7 +1089,464 @@ public class StorageNode implements RequestListener {
 		
 		return data;
 	}
+	
+	/**
+	 * @author sapmitra
+	 * @param request
+	 * @param context
+	 */
+	@EventHandler
+	public void handleDataIntegration(DataIntegrationEvent event, EventContext context) {
 
+		String fsName1 = event.getFsname1();
+		GeospatialFileSystem fs1 = fsMap.get(fsName1);
+		String fsName2 = event.getFsname2();
+		GeospatialFileSystem fs2 = fsMap.get(fsName2);
+		
+		NeighborDataResponse response = new NeighborDataResponse();
+
+		try {
+			if (fs1 != null && fs2 != null) {
+
+				// fs1 is the primary and fs2 is secondary filesystem
+				// all points in primary filesystem needs to be preserved
+
+				// All blocks of fs1 on this node that match our criteria
+				List<Path<Feature, String>> paths1 = fs1.listPaths(event.getTime(), event.getPolygon(), null, false);
+
+				// For each block of fs1, we need to find what nodes to be queried in fs2
+				// Also, we need to calculate the superblock that needs to be queried at each node
+
+				// Map of what supercubes to query at each node (key->Supercube)
+				Map<String, List<Integer>> nodeToCubeMap = new HashMap<String, List<Integer>>();
+				List<NodeInfo> destinations = new ArrayList<NodeInfo>();
+				List<SuperCube> allCubes = new ArrayList<SuperCube>();
+				
+				Map<Integer, List<String>> supercubeToNodeMap = new HashMap<Integer, List<String>>();
+				//This will come in handy while receiving neighbor responses from requested nodes.
+				Map<Integer, Integer> superCubeNumNodesMap = new HashMap<Integer, Integer>();
+				
+				// Need a supercube to node map as well. 
+				// For when nodes give replies, we can fire computations for supercubes
+				// that have all the data they need from the Client request handler
+				
+				// Map of what node each key refers to
+				//Map<String, NodeInfo> keyToNodeMap = new HashMap<String, NodeInfo>();
+
+				Partitioner<Metadata> partitioner = fs2.getPartitioner();
+
+				for (Path<Feature, String> path : paths1) {
+					// All the blocks under a certain directory
+					// There can be multiple blocks uner the same directory 
+					// As long as their names are different
+					List<String> blocks = new ArrayList<String>(path.getPayload());
+
+					// EXTRACT THE SUPERCUBE FOR EACH OF THE BLOCK RETURNED
+					// Supercube also contains info about the core time and
+					// geoHash
+
+					// This supercube is in terms of FS1 rules
+					// Anything intersecting with this supercube in FS2 has to be returned
+					
+					SuperCube sc = extractSuperCube(path, fs1);
+					sc.setFs1BlockPath(blocks);
+
+					// If the FS1 temporal magnification is same or greater than FS2, then use temporal metadata to find nodes
+					// with matching FS2 blocks handle for a minimum magnification of day for both FS
+					// unless simply consider spatial metadata to find relevant blocks
+
+					// keep track of which supercubes to be queried on each node
+					// keep track of which block of fs1 this supercube corresponds to
+
+					List<Date> dates = new ArrayList<Date>();
+					// The following segment determines what node to query along
+					// with the query as well.
+					Metadata fs2NodeFindMetadata = new Metadata();
+					fs2NodeFindMetadata.setSpatialProperties(new SpatialProperties(new SpatialRange(sc.getPolygon())));
+
+					/*
+					 * since the time could span over multiple days, we need to
+					 * check
+					 */
+					int indx = getMatchingCubeIndex(allCubes, sc);
+					
+					/* Adding this new supercube to the list */
+					if(indx < 0) {
+						indx = allCubes.size();
+						sc.setId(indx);
+						allCubes.add(sc);
+					}
+					
+					if (sc.getTime() != null) {
+						// getting all dates that may lie between two timestamps
+
+						dates = SuperCube.handleTemporalRangeForEachBlock(sc.getTime());
+
+						for (Date d : dates) {
+
+							fs2NodeFindMetadata.setTemporalProperties(new TemporalProperties(d.getTime()));
+
+							// Found what nodes to query based on supercube data
+							List<NodeInfo> nodes = partitioner.findDestinations(fs2NodeFindMetadata);
+							
+							// Hashcode calculation for NodeInfo is based on src and port
+							// Getting unique should not be a problem later
+							destinations.addAll(nodes);
+
+							// Need to send out the same supercube to all destination nodes
+
+							for (NodeInfo n : nodes) {
+
+								String key = n.getHostname() + "-" + n.getPort();
+								
+								// Check if this cube is already getting queried at this node
+								if ( !hasCube(nodeToCubeMap.get(key), indx) ) {
+									
+									List<Integer> cubeIndices;
+									if (nodeToCubeMap.get(key) == null) {
+										cubeIndices = new ArrayList<Integer>();
+									} else {
+										cubeIndices = nodeToCubeMap.get(key);
+									}
+									
+									cubeIndices.add(indx);
+									nodeToCubeMap.put(key, cubeIndices);
+									
+									SuperCube.addToCubeNodeMap(supercubeToNodeMap, superCubeNumNodesMap, key, indx);
+									
+								}
+
+							}
+
+						}
+
+					} else {
+
+						List<NodeInfo> nodes = partitioner.findDestinations(fs2NodeFindMetadata);
+						destinations.addAll(nodes);
+						
+						for (NodeInfo n : nodes) {
+
+							String key = n.getHostname() + "-" + n.getPort();
+							//keyToNodeMap.put(key, n);
+
+							if ( !hasCube(nodeToCubeMap.get(key), indx) ) {
+
+								List<Integer> cubesIndices;
+
+								if (nodeToCubeMap.get(key) == null) {
+									cubesIndices = new ArrayList<Integer>();
+								} else {
+									cubesIndices = nodeToCubeMap.get(key);
+								}
+								
+								cubesIndices.add(indx);
+								nodeToCubeMap.put(key, cubesIndices);
+								
+								SuperCube.addToCubeNodeMap(supercubeToNodeMap, superCubeNumNodesMap, key, indx);
+							}
+
+						}
+
+					}
+
+
+				}
+				// send consolidated request for blocks to each of those nodes
+				
+				Set<NodeInfo> setNodes = new TreeSet<NodeInfo>(destinations);
+				destinations = new ArrayList<NodeInfo>(setNodes);
+				
+				List<NeighborDataEvent> individualRequests = new ArrayList<NeighborDataEvent>();
+				List<NeighborDataEvent> internalEvents = new ArrayList<NeighborDataEvent>();
+				// Before sending out requests to each node, catch the one directed to this node and save it for later.
+				for(NodeInfo n: destinations) {
+					boolean thisNode = checkForThisNode(n);
+					
+					String nodeKey = n.getHostname() + "-" + n.getPort();
+					List<Integer> cubeIndices = nodeToCubeMap.get(nodeKey);
+					NeighborDataEvent nEvent = createNeighborRequestPerNode(cubeIndices, allCubes, fsName2);
+					
+					if(thisNode) {
+						internalEvents.add(nEvent);
+						destinations.remove(n);
+						continue;
+					}
+					
+					individualRequests.add(nEvent);
+				}
+				
+				NeighborRequestHandler rikiHandler = new NeighborRequestHandler(internalEvents,individualRequests, new ArrayList<NetworkDestination>(destinations), context, this);
+				rikiHandler.handleRequest(response);
+
+			}
+		} catch (Exception e) {
+			logger.log(Level.SEVERE,
+					"Something went wrong while data integration event on the filesystem. No results obtained. Sending blank list to the client. Issue details follow:",
+					e);
+		}
+
+	}
+	
+	private boolean checkForThisNode(NodeInfo n) {
+		
+		String hname = n.getHostname();
+		int port = n.getPort();
+		
+		if(this.hostname.equals(hname) && this.port == port){
+			return true;
+		}
+		
+		return false;
+	}
+	
+	
+	private NeighborDataEvent createNeighborRequestPerNode(List<Integer> cubeIndices, List<SuperCube> allCubes, String reqFs) {
+		List<SuperCube> toSend = new ArrayList<SuperCube>();
+		
+		NeighborDataEvent ne = null;
+		
+		for(int i: cubeIndices) {
+			
+			toSend.add(allCubes.get(i));
+			
+		}
+		
+		if(toSend.size() > 0) {
+			
+			ne = new NeighborDataEvent();
+			ne.setReqFs(reqFs);
+			ne.setSupercubes(toSend);
+			
+		}
+		
+		return ne;
+	}
+	
+	@EventHandler
+	public void handleNeighborData(NeighborDataEvent event, EventContext context) {
+		
+		String fsName = event.getReqFs();
+		List<SuperCube> superCubes = event.getSupercubes();
+		GeospatialFileSystem reqFSystem = fsMap.get(fsName);
+		
+		//Partitioner<Metadata> fsPartitioner = reqFSystem.getPartitioner();
+		try{
+			List<Path<Feature, String>> paths1 = reqFSystem.listIntersectingPathsWithOrientation(superCubes);
+			
+			
+		}catch (Exception e) {
+			logger.log(Level.SEVERE,
+					"Something went wrong while data integration event on the filesystem. No results obtained. Sending blank list to the client. Issue details follow:",
+					e);
+		}
+		
+		// For each supercube, find out what paths are needed
+		// Check orientation
+		// Supercube has central time and geohash, so finding neighbor wont be a problem
+		
+		
+	}
+	
+	private boolean hasCube(List<Integer> list, int scb) {
+		if(list ==null){
+			return false;
+		}
+		for(int i: list) {
+			if(scb == i) {
+				return true;
+			}
+		}
+		
+		return false;
+	}
+	
+	private int getMatchingCubeIndex(List<SuperCube> list, SuperCube scb) {
+		
+		if(list == null) {
+			
+			return -1;
+		}
+		
+		for(SuperCube s: list) {
+			
+			if(s.getCentralGeohash() != null && s.getCentralGeohash().equals(scb.getCentralGeohash())) {
+				
+				if(s.getCentralTime() == null && scb.getCentralTime() == null) {
+					return list.indexOf(s);
+					
+				} else if(s.getCentralTime() != null && scb.getCentralTime() != null && s.getCentralTime().equals(scb.getCentralTime())) {
+					
+					return list.indexOf(s);
+					
+				}
+			}
+		}
+		
+		
+		return -1;
+	}
+
+	
+
+	/**
+	 * @author sapmitra
+	 * @param path this is the FS1 path
+	 * @param fs1
+	 * @param fs2
+	 * @return
+	 */
+	private SuperCube extractSuperCube(Path<Feature, String> path, GeospatialFileSystem fs1) {
+
+		final String TEMPORAL_YEAR_FEATURE = "x__year__x";
+		final String TEMPORAL_MONTH_FEATURE = "x__month__x";
+		final String TEMPORAL_DAY_FEATURE = "x__day__x";
+		final String TEMPORAL_HOUR_FEATURE = "x__hour__x";
+		final String SPATIAL_FEATURE = "x__spatial__x";
+		SuperCube s = null;
+		
+		
+		/* Extracting the spatial and temporal feature of this block */
+		if (null != path && path.hasPayload()) {
+			List<Feature> labels = path.getLabels();
+			String space = "";
+			String year = "xxxx", month = "xx", day = "xx", hour = "xx";
+			int allset = 0;
+			for (Feature label : labels) {
+				switch (label.getName().toLowerCase()) {
+				case TEMPORAL_YEAR_FEATURE:
+					year = label.getString();
+					allset++;
+					break;
+				case TEMPORAL_MONTH_FEATURE:
+					month = label.getString();
+					allset++;
+					break;
+				case TEMPORAL_DAY_FEATURE:
+					day = label.getString();
+					allset++;
+					break;
+				case TEMPORAL_HOUR_FEATURE:
+					hour = label.getString();
+					allset++;
+					break;
+				case SPATIAL_FEATURE:
+					space = label.getString();
+					allset++;
+
+					break;
+				}
+				if (allset == 5)
+					break;
+			}
+			
+			// Getting the bounding coordinates of the super geohash
+			List<Coordinates> bounds = GeoHash.getSuperGeohashes(space, fs1.getSpatialUncertaintyPrecision());
+			
+			s = new SuperCube();
+			s.setCentralTime(day+"-"+month+"-"+year+"-"+hour);
+			s.setCentralGeohash(space);
+			s.setPolygon(bounds);
+			
+			
+			
+			// Only if temporal magnification >= day
+			// The start and end time-stamp might come in handy during listBlocks
+			if(!"xx".equals(day)) {
+				
+				long start = getStartTimeStamp(year, month, day, hour, 1) - fs1.getTemporalUncertaintyPrecision();
+				long end = getEndTimeStamp(year, month, day, hour, 1) + fs1.getTemporalUncertaintyPrecision();
+				
+				s.setTime(start+"-"+end);
+			} else if(!"xx".equals(month)) {
+				
+				long start = getStartTimeStamp(year, month, day, hour, 2) - fs1.getTemporalUncertaintyPrecision();
+				long end = getEndTimeStamp(year, month, day, hour, 2) + fs1.getTemporalUncertaintyPrecision();
+				
+				s.setTime(start+"-"+end);
+				
+			} else {
+				s.setTime(null);
+			}
+			
+			
+		}
+		
+		return s;
+	}
+	
+	
+	private long getEndTimeStamp(String year, String month, String day, String hour, int mode) {
+		
+		int yearL = Integer.parseInt(year);
+		int monthL = Integer.parseInt(month);
+		int dayL = Integer.parseInt(day);
+		
+		int hourL = 59;
+		if(!"xx".equals(hour))
+			hourL = Integer.parseInt(year);
+		
+		// day missing
+		if (mode == 2) {
+			dayL = 31;
+		} else if (mode == 3) {
+			dayL = 31;
+			monthL = 12;
+		}
+		
+		Date d = new Date(yearL, monthL, dayL);
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTime(d);
+		calendar.setTimeZone(TemporalHash.TIMEZONE);
+		
+		calendar.set(Calendar.HOUR_OF_DAY, hourL);
+	    calendar.set(Calendar.MINUTE, 59);
+	    calendar.set(Calendar.SECOND, 59);
+	    calendar.set(Calendar.MILLISECOND, 999);
+	    
+	    return calendar.getTimeInMillis();
+		
+	}
+	
+	/**
+	 * @param year
+	 * @param month
+	 * @param day
+	 * @param hour
+	 * @param mode temporal magnification level. 1 for day/hour, 2 for just month, 3 for year
+	 * @return
+	 */
+	private long getStartTimeStamp(String year, String month, String day, String hour, int mode) {
+		
+		int yearL = Integer.parseInt(year);
+		int monthL = Integer.parseInt(month);
+		int dayL = Integer.parseInt(day);
+		
+		int hourL = 0;
+		if(!"xx".equals(hour))
+			hourL = Integer.parseInt(year);
+		
+		// day missing
+		if(mode == 2) {
+			dayL = 1;
+		} else if(mode == 3) {
+			dayL = 1;
+			monthL = 1;
+		}
+		
+		Date d = new Date(yearL, monthL, dayL);
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTime(d);
+		calendar.setTimeZone(TemporalHash.TIMEZONE);
+		
+		calendar.set(Calendar.HOUR_OF_DAY, hourL);
+	    calendar.set(Calendar.MINUTE, 0);
+	    calendar.set(Calendar.SECOND, 0);
+	    calendar.set(Calendar.MILLISECOND, 0);
+	    
+	    return calendar.getTimeInMillis();
+		
+	}
 	/**
 	 * Executable entrypoint for a Galileo DHT Storage Node
 	 */

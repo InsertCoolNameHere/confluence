@@ -72,4 +72,5 @@ public final class Journal {
         reader = new FileReader(journalFile);
         bufferedReader = new BufferedReader(reader);
     }
+
 }

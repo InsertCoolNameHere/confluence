@@ -1,6 +1,5 @@
 package galileo.util;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,19 +19,19 @@ public class BorderingProperties {
 	private long down1;
 	private long down2;
 	
-	private BigInteger totalRecords;
+	private long totalRecords;
 	
-	private List<Integer> upTimeEntries;
-	private List<Integer> downTimeEntries;
+	private List<Long> upTimeEntries;
+	private List<Long> downTimeEntries;
 	
-	private List<Integer> northEntries;
-	private List<Integer> southEntries;
-	private List<Integer> eastEntries;
-	private List<Integer> westEntries;
-	private List<Integer> neEntries;
-	private List<Integer> nwEntries;
-	private List<Integer> seEntries;
-	private List<Integer> swEntries;
+	private List<Long> northEntries;
+	private List<Long> southEntries;
+	private List<Long> eastEntries;
+	private List<Long> westEntries;
+	private List<Long> neEntries;
+	private List<Long> nwEntries;
+	private List<Long> seEntries;
+	private List<Long> swEntries;
 	
 	public BorderingProperties() {
 		
@@ -41,24 +40,23 @@ public class BorderingProperties {
 		e = new ArrayList<String>();
 		w = new ArrayList<String>();
 		
-		totalRecords = new BigInteger("0");
+		totalRecords = 0;
 		
-		northEntries = new ArrayList<Integer>();
-		southEntries = new ArrayList<Integer>();
-		eastEntries = new ArrayList<Integer>();
-		westEntries = new ArrayList<Integer>();
-		neEntries = new ArrayList<Integer>();
-		nwEntries = new ArrayList<Integer>();
-		seEntries = new ArrayList<Integer>();
-		swEntries = new ArrayList<Integer>();
+		northEntries = new ArrayList<Long>();
+		southEntries = new ArrayList<Long>();
+		eastEntries = new ArrayList<Long>();
+		westEntries = new ArrayList<Long>();
+		neEntries = new ArrayList<Long>();
+		nwEntries = new ArrayList<Long>();
+		seEntries = new ArrayList<Long>();
+		swEntries = new ArrayList<Long>();
 		
-		upTimeEntries = new ArrayList<Integer>();
-		downTimeEntries = new ArrayList<Integer>();
+		upTimeEntries = new ArrayList<Long>();
+		downTimeEntries = new ArrayList<Long>();
 	}
 	
-	public void updateRecordCount(int n) {
-		BigInteger bi = BigInteger.valueOf(n);
-		totalRecords.add(bi);
+	public void updateRecordCount(long n) {
+		totalRecords+=n;
 	}
 
 	public List<String> getN() {
@@ -141,99 +139,99 @@ public class BorderingProperties {
 		s.add(str);
 	}
 
-	public List<Integer> getNorthEntries() {
+	public List<Long> getNorthEntries() {
 		return northEntries;
 	}
 
-	public void setNorthEntries(List<Integer> northEntries) {
+	public void setNorthEntries(List<Long> northEntries) {
 		this.northEntries = northEntries;
 	}
 
-	public List<Integer> getSouthEntries() {
+	public List<Long> getSouthEntries() {
 		return southEntries;
 	}
 
-	public void setSouthEntries(List<Integer> southEntries) {
+	public void setSouthEntries(List<Long> southEntries) {
 		this.southEntries = southEntries;
 	}
 
-	public List<Integer> getEastEntries() {
+	public List<Long> getEastEntries() {
 		return eastEntries;
 	}
 
-	public void setEastEntries(List<Integer> eastEntries) {
+	public void setEastEntries(List<Long> eastEntries) {
 		this.eastEntries = eastEntries;
 	}
 
-	public List<Integer> getWestEntries() {
+	public List<Long> getWestEntries() {
 		return westEntries;
 	}
 
-	public void setWestEntries(List<Integer> westEntries) {
+	public void setWestEntries(List<Long> westEntries) {
 		this.westEntries = westEntries;
 	}
 
-	public List<Integer> getNeEntries() {
+	public List<Long> getNeEntries() {
 		return neEntries;
 	}
 
-	public void setNeEntries(List<Integer> neEntries) {
+	public void setNeEntries(List<Long> neEntries) {
 		this.neEntries = neEntries;
 	}
 
-	public List<Integer> getNwEntries() {
+	public List<Long> getNwEntries() {
 		return nwEntries;
 	}
 
-	public void setNwEntries(List<Integer> nwEntries) {
+	public void setNwEntries(List<Long> nwEntries) {
 		this.nwEntries = nwEntries;
 	}
 
-	public List<Integer> getSeEntries() {
+	public List<Long> getSeEntries() {
 		return seEntries;
 	}
 
-	public void setSeEntries(List<Integer> seEntries) {
+	public void setSeEntries(List<Long> seEntries) {
 		this.seEntries = seEntries;
 	}
 
-	public List<Integer> getSwEntries() {
+	public List<Long> getSwEntries() {
 		return swEntries;
 	}
 
-	public void setSwEntries(List<Integer> swEntries) {
+	public void setSwEntries(List<Long> swEntries) {
 		this.swEntries = swEntries;
 	}
 	
-	public void addNorthEntries(int n) {
+	public void addNorthEntries(long n) {
 		northEntries.add(n);
 	}
 	
-	public void addSouthEntries(int n) {
+	public void addSouthEntries(long n) {
 		southEntries.add(n);
 	}
 	
-	public void addEastEntries(int n) {
+	public void addEastEntries(long n) {
 		eastEntries.add(n);
 	}
 	
-	public void addWestEntries(int n) {
+	public void addWestEntries(long n) {
 		westEntries.add(n);
 	}
 	
-	public void addNEEntries(int n) {
+	public void addNEEntries(long n) {
 		neEntries.add(n);
 	}
 	
-	public void addNWEntries(int n) {
+	public void addNWEntries(long n) {
 		nwEntries.add(n);
 	}
 	
-	public void addSEEntries(int n) {
+	public void addSEEntries(long n) {
 		seEntries.add(n);
 	}
 	
-	public void addSWEntries(int n) {
+	public void addSWEntries(long n) {
 		swEntries.add(n);
 	}
 
@@ -269,29 +267,37 @@ public class BorderingProperties {
 		this.down2 = down2;
 	}
 
-	public List<Integer> getUpTimeEntries() {
+	public List<Long> getUpTimeEntries() {
 		return upTimeEntries;
 	}
 
-	public void setUpTimeEntries(List<Integer> upTimeEntries) {
+	public void setUpTimeEntries(List<Long> upTimeEntries) {
 		this.upTimeEntries = upTimeEntries;
 	}
 	
 
-	public void addUpTimeEntries(int n) {
+	public void addUpTimeEntries(long n) {
 		upTimeEntries.add(n);
 	}
 
-	public List<Integer> getDownTimeEntries() {
+	public List<Long> getDownTimeEntries() {
 		return downTimeEntries;
 	}
 
-	public void setDownTimeEntries(List<Integer> downTimeEntries) {
+	public void setDownTimeEntries(List<Long> downTimeEntries) {
 		this.downTimeEntries = downTimeEntries;
 	}
 	
-	public void addDownTimeEntries(int n) {
+	public void addDownTimeEntries(long n) {
 		downTimeEntries.add(n);
+	}
+
+	public long getTotalRecords() {
+		return totalRecords;
+	}
+
+	public void setTotalRecords(long totalRecords) {
+		this.totalRecords = totalRecords;
 	}
 	
 	

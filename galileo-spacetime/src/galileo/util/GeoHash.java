@@ -38,7 +38,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
-import java.util.TreeSet;
 
 import galileo.dataset.Coordinates;
 import galileo.dataset.Point;
@@ -46,6 +45,7 @@ import galileo.dataset.SpatialRange;
 import galileo.dataset.TemporalProperties;
 import galileo.dht.Partitioner;
 import galileo.dht.hash.TemporalHash;
+import galileo.fs.GeospatialFileSystem;
 
 /**
  * This class provides an implementation of the GeoHash (http://www.geohash.org)
@@ -438,6 +438,11 @@ public class GeoHash {
 		return new Coordinates(90 - y * 180f / width, x * 360f / width - 180f);
 	}
 
+	/**
+	 * 
+	 * @param polygon bounding polygon
+	 * @return
+	 */
 	public static String[] getIntersectingGeohashes(List<Coordinates> polygon) {
 		Set<String> hashes = new HashSet<String>();
 		Polygon geometry = new Polygon();
@@ -451,7 +456,7 @@ public class GeoHash {
 		// polygon
 		Coordinates spatialCenter = polygon.get(0);
 		
-		// GETS MBR WITH XY COORDINATES
+		// GETS MBR WITH XY COORDINATES FOR THE FULL POLYGON
 		Rectangle2D box = geometry.getBounds2D();
 		
 		// Take any point(0) from the polygon and convert it to a 2 character geohash
@@ -459,7 +464,10 @@ public class GeoHash {
 		String geohash = encode(spatialCenter, Partitioner.SPATIAL_PRECISION);
 		Queue<String> hashQue = new LinkedList<String>();
 		Set<String> computedHashes = new HashSet<String>();
+		
+		/* Start by inserting this initial geohash for point0 into the queue */
 		hashQue.offer(geohash);
+		
 		while (!hashQue.isEmpty()) {
 			String hash = hashQue.poll();
 			computedHashes.add(hash);
@@ -472,6 +480,7 @@ public class GeoHash {
 			Rectangle2D hashRect = new Rectangle(upLeft.X(), upLeft.Y(), lowRight.X() - upLeft.X(),
 					lowRight.Y() - upLeft.Y());
 			/* If the geohash fully encloses the MBR */
+			/* box corresponds to the entire polygon */
 			if (hash.equals(geohash) && hashRect.contains(box)) {
 				hashes.add(hash);
 				break;
@@ -488,10 +497,11 @@ public class GeoHash {
 		return hashes.size() > 0 ? hashes.toArray(new String[hashes.size()]) : new String[] {};
 	}
 	
-	public static void main(String arg[]) {
+	public static void Xmain(String arg[]) {
 		
-		SpatialRange range = decodeHash("hp");
-		Coordinates c1 = new Coordinates(range.getLowerBoundForLatitude()+0.01f, range.getLowerBoundForLongitude()+0.01f);
+		SpatialRange range = decodeHash("f6");
+		
+		Coordinates c1 = new Coordinates(range.getLowerBoundForLatitude(), range.getLowerBoundForLongitude());
 		Coordinates c2 = new Coordinates(range.getUpperBoundForLatitude(), range.getLowerBoundForLongitude());
 		Coordinates c3 = new Coordinates(range.getUpperBoundForLatitude(), range.getUpperBoundForLongitude());
 		Coordinates c4 = new Coordinates(range.getLowerBoundForLatitude(), range.getUpperBoundForLongitude());
@@ -505,10 +515,18 @@ public class GeoHash {
 		cl.add(c3);
 		cl.add(c4);
 		
-		GeoHash.getIntersectingGeohashes(cl,3);
+		String[] intersectingGeohashesForConvexBoundingPolygon = GeoHash.getIntersectingGeohashesForConvexBoundingPolygon(cl,3);
 	
+		System.out.println(intersectingGeohashesForConvexBoundingPolygon);
 		
+		System.out.println(1<<30);
 		
+		int width = 1 << MAX_PRECISION;
+		System.out.println(width);
+		
+		Point<Integer> coordinatesToXY = GeoHash.coordinatesToXY(c1);
+		
+		System.out.println("Hi");
 	}
 	
 	
@@ -517,6 +535,8 @@ public class GeoHash {
 	/**
 	 * Gives the list of geohashes of a required precision that intersect with a given polygon
 	 * Use this if you are sure your polygon is a convex polygon
+	 * 
+	 * @author sapmitra
 	 * @param polygon
 	 * @param precision
 	 * @return
@@ -688,6 +708,13 @@ public class GeoHash {
 		return polygon;
 	}
 
+	/**
+	 * 
+	 * @param polygon
+	 * @param gh
+	 * @param bitPrecision geohash precision in bits instead of characters of the filesystem (fixed)
+	 * @param intersections
+	 */
 	public static void getGeohashPrefixes(Polygon polygon, GeoHash gh, int bitPrecision, Set<GeoHash> intersections) {
 		if (gh.getPrecision() >= bitPrecision) {
 			intersections.add(gh);
@@ -760,14 +787,13 @@ public class GeoHash {
 	}
 	
 	
-	private static long getStartTimeStamp(TemporalProperties tp) {
+	private static long getEndTimeStamp(TemporalProperties tp) {
 		if(tp == null) {
 			return 0;
 		}
-		Date d = new Date(tp.getStart());
 		Calendar calendar = Calendar.getInstance();
 		calendar.setTimeZone(TemporalHash.TIMEZONE);
-		calendar.setTimeInMillis(tp.getStart());
+		calendar.setTimeInMillis(tp.getEnd());
 		
 		calendar.set(Calendar.HOUR_OF_DAY, 23);
 	    calendar.set(Calendar.MINUTE, 59);
@@ -779,11 +805,10 @@ public class GeoHash {
 	}
 	
 	
-	private static long getEndTimeStamp(TemporalProperties tp) {
+	private static long getStartTimeStamp(TemporalProperties tp) {
 		if(tp == null) {
 			return 0;
 		}
-		Date d = new Date(tp.getStart());
 		Calendar calendar = Calendar.getInstance();
 		calendar.setTimeZone(TemporalHash.TIMEZONE);
 		calendar.setTimeInMillis(tp.getStart());
@@ -799,7 +824,7 @@ public class GeoHash {
 	
 	
 	
-	/* Get NSEW Geohashes */
+	/* Get NSEW Geohashes. USELESS. */
 	
 	public static BorderingProperties getBorderingGeoHashes(String geoHash, int precision, int timeLapse, TemporalProperties tp) {
 		
@@ -811,9 +836,8 @@ public class GeoHash {
 		
 		List<String> internalGeohashesList = Arrays.asList(internalGeohashes);
 		
-		int count = 0;
-		
 		BorderingProperties bg = new BorderingProperties();
+		
 		bg.setUp1(endTS);
 		bg.setUp2(endTS - timeLapse);
 		
@@ -823,7 +847,7 @@ public class GeoHash {
 		
 		
 		for(String geo: internalGeohashesList) {
-			String[] nei = getNeighbours(geo);
+			//String[] nei = getNeighbours(geo);
 			
 			String nn = getNeighbour(geo, "n");
 			String sn = getNeighbour(geo, "s");
@@ -876,6 +900,166 @@ public class GeoHash {
 		return bg;
 	}
 	
+	
+	
+	/**
+	 * @author sapmitra
+	 * Getting Super Coordinates. THIS IS THE FINAL METHOD THAT GIVES THE SUPER BOUNDS FOR A GIVEN GEOHASH
+	 * @param geoHash
+	 * @param precision
+	 */
+	public static List<Coordinates> getSuperGeohashes(String geoHash, int precision) {
+		
+		String nwNeighbor = getNeighbour(geoHash, "nw");
+		String nwCornerGeohash = getCornerGeohash(nwNeighbor, precision, "se");
+		Coordinates nwPoint = getCornerPoint(nwCornerGeohash, "nw");
+		
+		
+		String neNeighbor = getNeighbour(geoHash, "ne");
+		String neCornerGeohash = getCornerGeohash(neNeighbor, precision, "sw");
+		Coordinates nePoint = getCornerPoint(neCornerGeohash, "ne");
+		
+		String swNeighbor = getNeighbour(geoHash, "sw");
+		String swCornerGeohash = getCornerGeohash(swNeighbor, precision, "ne");
+		Coordinates swPoint = getCornerPoint(swCornerGeohash, "sw");
+		
+		String seNeighbor = getNeighbour(geoHash, "se");
+		String seCornerGeohash = getCornerGeohash(seNeighbor, precision, "nw");
+		Coordinates sePoint = getCornerPoint(seCornerGeohash, "se");
+		
+		System.out.println(nwCornerGeohash);
+		System.out.println(neCornerGeohash);
+		System.out.println(seCornerGeohash);
+		System.out.println(swCornerGeohash);
+		
+		List<Coordinates> bounds = new ArrayList<Coordinates>();
+		bounds.add(swPoint);
+		bounds.add(nwPoint);
+		bounds.add(nePoint);
+		bounds.add(sePoint);
+		
+		System.out.println(bounds);
+		
+		return bounds;
+		
+		
+	}
+	
+	/**
+	 * Input is a geohash and get a particular corner geohash
+	 * @author sapmitra
+	 * @param geoHash
+	 * @param precision
+	 * @param direction
+	 * @return
+	 */
+	public static String getCornerGeohash(String geoHash, int precision, String direction) {
+
+		// ADD ACCOMMODATION FOR TIME
+
+		String[] internalGeohashes = getInternalGeohashes(geoHash, precision);
+
+		List<String> internalGeohashesList = Arrays.asList(internalGeohashes);
+
+		BorderingProperties bg = new BorderingProperties();
+		String nwGeo = "",swGeo="",neGeo="",seGeo="";
+
+		for (String geo : internalGeohashesList) {
+			String[] nei = getNeighbours(geo);
+
+			String nn = getNeighbour(geo, "n");
+			String sn = getNeighbour(geo, "s");
+			String en = getNeighbour(geo, "e");
+			String wn = getNeighbour(geo, "w");
+
+			String nen = getNeighbour(geo, "ne");
+			String nwn = getNeighbour(geo, "nw");
+			String swn = getNeighbour(geo, "sw");
+			String sen = getNeighbour(geo, "se");
+			
+
+			if (!internalGeohashesList.contains(nn) && !internalGeohashesList.contains(nwn)
+					&& !internalGeohashesList.contains(wn)) {
+
+				nwGeo = geo;
+
+			} else if (!internalGeohashesList.contains(nn) && !internalGeohashesList.contains(nen)
+					&& !internalGeohashesList.contains(en)) {
+
+				neGeo = geo;
+
+			} else if (!internalGeohashesList.contains(sn) && !internalGeohashesList.contains(sen)
+					&& !internalGeohashesList.contains(en)) {
+
+				seGeo = geo;
+
+			} else if (!internalGeohashesList.contains(sn) && !internalGeohashesList.contains(swn)
+					&& !internalGeohashesList.contains(wn)) {
+
+				swGeo = geo;
+
+			}
+
+		}
+		
+		
+		if("ne".equals(direction)) {
+			
+			return neGeo;
+			
+		} else if("nw".equals(direction)) {
+			
+			return nwGeo;
+			
+		} else if("se".equals(direction)) {
+			
+			return seGeo;
+			
+		} else if("sw".equals(direction)) {
+			
+			return swGeo;
+			
+		}
+		
+		
+		
+
+		return "";
+	}
+	
+	/**
+	 * @author sapmitra
+	 * @param geoHash
+	 * @param direction
+	 * @return
+	 */
+	public static Coordinates getCornerPoint(String geoHash, String direction) {
+		
+		SpatialRange range = decodeHash(geoHash);
+		
+		Coordinates c = null;
+		
+		if("ne".equals(direction)) {
+			
+			c = new Coordinates(range.getUpperBoundForLatitude(), range.getUpperBoundForLongitude());
+			
+		} else if("nw".equals(direction)) {
+			
+			c = new Coordinates(range.getUpperBoundForLatitude(), range.getLowerBoundForLongitude());
+			
+		} else if("se".equals(direction)) {
+			
+			c = new Coordinates(range.getLowerBoundForLatitude(), range.getUpperBoundForLongitude());
+			
+		} else if("sw".equals(direction)) {
+			
+			c = new Coordinates(range.getLowerBoundForLatitude(), range.getLowerBoundForLongitude());
+			
+		}
+		
+		return c;
+	}
+	
 	private static void printBorders(BorderingProperties bg) {
 		
 		System.out.println("NE: "+bg.getNe());
@@ -913,9 +1097,9 @@ public class GeoHash {
 		
 	}
 
-	public static void Xmain(String arg[]) {
+	public static void main(String arg[]) {
 		
-		SpatialRange range = decodeHash("9r");
+		SpatialRange range = decodeHash("sp");
 		Coordinates c1 = new Coordinates(range.getLowerBoundForLatitude(), range.getLowerBoundForLongitude());
 		Coordinates c2 = new Coordinates(range.getUpperBoundForLatitude(), range.getLowerBoundForLongitude());
 		Coordinates c3 = new Coordinates(range.getUpperBoundForLatitude(), range.getUpperBoundForLongitude());
@@ -927,6 +1111,10 @@ public class GeoHash {
 		cl.add(c2);
 		cl.add(c3);
 		cl.add(c4);
+		
+		getSuperGeohashes("sp", 3);
+		
+		//getSuperCubeGeohashBounds("sp", null, null, null, null, 3);
 		
 		//GeoHash.getBorderingGeoHashes("9r", 3, 1);
 		
