@@ -1305,6 +1305,7 @@ public class GeospatialFileSystem extends FileSystem {
 			paths = (metaQuery == null) ? metadataGraph.getAllPaths() : executeParallelQuery(metaQuery);
 			
 		}
+		// For each supercube
 		for (SuperCube sc : superCubes) {
 			
 			for (Path<Feature, String> path : paths) {
