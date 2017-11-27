@@ -27,6 +27,8 @@ package galileo.dht;
 
 import java.util.List;
 
+import galileo.dataset.SpatialProperties;
+import galileo.dataset.TemporalProperties;
 import galileo.dht.hash.HashException;
 
 /**
@@ -70,5 +72,12 @@ public abstract class Partitioner<T> {
 	 * @throws PartitionException
 	 */
 	public abstract List<NodeInfo> findDestinations(T data) throws HashException, PartitionException;
+	
+	
+	
+
+	public abstract List<NodeInfo> findDestinationsForFS2(SpatialProperties searchSp, List<TemporalProperties> tprops, int geohashPrecision, String[] validNeighbors) throws HashException, PartitionException;
+	
+	
 
 }

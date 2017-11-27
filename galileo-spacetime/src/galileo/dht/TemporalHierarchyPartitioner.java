@@ -174,4 +174,115 @@ public class TemporalHierarchyPartitioner extends Partitioner<Metadata> {
 		}
 		return new ArrayList<NodeInfo>(destinations);
 	}
+	
+	
+	/**
+	 * 
+	 * @author sapmitra
+	 * @param data
+	 * @return
+	 * @throws HashException
+	 */
+	@Override
+	public List<NodeInfo> findDestinationsForFS2(SpatialProperties sps, List<TemporalProperties> tprops, int fs2GeoHashPrecision, String[] validNeighbors) throws HashException, PartitionException {
+		
+		if (sps == null && tprops == null)
+			return network.getAllNodes();
+		
+		List<Metadata> metas = new ArrayList<Metadata>();
+		if (tprops != null) {
+			
+			for (TemporalProperties tp : tprops) {
+
+				Metadata fs2NodeFindMetadata = new Metadata();
+
+				fs2NodeFindMetadata.setSpatialProperties(sps);
+				fs2NodeFindMetadata.setTemporalProperties(tp);
+				metas.add(fs2NodeFindMetadata);
+
+			}
+		} else {
+			
+			Metadata fs2NodeFindMetadata = new Metadata();
+
+			fs2NodeFindMetadata.setSpatialProperties(sps);
+			metas.add(fs2NodeFindMetadata);
+		}
+		
+		Set<NodeInfo> destinations = new HashSet<NodeInfo>();
+		for (Metadata data : metas) {
+			TemporalProperties tp = data.getTemporalProperties();
+			SpatialProperties sp = data.getSpatialProperties();
+			
+			if (tp == null) {
+				/*
+				 * Since no temporal restrictions, all group positions returned
+				 */
+				Set<BigInteger> positions = groupHashRing.getPositions();
+				/* If no spatial positions either, return all nodes */
+				if (sp == null) {
+					return network.getAllNodes();
+				} else {
+					if (sp.hasRange() && sp.getSpatialRange().hasPolygon()) {
+						List<Coordinates> polygon = sp.getSpatialRange().getPolygon();
+						// Spatial range
+						logger.info("Polygon - " + polygon);
+						
+						// There are geohashes from fs2 that matched fs1 geohash requirements
+						String[] hashes = GeoHash.getIntersectingGeohashes(polygon, fs2GeoHashPrecision);
+						hashes = GeoHash.filterUnwantedGeohashes(hashes, validNeighbors);
+						logger.info("intersecting geohashes - " + Arrays.toString(hashes));
+						Metadata metadata = new Metadata();
+						for (BigInteger position : positions) {
+							HashRing<Metadata> nodeRing = nodeHashRings.get(position);
+							for (String hash : hashes) {
+								metadata.setSpatialProperties(new SpatialProperties(GeoHash.decodeHash(hash)));
+								BigInteger node = nodeRing.locate(metadata);
+								destinations.add(nodePositions.get(position).get(node));
+							}
+						}
+					} else {
+						for (BigInteger position : positions) {
+							HashRing<Metadata> nodeRing = nodeHashRings.get(position);
+							BigInteger node = nodeRing.locate(data);
+							destinations.add(nodePositions.get(position).get(node));
+						}
+					}
+				}
+			} else {
+				/* Get the group position based on the temporal metadata */
+
+				BigInteger groupPosition = groupHashRing.locate(data);
+				if (sp == null) {
+					HashRing<Metadata> nodeRing = nodeHashRings.get(groupPosition);
+					Set<BigInteger> npositions = nodeRing.getPositions();
+					for (BigInteger nposition : npositions)
+						destinations.add(nodePositions.get(groupPosition).get(nposition));
+				} else {
+					HashRing<Metadata> nodeRing = nodeHashRings.get(groupPosition);
+					if (sp.hasRange() && sp.getSpatialRange().hasPolygon()) {
+						List<Coordinates> polygon = sp.getSpatialRange().getPolygon();
+						// Returns a list of 2 character geohashes that have
+						// intersection with this Polygon
+						String[] hashes = GeoHash.getIntersectingGeohashes(polygon, fs2GeoHashPrecision);
+						hashes = GeoHash.filterUnwantedGeohashes(hashes, validNeighbors);
+						Metadata metadata = new Metadata();
+						for (String hash : hashes) {
+							metadata.setSpatialProperties(new SpatialProperties(GeoHash.decodeHash(hash)));
+							BigInteger node = nodeRing.locate(metadata);
+							destinations.add(nodePositions.get(groupPosition).get(node));
+						}
+					} else {
+						BigInteger node = nodeRing.locate(data);
+						destinations.add(nodePositions.get(groupPosition).get(node));
+					}
+				}
+			}
+		}
+		return new ArrayList<NodeInfo>(destinations);
+	}
+	
+	
+
+	
 }

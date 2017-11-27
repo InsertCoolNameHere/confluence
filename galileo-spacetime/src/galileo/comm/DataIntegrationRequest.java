@@ -13,6 +13,7 @@ import galileo.serialization.SerializationOutputStream;
 
 public class DataIntegrationRequest implements Event{
 	
+	/* time is a - separated string till hour. to specify magnification, leave the fields xx */
 	private String time;
 	private List<Coordinates> polygon;
 	private int timeRelaxation;

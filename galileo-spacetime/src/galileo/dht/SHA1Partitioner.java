@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
+import galileo.dataset.SpatialProperties;
+import galileo.dataset.TemporalProperties;
 import galileo.dht.hash.BalancedHashRing;
 import galileo.dht.hash.HashException;
 import galileo.dht.hash.HashTopologyException;
@@ -97,4 +99,12 @@ public class SHA1Partitioner extends Partitioner<String> {
 	public List<NodeInfo> findDestinations(String data) throws HashException, PartitionException {
 		return network.getAllNodes();
 	}
+
+	@Override
+	public List<NodeInfo> findDestinationsForFS2(SpatialProperties searchSp, List<TemporalProperties> tprops, int geohashPrecision, String[] validNeighbors)throws HashException, PartitionException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	
 }

@@ -25,12 +25,17 @@ software, even if advised of the possibility of such damage.
 
 package galileo.util;
 
+import java.awt.Graphics2D;
 import java.awt.Polygon;
 import java.awt.Rectangle;
+import java.awt.geom.Area;
 import java.awt.geom.Rectangle2D;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -38,7 +43,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
+import java.util.TimeZone;
 
+import galileo.comm.TemporalType;
 import galileo.dataset.Coordinates;
 import galileo.dataset.Point;
 import galileo.dataset.SpatialRange;
@@ -46,6 +53,8 @@ import galileo.dataset.TemporalProperties;
 import galileo.dht.Partitioner;
 import galileo.dht.hash.TemporalHash;
 import galileo.fs.GeospatialFileSystem;
+import math.geom2d.Point2D;
+import math.geom2d.polygon.SimplePolygon2D;
 
 /**
  * This class provides an implementation of the GeoHash (http://www.geohash.org)
@@ -149,52 +158,6 @@ public class GeoHash {
 		}
 		return values;
 	}
-	
-	/**
-	 * 
-	 * @author sapmitra
-	 * @param precision
-	 * @param binHash
-	 * @return
-	 */
-	public static String[] getGeoHashValues(int precision, String binHash) {
-		String[] values = null;
-		String hash = "";
-		for (int i = 0; i < binHash.length(); i += 5) {
-			String hashChar = binHash.substring(i, java.lang.Math.min(i + 5, binHash.length()));
-			if (hashChar.length() == 5)
-				hash += charMap[Integer.parseInt(hashChar, 2)];
-			else {
-				String beginHash = hashChar;
-				String endHash = hashChar;
-				while (beginHash.length() < BITS_PER_CHAR) {
-					beginHash += "0";
-					endHash += "1";
-				}
-				values = new String[2];
-				values[0] = hash + charMap[Integer.parseInt(beginHash, 2)];
-				values[1] = hash + charMap[Integer.parseInt(endHash, 2)];
-				while (values[0].length() < precision){
-					values[0] += "0";
-					values[1] += "z";
-				}
-			}
-		}
-		if (values == null){
-			if (hash.length() < precision){
-				String beginHash = hash;
-				String endHash = hash;
-				while (beginHash.length() < precision){
-					beginHash += "0";
-					endHash += "z";
-				}
-				values = new String[] { beginHash, endHash };
-			} else {
-				values = new String[] {hash};
-			}
-		}
-		return values;
-	}
 
 	public Rectangle2D getRectangle() {
 		return this.bounds;
@@ -212,6 +175,181 @@ public class GeoHash {
 	@Override
 	public int hashCode() {
 		return this.binaryHash.hashCode();
+	}
+
+	
+	/**
+	 * 
+	 * @author sapmitra
+	 * @param year
+	 * @param month
+	 * @param day
+	 * @param hour
+	 * @param temporalType
+	 * @return
+	 * @throws ParseException
+	 */
+	public static long getStartTimeStamp(String year, String month, String day, String hour, TemporalType temporalType) throws ParseException {
+		
+		Calendar calendar = Calendar.getInstance(TemporalHash.TIMEZONE);
+		calendar.setTimeZone(TemporalHash.TIMEZONE);
+		//calendar.setLenient(false);
+		
+		
+		if(month.contains("x"))
+			month = "00";
+		if(day.contains("x"))
+			day = "01";
+		if(hour.contains("x"))
+			hour = "00";
+		
+		switch (temporalType) {
+			case HOUR_OF_DAY:
+				calendar.set(Calendar.YEAR, Integer.parseInt(year));
+				calendar.set(Calendar.MONTH, Integer.parseInt(month)-1);
+				calendar.set(Calendar.DAY_OF_MONTH, Integer.parseInt(day));
+				calendar.set(Calendar.HOUR_OF_DAY, Integer.parseInt(hour));
+				calendar.set(Calendar.MINUTE, 0);
+			    calendar.set(Calendar.SECOND, 0);
+			    calendar.set(Calendar.MILLISECOND, 0);
+			    break;
+			case DAY_OF_MONTH:
+				calendar.set(Calendar.YEAR, Integer.parseInt(year));
+				calendar.set(Calendar.MONTH, Integer.parseInt(month)-1);
+				calendar.set(Calendar.DAY_OF_MONTH, Integer.parseInt(day));
+				calendar.set(Calendar.HOUR_OF_DAY, 0);
+				calendar.set(Calendar.MINUTE, 0);
+			    calendar.set(Calendar.SECOND, 0);
+			    calendar.set(Calendar.MILLISECOND, 0);
+			    break;
+			case MONTH:
+				calendar.set(Calendar.YEAR, Integer.parseInt(year));
+				calendar.set(Calendar.MONTH, Integer.parseInt(month)-1);
+				calendar.set(Calendar.DAY_OF_MONTH, 1);
+				calendar.set(Calendar.HOUR_OF_DAY, 0);
+				calendar.set(Calendar.MINUTE, 0);
+			    calendar.set(Calendar.SECOND, 0);
+			    calendar.set(Calendar.MILLISECOND, 0);
+			    break;
+			case YEAR:
+				calendar.set(Calendar.YEAR, Integer.parseInt(year));
+				calendar.set(Calendar.MONTH, 0);
+				calendar.set(Calendar.DAY_OF_MONTH, 1);
+				calendar.set(Calendar.HOUR_OF_DAY, 0);
+				calendar.set(Calendar.MINUTE, 0);
+			    calendar.set(Calendar.SECOND, 0);
+			    calendar.set(Calendar.MILLISECOND, 0);
+			    break;
+			    
+		}
+		
+	        
+	    long offset = TemporalHash.TIMEZONE.getRawOffset() - TimeZone.getDefault().getRawOffset();
+	    
+	    
+	    //System.out.println(calendar.getTimeInMillis() + offset);
+	    return calendar.getTimeInMillis() + offset;
+		
+	}
+
+	/**
+	 * 
+	 * @author sapmitra
+	 * @param year
+	 * @param month
+	 * @param day
+	 * @param hour
+	 * @param temporalType
+	 * @return
+	 */
+	public static long getEndTimeStamp(String year, String month, String day, String hour, TemporalType temporalType) {
+		
+		Calendar calendar = Calendar.getInstance(TemporalHash.TIMEZONE);
+		calendar.setTimeZone(TemporalHash.TIMEZONE);
+		//calendar.setLenient(false);
+		
+		if(month.contains("x"))
+			month = "11";
+		
+		int mn = Integer.parseInt(month);
+		
+		if(day.contains("x")) {
+			if(mn == 1 || mn == 3 || mn == 5 || mn == 7 || mn == 8 || mn == 10 || mn == 12 )
+				day = "31";
+			else if(mn == 2) {
+				int yr = Integer.parseInt(year) ;
+				if(yr % 4 == 0) 
+					day = "29";
+				else
+					day = "28";
+			}
+		}
+			
+		if(hour.contains("x"))
+			hour = "23";
+		
+		switch (temporalType) {
+			case HOUR_OF_DAY:
+				calendar.set(Calendar.YEAR, Integer.parseInt(year));
+				calendar.set(Calendar.MONTH, Integer.parseInt(month)-1);
+				calendar.set(Calendar.DAY_OF_MONTH, Integer.parseInt(day));
+				calendar.set(Calendar.HOUR_OF_DAY, Integer.parseInt(hour));
+				calendar.set(Calendar.MINUTE, 59);
+			    calendar.set(Calendar.SECOND, 59);
+			    calendar.set(Calendar.MILLISECOND, 999);
+			    break;
+			case DAY_OF_MONTH:
+				calendar.set(Calendar.YEAR, Integer.parseInt(year));
+				calendar.set(Calendar.MONTH, Integer.parseInt(month)-1);
+				calendar.set(Calendar.DAY_OF_MONTH, Integer.parseInt(day));
+				calendar.set(Calendar.HOUR_OF_DAY, 23);
+				calendar.set(Calendar.MINUTE, 59);
+			    calendar.set(Calendar.SECOND, 59);
+			    calendar.set(Calendar.MILLISECOND, 999);
+			    break;
+			case MONTH:
+				calendar.set(Calendar.YEAR, Integer.parseInt(year));
+				calendar.set(Calendar.MONTH, Integer.parseInt(month)-1);
+				
+				int m = Integer.parseInt(month);
+				if(m == 1 || m == 3 || m == 5 || m == 7 || m == 8 || m == 10 || m == 12 )
+					calendar.set(Calendar.DAY_OF_MONTH, 31);
+				else if(m == 2) {
+					int yr = calendar.get(Calendar.YEAR) ;
+					if(yr % 4 == 0) 
+						calendar.set(Calendar.DAY_OF_MONTH, 29);
+					else
+						calendar.set(Calendar.DAY_OF_MONTH, 28);
+				} else 
+					calendar.set(Calendar.DAY_OF_MONTH, 30);
+				
+				calendar.set(Calendar.HOUR_OF_DAY, 23);
+			    calendar.set(Calendar.MINUTE, 59);
+			    calendar.set(Calendar.SECOND, 59);
+			    calendar.set(Calendar.MILLISECOND, 999);
+			    break;
+			case YEAR:
+				calendar.set(Calendar.YEAR, Integer.parseInt(year));
+				calendar.set(Calendar.MONTH, 11);
+				calendar.set(Calendar.DAY_OF_MONTH, 31);
+				calendar.set(Calendar.HOUR_OF_DAY, 23);
+				calendar.set(Calendar.MINUTE, 59);
+			    calendar.set(Calendar.SECOND, 59);
+			    calendar.set(Calendar.MILLISECOND, 999);
+			    break;
+			    
+		}
+		
+	    //System.out.println(calendar.getTime());
+		    
+	    long offset = TemporalHash.TIMEZONE.getRawOffset() - TimeZone.getDefault().getRawOffset();
+	    
+	    Date d1 = new Date(calendar.getTimeInMillis() + offset);
+	    //System.out.println("CONVERTED:" + d1);
+	    
+	    //System.out.println(calendar.getTimeInMillis() + offset);
+	    return calendar.getTimeInMillis() + offset;
+		
 	}
 
 	/**
@@ -392,6 +530,12 @@ public class GeoHash {
 		}
 	}
 
+	/**
+	 * 
+	 * Neighbors are returned in the order nw,n,ne,w,e,sw,s,se
+	 * @param geoHash
+	 * @return
+	 */
 	public static String[] getNeighbours(String geoHash) {
 		String[] neighbors = new String[8];
 		if (geoHash == null || geoHash.trim().length() == 0)
@@ -497,41 +641,6 @@ public class GeoHash {
 		return hashes.size() > 0 ? hashes.toArray(new String[hashes.size()]) : new String[] {};
 	}
 	
-	public static void Xmain(String arg[]) {
-		
-		SpatialRange range = decodeHash("f6");
-		
-		Coordinates c1 = new Coordinates(range.getLowerBoundForLatitude(), range.getLowerBoundForLongitude());
-		Coordinates c2 = new Coordinates(range.getUpperBoundForLatitude(), range.getLowerBoundForLongitude());
-		Coordinates c3 = new Coordinates(range.getUpperBoundForLatitude(), range.getUpperBoundForLongitude());
-		Coordinates c4 = new Coordinates(range.getLowerBoundForLatitude(), range.getUpperBoundForLongitude());
-		
-		
-		List<Coordinates> cl = new ArrayList<Coordinates>();
-		
-		System.out.println(GeoHash.encode(range, 2));
-		cl.add(c1);
-		cl.add(c2);
-		cl.add(c3);
-		cl.add(c4);
-		
-		String[] intersectingGeohashesForConvexBoundingPolygon = GeoHash.getIntersectingGeohashesForConvexBoundingPolygon(cl,3);
-	
-		System.out.println(intersectingGeohashesForConvexBoundingPolygon);
-		
-		System.out.println(1<<30);
-		
-		int width = 1 << MAX_PRECISION;
-		System.out.println(width);
-		
-		Point<Integer> coordinatesToXY = GeoHash.coordinatesToXY(c1);
-		
-		System.out.println("Hi");
-	}
-	
-	
-	
-	
 	/**
 	 * Gives the list of geohashes of a required precision that intersect with a given polygon
 	 * Use this if you are sure your polygon is a convex polygon
@@ -628,6 +737,173 @@ public class GeoHash {
 			}
 		}
 		return hashes.size() > 0 ? hashes.toArray(new String[hashes.size()]) : new String[] {};
+	}
+	
+	
+	/**
+	 * 
+	 * @author sapmitra
+	 * @param polygon
+	 * @param flank
+	 * @return
+	 */
+	public static boolean checkIntersection(List<Coordinates> polygon, List<Coordinates> flank) {
+		Polygon geometry = new Polygon();
+		for (Coordinates coords : polygon) {
+			Point<Integer> point = coordinatesToXY(coords);
+			geometry.addPoint(point.X(), point.Y());
+		}
+		
+		Polygon geometryFlank = new Polygon();
+		for (Coordinates coords : flank) {
+			Point<Integer> point = coordinatesToXY(coords);
+			geometryFlank.addPoint(point.X(), point.Y());
+		}
+		
+		Area a1 = new Area(geometry);
+		Area a2 = new Area(geometryFlank);
+		
+		a1.intersect(a2);
+		
+		if(a1.isEmpty()) {
+			return false;
+		} else {
+			return true;
+		}
+		
+	}
+	
+	/**
+	 * returns true if the flank lies completely inside polygon
+	 * @author sapmitra
+	 * @param polygon
+	 * @param flank
+	 * @return
+	 */
+	public static boolean checkEnclosure(List<Coordinates> polygon, List<Coordinates> flank) {
+		Polygon geometry = new Polygon();
+		for (Coordinates coords : polygon) {
+			Point<Integer> point = coordinatesToXY(coords);
+			geometry.addPoint(point.X(), point.Y());
+		}
+		
+		Polygon geometrySmaller = new Polygon();
+		for (Coordinates coords : flank) {
+			Point<Integer> point = coordinatesToXY(coords);
+			geometrySmaller.addPoint(point.X(), point.Y());
+		}
+		Area aPrev = new Area(geometrySmaller);
+		Area a1 = new Area(geometry);
+		Area a2 = new Area(geometrySmaller);
+		
+		a1.intersect(a2);
+		
+		if(a1.equals(aPrev)) {
+			
+			return true;
+		} else {
+			return false;
+		}
+		
+	}
+	
+	
+	
+	
+	/**
+	 * returns true if the geohash2 lies completely inside geohash1
+	 * @author sapmitra
+	 * @param geohash1 bigger geohash
+	 * @param geohash2 smaller geohash
+	 * @return
+	 */
+	public static boolean checkEnclosure(String geohash1, String geohash2) {
+		
+		if(geohash2.length() > geohash1.length()) {
+			return false;
+		}
+		
+		String g2_dash = geohash2.substring(0, geohash1.length());
+		
+		if(geohash1.equals(g2_dash)) {
+			return true;
+		} else {
+			return false;
+		}
+		
+		
+	}
+	
+	
+	/**
+	 * check if two geohashes overlap
+	 * @author sapmitra
+	 * @param geohash1
+	 * @param geohash2
+	 * @return
+	 */
+	public static boolean checkIntersection(String geohash1, String geohash2) {
+		
+		SpatialRange range1 = decodeHash(geohash1);
+		
+		Coordinates c1 = new Coordinates(range1.getLowerBoundForLatitude(), range1.getLowerBoundForLongitude());
+		Coordinates c2 = new Coordinates(range1.getUpperBoundForLatitude(), range1.getLowerBoundForLongitude());
+		Coordinates c3 = new Coordinates(range1.getUpperBoundForLatitude(), range1.getUpperBoundForLongitude());
+		Coordinates c4 = new Coordinates(range1.getLowerBoundForLatitude(), range1.getUpperBoundForLongitude());
+		
+		ArrayList<Coordinates> cs1 = new ArrayList<Coordinates>();
+		cs1.add(c1);cs1.add(c2);cs1.add(c3);cs1.add(c4);
+		
+		
+		SpatialRange range2 = decodeHash(geohash2);
+		
+		Coordinates c12 = new Coordinates(range2.getLowerBoundForLatitude(), range2.getLowerBoundForLongitude());
+		Coordinates c22 = new Coordinates(range2.getUpperBoundForLatitude(), range2.getLowerBoundForLongitude());
+		Coordinates c32 = new Coordinates(range2.getUpperBoundForLatitude(), range2.getUpperBoundForLongitude());
+		Coordinates c42 = new Coordinates(range2.getLowerBoundForLatitude(), range2.getUpperBoundForLongitude());
+		
+		ArrayList<Coordinates> cs2 = new ArrayList<Coordinates>();
+		cs2.add(c12);cs2.add(c22);cs2.add(c32);cs2.add(c42);
+		
+		return checkIntersection(cs1,cs2);
+	}
+	
+	public static void main2(String arg[]) {
+	
+		Coordinates c11 = new Coordinates(50.18f, -103.29f);
+		Coordinates c21 = new Coordinates(36.78f, -117.88f);
+		Coordinates c31 = new Coordinates(36.85f, -97.21f);
+		List<Coordinates> cl1 = new ArrayList<Coordinates>();
+		cl1.add(c11);
+		cl1.add(c21);
+		cl1.add(c31);
+		
+		SpatialRange range = decodeHash("9xn");
+		
+		Coordinates c1 = new Coordinates(range.getLowerBoundForLatitude(), range.getLowerBoundForLongitude());
+		Coordinates c2 = new Coordinates(range.getUpperBoundForLatitude(), range.getLowerBoundForLongitude());
+		Coordinates c3 = new Coordinates(range.getUpperBoundForLatitude(), range.getUpperBoundForLongitude());
+		Coordinates c4 = new Coordinates(range.getLowerBoundForLatitude(), range.getUpperBoundForLongitude());
+		
+		
+		List<Coordinates> cl = new ArrayList<Coordinates>();
+		cl.add(c1);
+		cl.add(c2);
+		cl.add(c3);
+		cl.add(c4);
+		
+		//String[] intersectingGeohashes = getIntersectingGeohashes(cl, 6);
+		System.out.println(checkIntersection(cl1,cl));
+		/*for(String s: intersectingGeohashes) {
+			if(s.startsWith("9x"))
+				System.out.print(s+",");
+		}*/
+		
+		//getSuperCubeGeohashBounds("sp", null, null, null, null, 3);
+		
+		//GeoHash.getBorderingGeoHashes("9r", 3, 1);
+		
+		
 	}
 
 	/**
@@ -734,173 +1010,509 @@ public class GeoHash {
 	
 	
 	/**
+	 * find out what the valid neighbors to a geohash are with respect to a query polygon
+	 * @author sapmitra
+	 * @param queryPolygon
+	 * @param precision
+	 * @param cGeoString
+	 *  a------b
+		.      .
+		.      .
+		d------c
+	 * @return
+	 */
+	public static String[] checkForNeighborValidity(List<Coordinates> polygon, int precision, String cGeoString ) {
+		List<String> ignore = new ArrayList<String>();
+		
+		BorderingProperties bp = getBorderingGeohashHeuristic(cGeoString, precision, 0, null, null);
+		
+		String ne = bp.getNe();
+			
+		String nw = bp.getNw();
+			
+		String se = bp.getSe();
+			
+		String sw = bp.getSw();
+		
+		//System.out.println(nw);
+		
+		SpatialRange nwBounds = decodeHash(nw);
+		SpatialRange neBounds = decodeHash(ne);
+		SpatialRange seBounds = decodeHash(se);
+		SpatialRange swBounds = decodeHash(sw);
+		
+		/* Getting North West Flank */
+		Coordinates caNW = new Coordinates(nwBounds.getUpperBoundForLatitude(), nwBounds.getLowerBoundForLongitude());
+		Coordinates cbNW = new Coordinates(nwBounds.getUpperBoundForLatitude(), nwBounds.getUpperBoundForLongitude());
+		Coordinates ccNW = new Coordinates(nwBounds.getLowerBoundForLatitude(), nwBounds.getUpperBoundForLongitude());
+		Coordinates cdNW = new Coordinates(nwBounds.getLowerBoundForLatitude(), nwBounds.getLowerBoundForLongitude());
+		
+		List<Coordinates> nwFlank = Arrays.asList(caNW, cbNW, ccNW, cdNW);
+		
+		//System.out.println(nwFlank);
+		
+		/* Getting North East Flank */
+		Coordinates caNE = new Coordinates(neBounds.getUpperBoundForLatitude(), neBounds.getLowerBoundForLongitude());
+		Coordinates cbNE = new Coordinates(neBounds.getUpperBoundForLatitude(), neBounds.getUpperBoundForLongitude());
+		Coordinates ccNE = new Coordinates(neBounds.getLowerBoundForLatitude(), neBounds.getUpperBoundForLongitude());
+		Coordinates cdNE = new Coordinates(neBounds.getLowerBoundForLatitude(), neBounds.getLowerBoundForLongitude());
+		
+		List<Coordinates> neFlank = Arrays.asList(caNE, cbNE, ccNE, cdNE);
+		
+		//System.out.println(neFlank);
+		
+		/* Getting South West Flank */
+		Coordinates caSW = new Coordinates(swBounds.getUpperBoundForLatitude(), swBounds.getLowerBoundForLongitude());
+		Coordinates cbSW = new Coordinates(swBounds.getUpperBoundForLatitude(), swBounds.getUpperBoundForLongitude());
+		Coordinates ccSW = new Coordinates(swBounds.getLowerBoundForLatitude(), swBounds.getUpperBoundForLongitude());
+		Coordinates cdSW = new Coordinates(swBounds.getLowerBoundForLatitude(), swBounds.getLowerBoundForLongitude());
+		
+		List<Coordinates> swFlank = Arrays.asList(caSW, cbSW, ccSW, cdSW);
+		
+		//System.out.println(swFlank);
+		
+		/* Getting South East Flank */
+		Coordinates caSE = new Coordinates(seBounds.getUpperBoundForLatitude(), seBounds.getLowerBoundForLongitude());
+		Coordinates cbSE = new Coordinates(seBounds.getUpperBoundForLatitude(), seBounds.getUpperBoundForLongitude());
+		Coordinates ccSE = new Coordinates(seBounds.getLowerBoundForLatitude(), seBounds.getUpperBoundForLongitude());
+		Coordinates cdSE = new Coordinates(seBounds.getLowerBoundForLatitude(), seBounds.getLowerBoundForLongitude());
+		
+		List<Coordinates> seFlank = Arrays.asList(caSE, cbSE, ccSE, cdSE);
+		
+		//System.out.println(seFlank);
+		
+		/* Getting North,South,East,West Flank*/
+		
+		List<Coordinates> northFlank = Arrays.asList(caNW, cbNE, ccNE, cdNW);
+		List<Coordinates> southFlank = Arrays.asList(caSW, cbSE, ccSE, cdSW);
+		List<Coordinates> eastFlank = Arrays.asList(caNE, cbNE, ccSE, cdSE);
+		List<Coordinates> westFlank = Arrays.asList(caNW, cbNW, ccSW, cdSW);
+		
+		boolean checkN = checkIntersection(polygon, northFlank);
+		boolean checkS = checkIntersection(polygon, southFlank);
+		boolean checkE = checkIntersection(polygon, eastFlank);
+		boolean checkW = checkIntersection(polygon, westFlank);
+		boolean checkNE = checkIntersection(polygon, neFlank);
+		boolean checkNW = checkIntersection(polygon, nwFlank);
+		boolean checkSE = checkIntersection(polygon, seFlank);
+		boolean checkSW = checkIntersection(polygon, swFlank);
+		
+		/* Checking for North */
+		if(!checkN) {
+			
+			ignore.addAll(Arrays.asList("n","nw","ne"));
+			
+		} else if(!checkNE || !checkNW) {
+			
+			if(!checkNE) {
+				ignore.add("ne");
+			}
+			if(!checkNW) {
+				ignore.add("nw");
+			}
+		}
+		
+		
+		/* Checking for South */
+		if(!checkS) {
+			
+			ignore.addAll(Arrays.asList("s","sw","se"));
+			
+		} else if(!checkSE || !checkSW) {
+			
+			if(!checkSE) {
+				ignore.add("se");
+			}
+			if(!checkSW) {
+				ignore.add("sw");
+			}
+		}
+		
+		/* Checking for East */
+		if(!checkE) {
+			
+			ignore.addAll(Arrays.asList("e","ne","se"));
+			
+		} else if(!checkSE || !checkNE) {
+			
+			if(!checkNE) {
+				ignore.add("ne");
+			}
+			if(!checkSE) {
+				ignore.add("se");
+			}
+		}
+		
+		/* Checking for West */
+		if(!checkW) {
+			
+			ignore.addAll(Arrays.asList("w","nw","sw"));
+			
+		} else if(!checkSE || !checkNW) {
+			
+			if(!checkNW) {
+				ignore.add("nw");
+			}
+			if(!checkSW) {
+				ignore.add("sw");
+			}
+		}
+		
+		Set<String> ignoring = new HashSet<String>(ignore);
+		
+		List<String> valids = new ArrayList<String>(Arrays.asList("n","s","e","w","ne","nw","se","sw"));
+		
+		valids.removeAll(ignoring);
+		
+		String[] validArray = new String[valids.size()+1];
+		validArray[0] = cGeoString;
+		int count = 1;
+		
+		for(String s: valids) {
+			validArray[count] = getNeighbour(cGeoString, s);
+			
+			count++;
+		}
+		
+		return validArray;
+	}
+	
+	
+	/**
+	 * 
 	 * @author sapmitra
 	 * @param geoHash
 	 * @param precision
+	 * @param timeLapse
+	 * @param tp
 	 * @return
 	 */
-	public static String[] getInternalGeohashes(String geoHash, int precision) {
+	public static BorderingProperties getBorderingGeohashHeuristic(String geoHash, int precision, int timeLapse, TemporalProperties tp, TemporalType temporalType) {
 		
-		SpatialRange range = decodeHash(geoHash);
-		Coordinates c1 = new Coordinates(range.getLowerBoundForLatitude(), range.getLowerBoundForLongitude());
-		Coordinates c2 = new Coordinates(range.getUpperBoundForLatitude(), range.getLowerBoundForLongitude());
-		Coordinates c3 = new Coordinates(range.getUpperBoundForLatitude(), range.getUpperBoundForLongitude());
-		Coordinates c4 = new Coordinates(range.getLowerBoundForLatitude(), range.getUpperBoundForLongitude());
+		BorderingProperties bg = new BorderingProperties();
+		
+		if(tp != null) {
+			
+			long startTS = getStartTimeStamp(tp, temporalType);
+			long endTS = getEndTimeStamp(tp, temporalType);
+			
+			
+			bg.setUp1(endTS);
+			bg.setUp2(endTS - timeLapse);
+			
+			bg.setDown1(startTS);
+			bg.setDown2(startTS + timeLapse);
+		}
+		
+		String[] northAddFat = {"b","c","f","g","u","v","y","z"};
+		String[] southAddFat = {"0","1","4","5","h","j","n","p"};
+		String[] westAddFat = {"b","8","2","0"};
+		String[] eastAddFat = {"z","x","r","p"};
+		
+		
+		String[] northAddSlim = {"p","r","x","z"};
+		String[] southAddSlim = {"0","2","8","b"};
+		String[] westAddSlim = {"p","n","j","h","5","4","1","0"};
+		String[] eastAddSlim = {"z","y","v","u","g","f","c","b"};
+		
+		List<String> north = Arrays.asList(geoHash);
+		List<String> south = Arrays.asList(geoHash);
+		List<String> east = Arrays.asList(geoHash);
+		List<String> west = Arrays.asList(geoHash);
+		
+		
+		int currentLength = 0;
+		int orientation = 0;
+		
+		if(geoHash != null && geoHash.length() > 0) {
+			orientation = geoHash.length()%2;
+			currentLength = geoHash.length() + 1;
+			
+		} else {
+			return null;
+		}
+		
+		while(currentLength <= precision) {
+			
+			if(orientation == 0) {
+				List<String> northLocal = new ArrayList<String>();
+				List<String> southLocal = new ArrayList<String>();
+				List<String> eastLocal = new ArrayList<String>();
+				List<String> westLocal = new ArrayList<String>();
+				
+				for(String s : north) {
+					for(String sapp: northAddFat) {
+						northLocal.add(s+sapp);
+					}
+				}
+				
+				for(String s : south) {
+					for(String sapp: southAddFat) {
+						southLocal.add(s+sapp);
+					}
+				}
+				
+				for(String s : east) {
+					for(String sapp: eastAddFat) {
+						eastLocal.add(s+sapp);
+					}
+				}
+				
+				for(String s : west) {
+					for(String sapp: westAddFat) {
+						westLocal.add(s+sapp);
+					}
+				}
+				
+				north = northLocal;
+				south = southLocal;
+				east = eastLocal;
+				west = westLocal;
+				orientation++;
+				
+			} else {
+				List<String> northLocal = new ArrayList<String>();
+				List<String> southLocal = new ArrayList<String>();
+				List<String> eastLocal = new ArrayList<String>();
+				List<String> westLocal = new ArrayList<String>();
+				
+				for(String s : north) {
+					for(String sapp: northAddSlim) {
+						northLocal.add(s+sapp);
+					}
+				}
+				
+				for(String s : south) {
+					for(String sapp: southAddSlim) {
+						southLocal.add(s+sapp);
+					}
+				}
+				
+				for(String s : east) {
+					for(String sapp: eastAddSlim) {
+						eastLocal.add(s+sapp);
+					}
+				}
+				
+				for(String s : west) {
+					for(String sapp: westAddSlim) {
+						westLocal.add(s+sapp);
+					}
+				}
+				
+				north = northLocal;
+				south = southLocal;
+				east = eastLocal;
+				west = westLocal;
+				orientation++;
+				
+				
+			}
+			orientation = currentLength % 2;
+			currentLength++;
+		}
+		
+		bg.setN(north);
+		bg.setS(south);
+		bg.setE(east);
+		bg.setW(west);
+		
+		bg.setNw(north.get(0));
+		bg.setSw(south.get(0));
+		bg.setNe(north.get(north.size() - 1));
+		bg.setSe(south.get(south.size() - 1));
+		
+		return bg;
+	}
+	
+	
+	public static void main11(String arg[]) {
+		
+		/*Date d = new Date();
+		TemporalProperties tp = new TemporalProperties(d.getTime());
+		BorderingProperties borderingGeohashHeuristic = getBorderingGeohashHeuristic("9", 3, 10, tp);
+		System.out.println("Hi");*/
+		
+		Coordinates c1 = new Coordinates(45.79f, -114.16f);
+		Coordinates c2 = new Coordinates(45.79f, -99.31f);
+		Coordinates c3 = new Coordinates(38.03f, -99.31f);
+		Coordinates c4 = new Coordinates(38.03f, -114.16f);
+		//Coordinates c5 = new Coordinates(36.78f, -107.64f);
+		
 		
 		List<Coordinates> cl = new ArrayList<Coordinates>();
 		cl.add(c1);
 		cl.add(c2);
 		cl.add(c3);
 		cl.add(c4);
+		//cl.add(c5);
 		
-		String[] intersectingGeohashes = GeoHash.getIntersectingGeohashesForConvexBoundingPolygon(cl, precision);
+		String[] ss = GeoHash.checkForNeighborValidity(cl, 4, "9x");
 		
-		//System.out.println(intersectingGeohashes.length);
-		
-		/*for(int i=0;i<intersectingGeohashes.length;i++) {
-			System.out.print(intersectingGeohashes[i] +" ");
-		}*/
-		return intersectingGeohashes;
-	}
-	
-	public static void getBorderGeoHashes(String geoHash, int precision) {
-		
-		String[] internalGeohashes = getInternalGeohashes(geoHash, precision);
-		
-		List<String> internalGeohashesList = Arrays.asList(internalGeohashes);
-		
-		int count = 0;
-		for(String geo: internalGeohashesList) {
-			String[] nei = getNeighbours(geo);
-			
-			List<String> neighborsList = Arrays.asList(nei);
-			
-			if(!internalGeohashesList.containsAll(neighborsList)) {
-				System.out.println(geo);
-				count++;
-			}
-			
-			
+		for(String s: ss) {
+			System.out.println(s);
 		}
-		System.out.println(count);
+		
+		System.out.println(GeoHash.checkIntersection("c2", "c26"));
+		
+		String[] hashes = {"c2","c8","9r","9x","9q","9w","cb","9z","9y","c9"};
+		String[] valids = {"c2","c8","9r","9x","9q","9w"};
+		
+		System.out.println("Filtered");
+		String[] filterUnwantedGeohashes = GeoHash.filterUnwantedGeohashes(hashes, valids);
+		
+		for(String s: filterUnwantedGeohashes) {
+			System.out.println(s);
+		}
+		
 		
 	}
 	
+	public static void main(String arg[]) throws ParseException {
+		
+		/*Coordinates c1 = new Coordinates(39.55f, -111.82f);
+		Coordinates c2 = new Coordinates(38.87f, -112.74f);
+		Coordinates c3 = new Coordinates(38.61f, -111.50f);
+		
+		List<Coordinates> cl = new ArrayList<Coordinates>();
+		cl.add(c1);
+		cl.add(c2);
+		cl.add(c3);
+		
+		GeoHash.generateOuterPolygon(cl, 6);*/
+		/*BorderingProperties bp = GeoHash.getBorderingGeohashHeuristic("9x", 3, 0, null);
+		System.out.println(bp.getN());
+		System.out.println(bp.getS());
+		System.out.println(bp.getE());
+		System.out.println(bp.getW());*/
+		
+		
+		/*List<List<Coordinates>> allInnerFlanks = GeoHash.getAllInnerFlanks("9x", 3);
+		List<List<Coordinates>> allOuterFlanks = GeoHash.getAllOuterFlanks("9x", 3);
+		
+		System.out.println(allInnerFlanks);
+		System.out.println(allOuterFlanks);*/
+		//System.out.println(Arrays.toString(GeoHash.getNeighbours("9xe")));
+		//System.out.println(checkEnclosure("9xu", "9xu"));
+		System.out.println(Integer.parseInt("00"));
+		TemporalProperties tp = new TemporalProperties(1417463510813l);
+		System.out.println(getStartTimeStamp("2014","12","2","xx",TemporalType.DAY_OF_MONTH));
+		System.out.println(getEndTimeStamp("2014","12","1","xx",TemporalType.DAY_OF_MONTH));
+		
+		
+	}
 	
-	private static long getEndTimeStamp(TemporalProperties tp) {
+	private static long getEndTimeStamp(TemporalProperties tp, TemporalType temporalType) {
 		if(tp == null) {
-			return 0;
+			return -1;
 		}
 		Calendar calendar = Calendar.getInstance();
 		calendar.setTimeZone(TemporalHash.TIMEZONE);
 		calendar.setTimeInMillis(tp.getEnd());
 		
-		calendar.set(Calendar.HOUR_OF_DAY, 23);
-	    calendar.set(Calendar.MINUTE, 59);
-	    calendar.set(Calendar.SECOND, 59);
-	    calendar.set(Calendar.MILLISECOND, 999);
+		switch (temporalType) {
+			case HOUR_OF_DAY:
+				calendar.set(Calendar.MINUTE, 59);
+			    calendar.set(Calendar.SECOND, 59);
+			    calendar.set(Calendar.MILLISECOND, 999);
+			    break;
+			case DAY_OF_MONTH:
+				calendar.set(Calendar.HOUR_OF_DAY, 23);
+			    calendar.set(Calendar.MINUTE, 59);
+			    calendar.set(Calendar.SECOND, 59);
+			    calendar.set(Calendar.MILLISECOND, 999);
+			    break;
+			case MONTH:
+				int m = calendar.get(Calendar.MONTH) + 1;
+				if(m == 1 || m == 3 || m == 5 || m == 7 || m == 8 || m == 10 || m == 12 )
+					calendar.set(Calendar.DAY_OF_MONTH, 31);
+				else if(m == 2) {
+					int yr = calendar.get(Calendar.YEAR) ;
+					if(yr % 4 == 0) 
+						calendar.set(Calendar.DAY_OF_MONTH, 29);
+					else
+						calendar.set(Calendar.DAY_OF_MONTH, 28);
+				} else 
+					calendar.set(Calendar.DAY_OF_MONTH, 30);
+				
+				calendar.set(Calendar.HOUR_OF_DAY, 23);
+			    calendar.set(Calendar.MINUTE, 59);
+			    calendar.set(Calendar.SECOND, 59);
+			    calendar.set(Calendar.MILLISECOND, 999);
+			    break;
+			case YEAR:
+				calendar.set(Calendar.MONTH, 11);
+				calendar.set(Calendar.DAY_OF_MONTH, 31);
+				calendar.set(Calendar.HOUR_OF_DAY, 23);
+			    calendar.set(Calendar.MINUTE, 59);
+			    calendar.set(Calendar.SECOND, 59);
+			    calendar.set(Calendar.MILLISECOND, 999);
+			    break;
+			    
+		}
+		
+		long offset = TemporalHash.TIMEZONE.getRawOffset() - TimeZone.getDefault().getRawOffset();
 	    
-	    return calendar.getTimeInMillis();
+	    //Date d1 = new Date(calendar.getTimeInMillis() + offset);
+	    //System.out.println("CONVERTED:" + d1);
+	    
+	    //System.out.println(calendar.getTimeInMillis() + offset);
+	    return calendar.getTimeInMillis() + offset;
+	    
+	    //return calendar.getTimeInMillis();
 		
 	}
 	
-	
-	private static long getStartTimeStamp(TemporalProperties tp) {
+	private static long getStartTimeStamp(TemporalProperties tp, TemporalType temporalType) {
 		if(tp == null) {
-			return 0;
+			return -1;
 		}
 		Calendar calendar = Calendar.getInstance();
 		calendar.setTimeZone(TemporalHash.TIMEZONE);
 		calendar.setTimeInMillis(tp.getStart());
 		
-		calendar.set(Calendar.HOUR_OF_DAY, 0);
-	    calendar.set(Calendar.MINUTE, 0);
-	    calendar.set(Calendar.SECOND, 0);
-	    calendar.set(Calendar.MILLISECOND, 0);
-	    
-	    return calendar.getTimeInMillis();
-		
-	}
-	
-	
-	
-	/* Get NSEW Geohashes. USELESS. */
-	
-	public static BorderingProperties getBorderingGeoHashes(String geoHash, int precision, int timeLapse, TemporalProperties tp) {
-		
-		// ADD ACCOMMODATION FOR TIME
-		long startTS = getStartTimeStamp(tp);
-		long endTS = getEndTimeStamp(tp);
-		
-		String[] internalGeohashes = getInternalGeohashes(geoHash, precision);
-		
-		List<String> internalGeohashesList = Arrays.asList(internalGeohashes);
-		
-		BorderingProperties bg = new BorderingProperties();
-		
-		bg.setUp1(endTS);
-		bg.setUp2(endTS - timeLapse);
-		
-		bg.setDown1(startTS);
-		bg.setDown2(startTS + timeLapse);
 		
 		
-		
-		for(String geo: internalGeohashesList) {
-			//String[] nei = getNeighbours(geo);
-			
-			String nn = getNeighbour(geo, "n");
-			String sn = getNeighbour(geo, "s");
-			String en = getNeighbour(geo, "e");
-			String wn = getNeighbour(geo, "w");
-			
-			String nen = getNeighbour(geo, "ne");
-			String nwn = getNeighbour(geo, "nw");
-			String swn = getNeighbour(geo, "sw");
-			String sen = getNeighbour(geo, "se");
-			
-			
-			if( !internalGeohashesList.contains(nn) && !internalGeohashesList.contains(nwn) && !internalGeohashesList.contains(wn) ) {
-				
-				bg.setNw(geo);
-				
-			} else if( !internalGeohashesList.contains(nn) && !internalGeohashesList.contains(nen) && !internalGeohashesList.contains(en) ) {
-				
-				bg.setNe(geo);
-				
-			} else if( !internalGeohashesList.contains(sn) && !internalGeohashesList.contains(sen) && !internalGeohashesList.contains(en) ) {
-				
-				bg.setSe(geo);
-				
-			} else if( !internalGeohashesList.contains(sn) && !internalGeohashesList.contains(swn) && !internalGeohashesList.contains(wn) ) {
-				
-				bg.setSw(geo);
-				
-			} else if( !internalGeohashesList.contains(sn) ) {
-				
-				bg.addS(geo);
-				
-			} else if( !internalGeohashesList.contains(nn) ) {
-				
-				bg.addN(geo);
-				
-			} else if( !internalGeohashesList.contains(en) ) {
-				
-				bg.addE(geo);
-				
-			} else if( !internalGeohashesList.contains(wn) ) {
-				
-				bg.addW(geo);
-				
-			}	
-			
+		switch (temporalType) {
+			case HOUR_OF_DAY:
+				calendar.set(Calendar.MINUTE, 0);
+			    calendar.set(Calendar.SECOND, 0);
+			    calendar.set(Calendar.MILLISECOND, 0);
+			    break;
+			case DAY_OF_MONTH:
+				calendar.set(Calendar.HOUR_OF_DAY, 0);
+				calendar.set(Calendar.MINUTE, 0);
+			    calendar.set(Calendar.SECOND, 0);
+			    calendar.set(Calendar.MILLISECOND, 0);
+			    break;
+			case MONTH:
+				calendar.set(Calendar.DAY_OF_MONTH, 1);
+				calendar.set(Calendar.HOUR_OF_DAY, 0);
+				calendar.set(Calendar.MINUTE, 0);
+			    calendar.set(Calendar.SECOND, 0);
+			    calendar.set(Calendar.MILLISECOND, 0);
+			    break;
+			case YEAR:
+				calendar.set(Calendar.MONTH, 0);
+				calendar.set(Calendar.DAY_OF_MONTH, 1);
+				calendar.set(Calendar.HOUR_OF_DAY, 0);
+				calendar.set(Calendar.MINUTE, 0);
+			    calendar.set(Calendar.SECOND, 0);
+			    calendar.set(Calendar.MILLISECOND, 0);
+			    break;
+			    
 		}
+	    
+		long offset = TemporalHash.TIMEZONE.getRawOffset() - TimeZone.getDefault().getRawOffset();
+	    
+	    //Date d1 = new Date(calendar.getTimeInMillis() + offset);
+	    //System.out.println("CONVERTED:" + d1);
+	    
+	    //System.out.println(calendar.getTimeInMillis() + offset);
+	    return calendar.getTimeInMillis() + offset;
+	    //return calendar.getTimeInMillis();
 		
-		printBorders(bg);
-		return bg;
 	}
-	
-	
 	
 	/**
 	 * @author sapmitra
@@ -945,86 +1557,32 @@ public class GeoHash {
 		
 	}
 	
-	/**
-	 * Input is a geohash and get a particular corner geohash
-	 * @author sapmitra
-	 * @param geoHash
-	 * @param precision
-	 * @param direction
-	 * @return
-	 */
 	public static String getCornerGeohash(String geoHash, int precision, String direction) {
 
 		// ADD ACCOMMODATION FOR TIME
 
-		String[] internalGeohashes = getInternalGeohashes(geoHash, precision);
-
-		List<String> internalGeohashesList = Arrays.asList(internalGeohashes);
-
-		BorderingProperties bg = new BorderingProperties();
-		String nwGeo = "",swGeo="",neGeo="",seGeo="";
-
-		for (String geo : internalGeohashesList) {
-			String[] nei = getNeighbours(geo);
-
-			String nn = getNeighbour(geo, "n");
-			String sn = getNeighbour(geo, "s");
-			String en = getNeighbour(geo, "e");
-			String wn = getNeighbour(geo, "w");
-
-			String nen = getNeighbour(geo, "ne");
-			String nwn = getNeighbour(geo, "nw");
-			String swn = getNeighbour(geo, "sw");
-			String sen = getNeighbour(geo, "se");
-			
-
-			if (!internalGeohashesList.contains(nn) && !internalGeohashesList.contains(nwn)
-					&& !internalGeohashesList.contains(wn)) {
-
-				nwGeo = geo;
-
-			} else if (!internalGeohashesList.contains(nn) && !internalGeohashesList.contains(nen)
-					&& !internalGeohashesList.contains(en)) {
-
-				neGeo = geo;
-
-			} else if (!internalGeohashesList.contains(sn) && !internalGeohashesList.contains(sen)
-					&& !internalGeohashesList.contains(en)) {
-
-				seGeo = geo;
-
-			} else if (!internalGeohashesList.contains(sn) && !internalGeohashesList.contains(swn)
-					&& !internalGeohashesList.contains(wn)) {
-
-				swGeo = geo;
-
-			}
-
-		}
-		
+		BorderingProperties bp = getBorderingGeohashHeuristic(geoHash, precision, 0, null, null);
 		
 		if("ne".equals(direction)) {
 			
-			return neGeo;
+			return bp.getNe();
 			
 		} else if("nw".equals(direction)) {
 			
-			return nwGeo;
+			return bp.getNw();
 			
 		} else if("se".equals(direction)) {
 			
-			return seGeo;
+			return bp.getSe();
 			
 		} else if("sw".equals(direction)) {
 			
-			return swGeo;
+			return bp.getSw();
 			
 		}
 		
 		
-		
-
-		return "";
+		return null;
 	}
 	
 	/**
@@ -1039,110 +1597,394 @@ public class GeoHash {
 		
 		Coordinates c = null;
 		
-		if("ne".equals(direction)) {
-			
-			c = new Coordinates(range.getUpperBoundForLatitude(), range.getUpperBoundForLongitude());
-			
-		} else if("nw".equals(direction)) {
+		if("nw".equals(direction)) {
 			
 			c = new Coordinates(range.getUpperBoundForLatitude(), range.getLowerBoundForLongitude());
 			
-		} else if("se".equals(direction)) {
+		} else if("ne".equals(direction)) {
 			
-			c = new Coordinates(range.getLowerBoundForLatitude(), range.getUpperBoundForLongitude());
+			c = new Coordinates(range.getUpperBoundForLatitude(), range.getUpperBoundForLongitude());
 			
 		} else if("sw".equals(direction)) {
 			
 			c = new Coordinates(range.getLowerBoundForLatitude(), range.getLowerBoundForLongitude());
 			
+		} else if("se".equals(direction)) {
+			
+			c = new Coordinates(range.getLowerBoundForLatitude(), range.getUpperBoundForLongitude());
+			
 		}
 		
 		return c;
 	}
+
+	/**
+	 * 
+	 * @author sapmitra
+	 * @param hashes
+	 * @param validNeighbors
+	 * @return
+	 */
+	public static String[] filterUnwantedGeohashes(String[] hashes, String[] validNeighbors) {
+		// TODO Auto-generated method stub
+		
+		if(hashes == null || hashes.length == 0) 
+			return hashes;
+		
+		List<String> filteredHashes = new ArrayList<String>();
+		
+		for(String hash : hashes) {
+			
+			boolean valid = false;
+			
+			for(String n : validNeighbors) {
+				if(checkIntersection(n, hash)) {
+					valid = true;
+					break;
+				}
+			}
+			
+			if(valid) {
+				filteredHashes.add(hash);
+			}
+			
+		}
+		return (filteredHashes.toArray(new String[filteredHashes.size()]));
+	}
 	
-	private static void printBorders(BorderingProperties bg) {
+	
+	/**
+	 * Get all outer flanks of a given geohash
+	 * @author sapmitra
+	 * @param geoHash
+	 * @param precision
+	 * @return
+	 * 
+	 * a-----b
+	 * .	 .
+	 * .	 .
+	 * c-----d
+	 * 
+	 * returned flanks are in the order nw,n,ne,w,e,sw,s,se
+	 */
+	public static List<List<Coordinates>> getAllInnerFlanks(String geoHash, int precision) {
 		
-		System.out.println("NE: "+bg.getNe());
-		System.out.println("NW: "+bg.getNw());
-		System.out.println("SE: "+bg.getSe());
-		System.out.println("NW: "+bg.getSw());
 		
-		System.out.print("N: ");
+		BorderingProperties bp = getBorderingGeohashHeuristic(geoHash, precision, 0, null, null);
 		
-		for(String s: bg.getN()) {
-			System.out.print(s+" ");
+		String ne = bp.getNe();
+			
+		String nw = bp.getNw();
+			
+		String se = bp.getSe();
+			
+		String sw = bp.getSw();
+		
+		//System.out.println(nw);
+		
+		SpatialRange nwBounds = decodeHash(nw);
+		SpatialRange neBounds = decodeHash(ne);
+		SpatialRange seBounds = decodeHash(se);
+		SpatialRange swBounds = decodeHash(sw);
+		
+		
+		Coordinates caNW = new Coordinates(nwBounds.getUpperBoundForLatitude(), nwBounds.getLowerBoundForLongitude());
+		Coordinates cbNW = new Coordinates(nwBounds.getUpperBoundForLatitude(), nwBounds.getUpperBoundForLongitude());
+		Coordinates ccNW = new Coordinates(nwBounds.getLowerBoundForLatitude(), nwBounds.getUpperBoundForLongitude());
+		Coordinates cdNW = new Coordinates(nwBounds.getLowerBoundForLatitude(), nwBounds.getLowerBoundForLongitude());
+		
+		List<Coordinates> nwFlank = Arrays.asList(caNW, cbNW, ccNW, cdNW);
+		
+		
+		Coordinates caNE = new Coordinates(neBounds.getUpperBoundForLatitude(), neBounds.getLowerBoundForLongitude());
+		Coordinates cbNE = new Coordinates(neBounds.getUpperBoundForLatitude(), neBounds.getUpperBoundForLongitude());
+		Coordinates ccNE = new Coordinates(neBounds.getLowerBoundForLatitude(), neBounds.getUpperBoundForLongitude());
+		Coordinates cdNE = new Coordinates(neBounds.getLowerBoundForLatitude(), neBounds.getLowerBoundForLongitude());
+		
+		List<Coordinates> neFlank = Arrays.asList(caNE, cbNE, ccNE, cdNE);
+		
+		
+		Coordinates caSW = new Coordinates(swBounds.getUpperBoundForLatitude(), swBounds.getLowerBoundForLongitude());
+		Coordinates cbSW = new Coordinates(swBounds.getUpperBoundForLatitude(), swBounds.getUpperBoundForLongitude());
+		Coordinates ccSW = new Coordinates(swBounds.getLowerBoundForLatitude(), swBounds.getUpperBoundForLongitude());
+		Coordinates cdSW = new Coordinates(swBounds.getLowerBoundForLatitude(), swBounds.getLowerBoundForLongitude());
+		
+		List<Coordinates> swFlank = Arrays.asList(caSW, cbSW, ccSW, cdSW);
+		
+		Coordinates caSE = new Coordinates(seBounds.getUpperBoundForLatitude(), seBounds.getLowerBoundForLongitude());
+		Coordinates cbSE = new Coordinates(seBounds.getUpperBoundForLatitude(), seBounds.getUpperBoundForLongitude());
+		Coordinates ccSE = new Coordinates(seBounds.getLowerBoundForLatitude(), seBounds.getUpperBoundForLongitude());
+		Coordinates cdSE = new Coordinates(seBounds.getLowerBoundForLatitude(), seBounds.getLowerBoundForLongitude());
+		
+		List<Coordinates> seFlank = Arrays.asList(caSE, cbSE, ccSE, cdSE);
+		
+		
+		List<Coordinates> northFlank = Arrays.asList(caNW, cbNE, ccNE, cdNW);
+		List<Coordinates> southFlank = Arrays.asList(caSW, cbSE, ccSE, cdSW);
+		List<Coordinates> eastFlank = Arrays.asList(caNE, cbNE, ccSE, cdSE);
+		List<Coordinates> westFlank = Arrays.asList(caNW, cbNW, ccSW, cdSW);
+		
+		
+		List<Coordinates> innerFlank = Arrays.asList(ccNW, cdNE, caSE, cbSW);
+		
+		List<List<Coordinates>> flanks = Arrays.asList(nwFlank,northFlank,neFlank,westFlank,innerFlank,eastFlank,swFlank,southFlank,seFlank);
+		
+		
+		return flanks;
+		
+		
+	}
+	
+	
+	/**
+	 * finding what part of geohash2 is actually needed
+	 * Only that part will be loaded for a superpolygon and feature query
+	 * @author sapmitra
+	 * @param geoHash1 metadata geohash from fs1
+	 * @param geoHash2 metadata geohash from fs2
+	 * @param time1 metadata time from fs1
+	 * @param time2 metadata time from fs2
+	 * @return
+	 * @throws ParseException 
+	 */
+	
+	public static String getOrientation(String geoHash1, String geoHash2, String time1, String time2, TemporalType t1, TemporalType t2) throws ParseException {
+		String temporalOrientation = getTemporalOrientation(time1,time2,t1,t2);
+		if(temporalOrientation.contains("ignore"))
+			return "ignore-ignore";
+		String spatialOrientation = getSpatialOrientationHeuristic(geoHash1, geoHash2);
+		
+		return spatialOrientation+"-"+temporalOrientation;
+		
+	}
+	
+	
+	private static String getTemporalOrientation(String time1, String time2, TemporalType t1, TemporalType t2) throws ParseException {
+		
+		String[] tokens = time1.split("-");
+		String[] tokens2 = time1.split("-");
+		
+		long startTime1 = getStartTimeStamp(tokens[0], tokens[1], tokens[2], tokens[3], t1);
+		long endTime1 = getEndTimeStamp(tokens[0], tokens[1], tokens[2], tokens[3], t1);
+		
+		long startTime2 = getStartTimeStamp(tokens2[0], tokens2[1], tokens2[2], tokens2[3], t2);
+		long endTime2 = getEndTimeStamp(tokens2[0], tokens2[1], tokens2[2], tokens2[3], t2);
+		
+		// time1 encloses time2
+		if(startTime2>=startTime1 && endTime2<=endTime1)
+			return "full";
+		// time2 encloses time1
+		else if(startTime1>=startTime2 && endTime1<=endTime2)
+			return "full";
+		else if(startTime1 == endTime2+1 && endTime2 < endTime1)
+			return "end";
+		else if(endTime1+1 == startTime2 && startTime1 < startTime2)
+			return "start";
+		
+		return "ignore";
+	}
+	
+	/**
+	 * 
+	 * @author sapmitra
+	 * @param g1
+	 * @param g2
+	 * @param p1
+	 * @param p2
+	 * @return
+	 */
+	public static String getSpatialOrientationHeuristic(String g1, String g2) {
+		
+		// g1 is greater than  equals in size than g2
+		if(g1.length() <= g2.length()) {
+			
+			boolean enc = checkEnclosure(g1, g2);
+			
+			if(enc) {
+				return "full";
+			} else {
+				
+				// g2 may lie somewhere on the outskirts of g1
+				
+				//g2_dash is the bigger geohash that encloses g2, with the same size as g1
+				String g2_dash =  g2.substring(0,g1.length());
+				
+				// Neighbors are returned in the order nw,n,ne,w,e,sw,s,se
+				List<String> neighbors = new ArrayList<String>(Arrays.asList(getNeighbours(g1)));
+				
+				// g2 has to lie on the border of g1
+				if(neighbors.contains(g2_dash)) {
+					
+					// What kind of neighbor is g2_dash
+					int indx = neighbors.indexOf(g2_dash);
+					
+					BorderingProperties bp = getBorderingGeohashHeuristic(g2_dash, g2.length(), 0, null, null);
+					
+					return getChunkDirection(g2, indx, bp, 0);
+					
+					
+				} else {
+					return "ignore";
+				}
+				
+			}
+			
+		} else if(g1.length() > g2.length()) {
+			
+			// g1 is smaller in size than g2
+			boolean enc = checkEnclosure(g2, g1);
+			
+			if(enc) {
+				//check inside
+				BorderingProperties bp = getBorderingGeohashHeuristic(g2, g1.length(), 0, null, null);
+				
+				
+				return "full";
+				
+				
+			} else {
+				
+				// check outside
+				String g1_dash =  g1.substring(0,g2.length());
+				// Neighbors are returned in the order nw,n,ne,w,e,sw,s,se
+				List<String> neighbors = new ArrayList<String>(Arrays.asList(getNeighbours(g2)));
+				
+				if(neighbors.contains(g1_dash)) {
+					
+					// whar kind of neighbbor is 
+					int indx = neighbors.indexOf(g1_dash);
+					
+					BorderingProperties bp = getBorderingGeohashHeuristic(g1_dash, g1.length(), 0, null, null);
+					
+					return getChunkDirection(g1, indx, bp, 1);
+					
+				} else {
+					return "ignore";
+				}
+				
+			}
+			
 		}
-		System.out.println();
 		
-		System.out.print("S: ");
-		
-		for(String s: bg.getS()) {
-			System.out.print(s+" ");
-		}
-		System.out.println();
-		
-		System.out.print("E: ");
-		
-		for(String s: bg.getE()) {
-			System.out.print(s+" ");
-		}
-		System.out.println();
-		
-		System.out.print("W: ");
-		
-		for(String s: bg.getW()) {
-			System.out.print(s+" ");
-		}
-		System.out.println();
+		return "ignore";
 		
 	}
 
-	public static void main(String arg[]) {
+	/**
+	 * Determines which flank of a geohash is needed
+	 * @author sapmitra
+	 * @param g2
+	 * @param indx
+	 * @param bp
+	 * @return
+	 */
+	private static String getChunkDirection(String g2, int indx, BorderingProperties bp, int type) {
+		// if g2_dash is a nw neighbor
+		if(indx == 0) {
+			
+			// Only case where g2 would matter is if g2 is the se corner
+			if(bp.getSe().equals(g2)) {
+				
+				if(type == 0)
+					return "se";
+				else if(type == 1)
+					return "nw";
+				
+			}
+			
+		}
+		// if g2_dash is a n neighbor
+		else if(indx == 1) {
+			
+			// Only case where g2 would matter is if g2 is the s corner
+			if(bp.getS().contains(g2)) {
+				if(type == 0)
+					return "s";
+				else if(type == 1)
+					return "n";
+			}
+		}
 		
-		SpatialRange range = decodeHash("sp");
-		Coordinates c1 = new Coordinates(range.getLowerBoundForLatitude(), range.getLowerBoundForLongitude());
-		Coordinates c2 = new Coordinates(range.getUpperBoundForLatitude(), range.getLowerBoundForLongitude());
-		Coordinates c3 = new Coordinates(range.getUpperBoundForLatitude(), range.getUpperBoundForLongitude());
-		Coordinates c4 = new Coordinates(range.getLowerBoundForLatitude(), range.getUpperBoundForLongitude());
+		// if g2_dash is a ne neighbor
+		else if(indx == 2) {
+			
+			// Only case where g2 would matter is if g2 is the s corner
+			if(bp.getSw().equals(g2)) {
+				if(type == 0)
+					return "sw";
+				else if(type == 1)
+					return "ne";
+			}
+		}
 		
+		// if g2_dash is a w neighbor
+		else if(indx == 3) {
+			
+			// Only case where g2 would matter is if g2 is the s corner
+			if(bp.getE().contains(g2)) {
+				if(type == 0)
+					return "e";
+				else if(type == 1)
+					return "w";
+				
+			}
+		}
 		
-		List<Coordinates> cl = new ArrayList<Coordinates>();
-		cl.add(c1);
-		cl.add(c2);
-		cl.add(c3);
-		cl.add(c4);
+		// if g2_dash is a e neighbor
+		else if(indx == 4) {
+			
+			// Only case where g2 would matter is if g2 is the s corner
+			if(bp.getW().contains(g2)) {
+				if(type == 0)
+					return "w";
+				else if(type == 1)
+					return "e";
+				
+			}
+		}
+		// if g2_dash is a sw neighbor
+		else if(indx == 5) {
+			
+			// Only case where g2 would matter is if g2 is the s corner
+			if(bp.getNe().equals(g2)) {
+				
+				if(type == 0)
+					return "ne";
+				else if(type == 1)
+					return "sw";
+				
+			}
+		}
 		
-		getSuperGeohashes("sp", 3);
+		// if g2_dash is a n neighbor
+		else if(indx == 6) {
+			
+			// Only case where g2 would matter is if g2 is the s corner
+			if(bp.getN().contains(g2)) {
+				
+				if(type == 0)
+					return "n";
+				else if(type == 1)
+					return "s";
+			}
+		}
 		
-		//getSuperCubeGeohashBounds("sp", null, null, null, null, 3);
-		
-		//GeoHash.getBorderingGeoHashes("9r", 3, 1);
-		
-		
+		// if g2_dash is a ne neighbor
+		else if(indx == 7) {
+			
+			// Only case where g2 would matter is if g2 is the s corner
+			if(bp.getNw().equals(g2)) {
+				
+				if(type == 0)
+					return "nw";
+				else if(type == 1)
+					return "se";
+			}
+		} 
+		return "ignore";
 	}
 	
-	/*public static void Xmain(String arg[]) {
-		
-		
-		Coordinates c1 = new Coordinates(40.68f, -127.86f);
-		Coordinates c2 = new Coordinates(38.68f, -95.86f);
-		Coordinates c3 = new Coordinates(8.68f, -97.86f);
-		Coordinates c4 = new Coordinates(9.68f, -129.86f);
-		List<Coordinates> cl = new ArrayList<Coordinates>();
-		cl.add(c1);
-		cl.add(c2);
-		cl.add(c3);
-		cl.add(c4);
-		
-		Polygon  p = GeoHash.buildAwtPolygon(cl);
-		
-		GeoHash gh = new GeoHash();
-		
-		Set<GeoHash> ss = new HashSet<GeoHash>();
-		
-		GeoHash.getGeohashPrefixes(p, gh, 4*5, ss);
-		
-		for(GeoHash iGh : ss)
-			System.out.println(Arrays.toString(iGh.getValues(4)));
-	}*/
 }
+
+
+

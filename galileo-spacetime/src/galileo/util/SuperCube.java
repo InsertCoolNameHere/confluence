@@ -163,7 +163,13 @@ public class SuperCube implements ByteSerializable{
 		
 	}
 	
-	
+	/**
+	 * Returns the dates that lie between two timestamps
+	 * 
+	 * @author sapmitra
+	 * @param time
+	 * @return
+	 */
 	public static List<Date> handleTemporalRangeForEachBlock(String time) {
 		// TODO Auto-generated method stub
 		if(time != null && time.contains("-")) {

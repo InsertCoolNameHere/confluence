@@ -37,6 +37,7 @@ import java.util.logging.Logger;
 import galileo.dataset.Coordinates;
 import galileo.dataset.Metadata;
 import galileo.dataset.SpatialProperties;
+import galileo.dataset.TemporalProperties;
 import galileo.dataset.feature.Feature;
 import galileo.dht.hash.BalancedHashRing;
 import galileo.dht.hash.ConstrainedGeohash;
@@ -155,5 +156,11 @@ public class SpatialHierarchyPartitioner extends Partitioner<Metadata> {
 				destinations.add(nodePositions.get(group).get(nposition));
 		}
 		return new ArrayList<NodeInfo>(destinations);
+	}
+
+	@Override
+	public List<NodeInfo> findDestinationsForFS2(SpatialProperties searchSp, List<TemporalProperties> tprops, int geohashPrecision, String[] validNeighbors) throws HashException, PartitionException {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

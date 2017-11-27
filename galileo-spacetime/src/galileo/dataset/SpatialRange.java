@@ -128,6 +128,7 @@ public class SpatialRange implements ByteSerializable {
 	public float getUpperBoundForLongitude() {
 		return upperLon;
 	}
+	
 
 	public Coordinates getCenterPoint() {
 		float latDifference = upperLat - lowerLat;
