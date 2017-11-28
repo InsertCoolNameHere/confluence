@@ -92,6 +92,7 @@ import galileo.query.Operator;
 import galileo.query.Query;
 import galileo.serialization.SerializationException;
 import galileo.serialization.Serializer;
+import galileo.util.BlockFragments;
 import galileo.util.BorderingProperties;
 import galileo.util.GeoHash;
 import galileo.util.Math;
@@ -1305,6 +1306,8 @@ public class GeospatialFileSystem extends FileSystem {
 			paths = (metaQuery == null) ? metadataGraph.getAllPaths() : executeParallelQuery(metaQuery);
 			
 		}
+		
+		Map<Path<Feature, String>, BlockFragments> pathToFragmentsMap = new HashMap<>();
 		// For each supercube
 		for (SuperCube sc : superCubes) {
 			
