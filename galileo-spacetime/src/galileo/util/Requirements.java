@@ -11,6 +11,11 @@ public class Requirements {
 	private Path<Feature, String> path;
 	private List<Integer> chunks = new ArrayList<Integer>();
 	
+	public Requirements(Path<Feature, String> path, List<Integer> chunks) {
+		this.path = path;
+		this.chunks = chunks;
+	}
+	
 	public Path<Feature, String> getPath() {
 		return path;
 	}

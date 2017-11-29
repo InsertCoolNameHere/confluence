@@ -114,6 +114,9 @@ import galileo.net.ServerMessageRouter;
 import galileo.serialization.SerializationException;
 import galileo.util.BorderingProperties;
 import galileo.util.GeoHash;
+import galileo.util.PathFragments;
+import galileo.util.PathsAndOrientations;
+import galileo.util.Requirements;
 import galileo.util.SuperCube;
 import galileo.util.SuperPolygon;
 import galileo.util.Version;
@@ -1339,7 +1342,28 @@ public class StorageNode implements RequestListener {
 		
 		//Partitioner<Metadata> fsPartitioner = reqFSystem.getPartitioner();
 		try{
-			List<Path<Feature, String>> paths1 = reqFSystem.listIntersectingPathsWithOrientation(superCubes, superPolygon, event.getQueryTime(), null, srcFSystem.getTemporalType());
+			PathsAndOrientations pao = reqFSystem.listIntersectingPathsWithOrientation(superCubes, superPolygon, event.getQueryTime(), null, srcFSystem.getTemporalType());
+			
+			if(pao != null) {
+				
+				/* Now to actually reading in the blocks */
+				int totalBlocks = pao.getTotalBlocks();
+				List<Path<Feature, String>> paths = pao.getPaths();
+				int totalPaths = paths.size();
+				Map<Path<Feature, String>, PathFragments> pathToFragmentsMap = pao.getPathToFragmentsMap();
+				// This will be sent back in the response for the other side to use
+				Map<SuperCube, Requirements> supercubeRequirementsMap = pao.getSupercubeRequirementsMap();
+				
+				ExecutorService executor = Executors.newFixedThreadPool(Math.min(totalPaths, 2 * numCores));
+				
+				
+				
+				
+				
+			} else {
+				// NEED TO RETURN A BLANK RESPONSE
+			}
+			
 			
 		}catch (Exception e) {
 			logger.log(Level.SEVERE,

@@ -92,12 +92,14 @@ import galileo.query.Operator;
 import galileo.query.Query;
 import galileo.serialization.SerializationException;
 import galileo.serialization.Serializer;
-import galileo.util.BlockFragments;
+import galileo.util.PathFragments;
 import galileo.util.BorderingProperties;
 import galileo.util.GeoHash;
 import galileo.util.Math;
 import galileo.util.OrientationManager;
 import galileo.util.Pair;
+import galileo.util.PathsAndOrientations;
+import galileo.util.Requirements;
 import galileo.util.SuperCube;
 
 /**
@@ -1198,7 +1200,7 @@ public class GeospatialFileSystem extends FileSystem {
 	 * @throws InterruptedException
 	 * @throws ParseException 
 	 */
-	public List<Path<Feature, String>> listIntersectingPathsWithOrientation(List<SuperCube> superCubes, List<Coordinates> superPolygon, String queryTime, Query metaQuery, TemporalType srcTT) throws InterruptedException, ParseException {
+	public PathsAndOrientations listIntersectingPathsWithOrientation(List<SuperCube> superCubes, List<Coordinates> superPolygon, String queryTime, Query metaQuery, TemporalType srcTT) throws InterruptedException, ParseException {
 		
 		List<List<Expression>> temporalExpressionList = null;
 		List<Path<Feature, String>> paths = null;
@@ -1307,7 +1309,15 @@ public class GeospatialFileSystem extends FileSystem {
 			
 		}
 		
-		Map<Path<Feature, String>, BlockFragments> pathToFragmentsMap = new HashMap<>();
+		
+		/*
+		 * Now that we know which paths are needed,
+		 * lets find out what fragments from these paths are needed for each of the supercube that requested it
+		 */
+		
+		Map<Path<Feature, String>, PathFragments> pathToFragmentsMap = new HashMap<Path<Feature, String>, PathFragments>();
+		Map<SuperCube,Requirements> supercubeRequirementsMap = new HashMap<SuperCube,Requirements>();
+		
 		// For each supercube
 		for (SuperCube sc : superCubes) {
 			
@@ -1325,11 +1335,42 @@ public class GeospatialFileSystem extends FileSystem {
 					String fs2PathSpace = tokens[1];
 					
 					String orientation = GeoHash.getOrientation(fs1PathSpace, fs2PathSpace, fs1PathTime, fs2PathTime, srcTT, this.temporalType);
-					List<Integer> fragments = OrientationManager.getRequiredChunks(orientation);
 					
 					if(orientation.contains("ignore"))
 						continue;
 					
+					// These are the fragments of path required by the particular supercube sc
+					List<Integer> fragments = OrientationManager.getRequiredChunks(orientation);
+					
+					if(fragments == null || fragments.size() == 0) 
+						continue;
+					
+					// populate path to fragments map
+					
+						
+					if(pathToFragmentsMap.get(path) == null) {
+						
+						PathFragments pf = new PathFragments();
+						
+						// entire blocks to be read, no fragments
+						if("full-full".equals(orientation)) {
+							pf.setIgnore(true);
+							pf.addChunks(fragments);
+						} else {
+							pf.addChunks(fragments);
+						}
+						
+						pathToFragmentsMap.put(path, pf);
+						
+					} else {
+						PathFragments pf = pathToFragmentsMap.get(path);
+						pf.addChunks(fragments);
+						pf.setIgnore(false);
+						pathToFragmentsMap.put(path, pf);
+					}
+					// handle supercube requirements map
+					
+					supercubeRequirementsMap.put(sc, new Requirements(path, fragments));
 					
 					
 				} else {
@@ -1339,9 +1380,21 @@ public class GeospatialFileSystem extends FileSystem {
 			}
 		}
 		
+		int totalBlocks = 0;
+		
+		for (Path<Feature, String> path : paths) {
+			totalBlocks+=path.getPayload().size();
+		}
 		
 		
-		return paths;
+		if(totalBlocks > 0) {
+			
+			PathsAndOrientations pao = new PathsAndOrientations(paths, pathToFragmentsMap, supercubeRequirementsMap, totalBlocks);
+			return pao;
+			
+		}
+		
+		return null;
 	}
 	
 	
