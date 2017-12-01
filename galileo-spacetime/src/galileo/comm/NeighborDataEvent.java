@@ -6,6 +6,9 @@ import java.util.List;
 
 import galileo.dataset.Coordinates;
 import galileo.event.Event;
+import galileo.query.Expression;
+import galileo.query.Operation;
+import galileo.query.Operator;
 import galileo.query.Query;
 import galileo.serialization.SerializationException;
 import galileo.serialization.SerializationInputStream;
@@ -20,14 +23,28 @@ public class NeighborDataEvent implements Event{
 	private String srcFs;
 	private List<Coordinates> superPolygon;
 	private String queryTime;
+	private Query featureQuery;
 	
-	public NeighborDataEvent(List<SuperCube> supercubes, String reqFs, String srcFs, List<Coordinates> superPolygon, String queryTime) {
+	public NeighborDataEvent(List<SuperCube> supercubes, String reqFs, String srcFs, List<Coordinates> superPolygon, String queryTime, Query featureQuery) {
 		
 		this.supercubes = supercubes;
 		this.reqFs = reqFs;
 		this.srcFs = srcFs;
 		this.superPolygon = superPolygon;
 		this.queryTime = queryTime;
+		this.featureQuery = featureQuery;
+	}
+	
+	private void validate(Query query) {
+		if (query == null || query.getOperations().isEmpty())
+			throw new IllegalArgumentException("illegal query. must have at least one operation");
+		Operation operation = query.getOperations().get(0);
+		if (operation.getExpressions().isEmpty())
+			throw new IllegalArgumentException("no expressions found for an operation of the query");
+		Expression expression = operation.getExpressions().get(0);
+		if (expression.getOperand() == null || expression.getOperand().trim().length() == 0
+				|| expression.getOperator() == Operator.UNKNOWN || expression.getValue() == null)
+			throw new IllegalArgumentException("illegal expression for an operation of the query");
 	}
 	
 	
@@ -44,6 +61,10 @@ public class NeighborDataEvent implements Event{
 		out.writeString(srcFs);
 		out.writeSerializableCollection(supercubes);
 		out.writeSerializableCollection(superPolygon);
+		
+		out.writeBoolean(featureQuery != null);
+		if (featureQuery != null)
+			out.writeSerializable(this.featureQuery);
 		
 	}
 	
@@ -67,6 +88,10 @@ public class NeighborDataEvent implements Event{
 		List<Coordinates> poly = new ArrayList<Coordinates>();
 		in.readSerializableCollection(Coordinates.class, poly);
 		superPolygon = poly;
+		
+		boolean hasFeatureQuery = in.readBoolean();
+		if (hasFeatureQuery)
+			this.featureQuery = new Query(in);
 		
 	}
 
@@ -117,6 +142,17 @@ public class NeighborDataEvent implements Event{
 
 	public void setSrcFs(String srcFs) {
 		this.srcFs = srcFs;
+	}
+
+
+	public Query getFeatureQuery() {
+		return featureQuery;
+	}
+
+
+	public void setFeatureQuery(Query featureQuery) {
+		validate(featureQuery);
+		this.featureQuery = featureQuery;
 	}
 
 }

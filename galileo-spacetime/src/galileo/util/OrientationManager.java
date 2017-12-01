@@ -24,6 +24,7 @@ public class OrientationManager {
 	 * @return
 	 */
 	public static List<Integer> getRequiredChunks(String orientation) {
+		
 		String[] tokens = orientation.split("-");
 		String spatial = tokens[0];
 		String temporal = tokens[1];
@@ -90,7 +91,7 @@ public class OrientationManager {
 	
 	public static void main(String arg[]) {
 		
-		System.out.println(OrientationManager.getRequiredChunks("n-end"));
+		System.out.println(OrientationManager.getRequiredChunks("s-end"));
 		
 	}
 

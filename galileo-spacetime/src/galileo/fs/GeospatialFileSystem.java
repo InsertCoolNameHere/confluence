@@ -695,15 +695,7 @@ public class GeospatialFileSystem extends FileSystem {
 	
 	private void populateGeoHashBorder(String geoHash, BorderingProperties borderingProperties, long recordCount) {
 		
-		if(borderingProperties.getN().contains(geoHash)) {
-			borderingProperties.addNorthEntries(recordCount);
-		} else if(borderingProperties.getE().contains(geoHash)) {
-			borderingProperties.addEastEntries(recordCount);
-		} else if(borderingProperties.getW().contains(geoHash)) {
-			borderingProperties.addWestEntries(recordCount);
-		} else if(borderingProperties.getS().contains(geoHash)) {
-			borderingProperties.addSouthEntries(recordCount);
-		} else if(borderingProperties.getNe().equals(geoHash)) {
+		if(borderingProperties.getNe().equals(geoHash)) {
 			borderingProperties.addNEEntries(recordCount);
 		} else if(borderingProperties.getSe().equals(geoHash)) {
 			borderingProperties.addSEEntries(recordCount);
@@ -711,6 +703,14 @@ public class GeospatialFileSystem extends FileSystem {
 			borderingProperties.addNWEntries(recordCount);
 		} else if(borderingProperties.getSw().equals(geoHash)) {
 			borderingProperties.addSWEntries(recordCount);
+		} else if(borderingProperties.getN().contains(geoHash)) {
+			borderingProperties.addNorthEntries(recordCount);
+		} else if(borderingProperties.getE().contains(geoHash)) {
+			borderingProperties.addEastEntries(recordCount);
+		} else if(borderingProperties.getW().contains(geoHash)) {
+			borderingProperties.addWestEntries(recordCount);
+		} else if(borderingProperties.getS().contains(geoHash)) {
+			borderingProperties.addSouthEntries(recordCount);
 		} 
 		
 		
@@ -1328,7 +1328,7 @@ public class GeospatialFileSystem extends FileSystem {
 				String fs1PathTime = sc.getCentralTime();
 				String fs1PathSpace = sc.getCentralGeohash();
 				
-				String ret = getPathInfo(path);
+				String ret = getPathInfo(path, 0 );
 				if(ret != null){
 					String[] tokens = ret.split("\\$");
 					String fs2PathTime = tokens[0];
@@ -1398,7 +1398,7 @@ public class GeospatialFileSystem extends FileSystem {
 	}
 	
 	
-	private String getPathInfo(Path<Feature, String> path) {
+	public static String getPathInfo(Path<Feature, String> path, int o) {
 		if (null != path && path.hasPayload()) {
 			
 			List<Feature> labels = path.getLabels();
@@ -1433,11 +1433,15 @@ public class GeospatialFileSystem extends FileSystem {
 					break;
 			}
 			String temporal = day+"-"+month+"-"+year+"-"+hour;
+			
+			if(o == 1)
+				return space;
+			
 			return temporal+"$"+space;
 			
 			
+			
 		}
-		
 		
 		return null;
 	}
@@ -1857,6 +1861,35 @@ public class GeospatialFileSystem extends FileSystem {
 
 	}
 
+	/**
+	 * 
+	 * @author sapmitra
+	 * @param blockPath
+	 * @return
+	 * @throws IOException
+	 */
+	private List<List<String[]>> getFeaturePathsFromBlockSet(List<String> blockPaths, PathFragments fragments) throws IOException {
+		
+		Set<Integer> chunks = fragments.getChunks();
+		
+		List<String[]> records = new ArrayList<String[]>();
+		
+		for(String blockPath : blockPaths) {
+			
+			byte[] blockBytes = Files.readAllBytes(Paths.get(blockPath));
+			
+			/* Record Numbers for bordering regions*/
+			BorderingProperties borderingProperties = borderMap.get(blockPath);
+			
+			String blockData = new String(blockBytes, "UTF-8");
+			String[] lines = blockData.split("\\r?\\n");
+			int splitLimit = this.featureList.size();
+			for (String line : lines)
+				records.add(line.split(",", splitLimit));
+		}
+		return records;
+	}
+	
 	public List<String> query(String blockPath, GeoavailabilityQuery geoQuery, GeoavailabilityGrid grid,
 			Bitmap queryBitmap, String pathPrefix) throws IOException, InterruptedException {
 		List<String> resultFiles = new ArrayList<>();
@@ -1982,5 +2015,89 @@ public class GeospatialFileSystem extends FileSystem {
 	}
 	public static String getTemporalHourFeatureName() {
 		return TEMPORAL_HOUR_FEATURE;
+	}
+	
+	
+	/**
+	 * 
+	 * @author sapmitra
+	 * @param blocks : link to all blocks in a path
+	 * @param geoQuery
+	 * @param grid
+	 * @param queryBitmap
+	 * @param fragments : specifies the fragments that are needed for this particular path and blocks in it
+	 * @return
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
+	public List<List<String>> queryFragments(List<String> blocks, GeoavailabilityQuery geoQuery, GeoavailabilityGrid grid, Bitmap queryBitmap, PathFragments fragments) 
+			throws IOException, InterruptedException {
+		List<String> resultFiles = new ArrayList<>();
+		
+		/* Represents all possible fragments. Only the fields representing the required fragments will be populated */
+		List<List<String[]>> featurePaths = new ArrayList<List<String[]>>();
+		
+		for(int i=0; i < 28; i++) {
+			
+			featurePaths.set(i, null);
+			
+		}
+		
+		boolean skipGridProcessing = false;
+		if (geoQuery.getPolygon() != null && geoQuery.getQuery() != null) {
+			/* If polygon complete encompasses geohash */
+			skipGridProcessing = isGridInsidePolygon(grid, geoQuery);
+			
+			// THIS READS THE ACTUAL BLOCK
+			// Creates a path graph from block data
+			featurePaths = getFeaturePathsFromBlockSet(blocks, fragments);
+		} else if (geoQuery.getPolygon() != null) {
+			/* If grid lies completely inside polygon */
+			skipGridProcessing = isGridInsidePolygon(grid, geoQuery);
+			if (!skipGridProcessing)
+				featurePaths = getFeaturePaths(blockPath);
+		} else if (geoQuery.getQuery() != null) {
+			featurePaths = getFeaturePaths(blockPath);
+		} else {
+			resultFiles.add(blockPath);
+			return resultFiles;
+		}
+
+		if (featurePaths == null) {
+			resultFiles.add(blockPath);
+			return resultFiles;
+		}
+
+		queryBitmap = skipGridProcessing ? null : queryBitmap;
+		int size = featurePaths.size();
+		int partition = java.lang.Math.max(size / numCores, MIN_GRID_POINTS);
+		int parallelism = java.lang.Math.min(size / partition, numCores);
+		if (parallelism > 1) {
+			ExecutorService executor = Executors.newFixedThreadPool(parallelism);
+			List<ParallelQueryProcessor> queryProcessors = new ArrayList<>();
+			for (int i = 0; i < parallelism; i++) {
+				int from = i * partition;
+				int to = (i + 1 != parallelism) ? (i + 1) * partition : size;
+				List<String[]> subset = new ArrayList<>(featurePaths.subList(from, to));
+				ParallelQueryProcessor pqp = new ParallelQueryProcessor(subset, geoQuery.getQuery(), grid, queryBitmap,
+						pathPrefix + "-" + i);
+				queryProcessors.add(pqp);
+				executor.execute(pqp);
+			}
+			featurePaths.clear();
+			executor.shutdown();
+			executor.awaitTermination(10, TimeUnit.MINUTES);
+			for (ParallelQueryProcessor pqp : queryProcessors)
+				if (pqp.getStoragePath() != null)
+					resultFiles.add(pqp.getStoragePath());
+		} else {
+			ParallelQueryProcessor pqp = new ParallelQueryProcessor(featurePaths, geoQuery.getQuery(), grid,
+					queryBitmap, pathPrefix);
+			pqp.run(); // to avoid another thread creation
+			if (pqp.getStoragePath() != null)
+				resultFiles.add(pqp.getStoragePath());
+		}
+
+		return resultFiles;
 	}
 }

@@ -53,7 +53,5 @@ public class PathsAndOrientations {
 	public void setTotalBlocks(int totalBlocks) {
 		this.totalBlocks = totalBlocks;
 	}
-	
-	
 
 }

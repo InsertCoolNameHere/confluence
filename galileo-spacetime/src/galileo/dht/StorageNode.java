@@ -111,6 +111,7 @@ import galileo.net.NetworkDestination;
 import galileo.net.PortTester;
 import galileo.net.RequestListener;
 import galileo.net.ServerMessageRouter;
+import galileo.query.Query;
 import galileo.serialization.SerializationException;
 import galileo.util.BorderingProperties;
 import galileo.util.GeoHash;
@@ -1108,8 +1109,11 @@ public class StorageNode implements RequestListener {
 	@EventHandler
 	public void handleDataIntegration(DataIntegrationEvent event, EventContext context) {
 
+		// fs1 is the primary filesystem
 		String fsName1 = event.getFsname1();
 		GeospatialFileSystem fs1 = fsMap.get(fsName1);
+		
+		// fs2 is the secondary filesystem
 		String fsName2 = event.getFsname2();
 		GeospatialFileSystem fs2 = fsMap.get(fsName2);
 
@@ -1246,7 +1250,7 @@ public class StorageNode implements RequestListener {
 					List<Integer> cubeIndices = nodeToCubeMap.get(nodeKey);
 					int uncertaintyPrecision = fs1.getTemporalUncertaintyPrecision() > fs2.getTemporalUncertaintyPrecision() ? 
 							fs2.getTemporalUncertaintyPrecision() : fs1.getTemporalUncertaintyPrecision();
-					NeighborDataEvent nEvent = createNeighborRequestPerNode(cubeIndices, allCubes, fsName2,fsName1, superPolygon, event.getTime(), uncertaintyPrecision);
+					NeighborDataEvent nEvent = createNeighborRequestPerNode(cubeIndices, allCubes, fsName2,fsName1, superPolygon, event.getTime(), event.getFeatureQuery());
 
 					if (thisNode) {
 						internalEvents.add(nEvent);
@@ -1295,7 +1299,7 @@ public class StorageNode implements RequestListener {
 	 * @return
 	 * @throws ParseException 
 	 */
-	private NeighborDataEvent createNeighborRequestPerNode(List<Integer> cubeIndices, List<SuperCube> allCubes, String reqFs,String srcFs, List<Coordinates> superPolygon, String queryTime, int uncertaintyPrecision) throws ParseException {
+	private NeighborDataEvent createNeighborRequestPerNode(List<Integer> cubeIndices, List<SuperCube> allCubes, String reqFs,String srcFs, List<Coordinates> superPolygon, String queryTime, Query featureQuery) throws ParseException {
 		List<SuperCube> toSend = new ArrayList<SuperCube>();
 		
 		NeighborDataEvent ne = null;
@@ -1317,7 +1321,7 @@ public class StorageNode implements RequestListener {
 			
 			ne = new NeighborDataEvent(toSend, reqFs, superPolygon, start+"-"+end);
 		}*/
-		ne = new NeighborDataEvent(toSend, reqFs, srcFs, superPolygon, queryTime);
+		ne = new NeighborDataEvent(toSend, reqFs, srcFs, superPolygon, queryTime, featureQuery);
 		
 		return ne;
 	}
@@ -1332,6 +1336,7 @@ public class StorageNode implements RequestListener {
 	@EventHandler
 	public void handleNeighborData(NeighborDataEvent event, EventContext context) {
 		
+		// reqFs is the file-system for which we need the neighbor data i.e fs2
 		String reqfsName = event.getReqFs();
 		String srcfsName = event.getSrcFs();
 		List<SuperCube> superCubes = event.getSupercubes();
@@ -1348,16 +1353,51 @@ public class StorageNode implements RequestListener {
 				
 				/* Now to actually reading in the blocks */
 				int totalBlocks = pao.getTotalBlocks();
+				
 				List<Path<Feature, String>> paths = pao.getPaths();
+				
 				int totalPaths = paths.size();
 				Map<Path<Feature, String>, PathFragments> pathToFragmentsMap = pao.getPathToFragmentsMap();
 				// This will be sent back in the response for the other side to use
 				Map<SuperCube, Requirements> supercubeRequirementsMap = pao.getSupercubeRequirementsMap();
 				
 				ExecutorService executor = Executors.newFixedThreadPool(Math.min(totalPaths, 2 * numCores));
+				List<NeighborDataQueryProcessor> queryProcessors = new ArrayList<NeighborDataQueryProcessor>();
+				GeoavailabilityQuery geoQuery = new GeoavailabilityQuery(event.getFeatureQuery(),
+						event.getSuperPolygon());
 				
+				/* One thread per path */
+				for(Path<Feature, String> path: paths) {
+					String geohash = GeospatialFileSystem.getPathInfo(path, 1);
+
+					/* Converts the bounds of geohash into a 1024x1024 region */
+					GeoavailabilityGrid blockGrid = new GeoavailabilityGrid(geohash, GeoHash.MAX_PRECISION * 2 / 3);
+					Bitmap queryBitmap = null;
+					if (geoQuery.getPolygon() != null)
+						queryBitmap = QueryTransform.queryToGridBitmap(geoQuery, blockGrid);
+					List<String> blocks = new ArrayList<String>(path.getPayload());
+					
+						
+					/* The blocks need to be processed part by part */
+					NeighborDataQueryProcessor qp = new NeighborDataQueryProcessor(reqFSystem, path, geoQuery, blockGrid, queryBitmap, pathToFragmentsMap.get(path));
+					queryProcessors.add(qp);
+					executor.execute(qp);
+					
+				}
+				executor.shutdown();
+				boolean status = executor.awaitTermination(10, TimeUnit.MINUTES);
 				
+				if (!status)
+					logger.log(Level.WARNING, "Executor terminated because of the specified timeout=10minutes");
 				
+				/* Handle each response and club into a response*/
+				for (NeighborDataQueryProcessor qp : queryProcessors) {
+					if (qp.getFileSize() > 0) {
+						hostFileSize += qp.getFileSize();
+						for (String resultPath : qp.getResultPaths())
+							filePaths.put(resultPath);
+					}
+				}
 				
 				
 			} else {
