@@ -1872,14 +1872,51 @@ public class GeospatialFileSystem extends FileSystem {
 		
 		Set<Integer> chunks = fragments.getChunks();
 		
-		List<String[]> records = new ArrayList<String[]>();
+		/* Records is all possible 27 chunks + one slot for the full block if only the full block is required */
+		List<List<String[]>> records = new ArrayList<List<String[]>>();
 		
+		for(int i=0; i< 28; i++) {
+			records.set(i, null);
+		}
+		
+		
+		/* Reading each blocks that may lie in a path */
 		for(String blockPath : blockPaths) {
+			
+			/* If only the whole block is needed */
+			if(fragments.isIgnore()) {
+				/* Getting all the records of this particular block */
+				List<String[]> record = getFeaturePaths(blockPath);
+				
+				if(record != null && record.size() > 0) {
+				
+					if(records.get(27) == null) {
+						
+						records.set(27, record);
+					} else {
+						
+						List<String[]> recordOld = records.get(27);
+						recordOld.addAll(record);
+						//records.set(27, record);
+					}
+				
+				}
+				continue;
+			}
+			
+			/* In case we need to process in fragments */
 			
 			byte[] blockBytes = Files.readAllBytes(Paths.get(blockPath));
 			
 			/* Record Numbers for bordering regions*/
 			BorderingProperties borderingProperties = borderMap.get(blockPath);
+			
+			
+			for(int i : chunks) {
+				
+				
+				
+			}
 			
 			String blockData = new String(blockBytes, "UTF-8");
 			String[] lines = blockData.split("\\r?\\n");

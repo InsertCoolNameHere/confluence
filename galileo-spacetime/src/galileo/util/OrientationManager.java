@@ -88,6 +88,19 @@ public class OrientationManager {
 		return finalChunks;
 		
 	}
+	 
+	public static List<Integer> getRecordsFromBlock(List<Integer> chunks, BorderingProperties bp) {
+		
+		String[] spatials = {nw,n,ne,e,c,w,sw,s,se};
+		
+		for(int i : chunks) {
+			
+			int spatialNumber = i % 9 + 1;
+			int temporalNumber = i / 9 + 1;
+			
+		}
+		
+	}
 	
 	public static void main(String arg[]) {
 		
