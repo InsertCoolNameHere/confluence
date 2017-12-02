@@ -89,22 +89,39 @@ public class OrientationManager {
 		
 	}
 	 
+	/**
+	 * This will get called only in cases where not the full block only is required
+	 * The purpose of this function is to return the part of a block this chunk number represents
+	 * 
+	 * @author sapmitra
+	 * @param chunks
+	 * @param bp
+	 * @return
+	 */
 	public static List<Integer> getRecordsFromBlock(List<Integer> chunks, BorderingProperties bp) {
 		
-		String[] spatials = {nw,n,ne,e,c,w,sw,s,se};
+		String[] spatials = {"nw","n","ne","e","c","w","sw","s","se"};
+		String[] temporals = {"start","mid","end"};
 		
 		for(int i : chunks) {
 			
-			int spatialNumber = i % 9 + 1;
-			int temporalNumber = i / 9 + 1;
+			int spatialNumber = i % 9 ;
+			System.out.println(spatials[spatialNumber]);
+			int temporalNumber = i / 9 ;
+			System.out.println(temporals[temporalNumber]);
 			
 		}
+		return null;
 		
 	}
 	
 	public static void main(String arg[]) {
 		
-		System.out.println(OrientationManager.getRequiredChunks("s-end"));
+		List<Integer> chunks = new ArrayList<>();
+		chunks.add(24);
+		
+		System.out.println(OrientationManager.getRequiredChunks("sw-end"));
+		System.out.println(OrientationManager.getRecordsFromBlock(chunks,null));
 		
 	}
 
