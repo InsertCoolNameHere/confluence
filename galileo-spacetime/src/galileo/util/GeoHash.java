@@ -1762,7 +1762,7 @@ public class GeoHash {
 	private static String getTemporalOrientation(String time1, String time2, TemporalType t1, TemporalType t2) throws ParseException {
 		
 		String[] tokens = time1.split("-");
-		String[] tokens2 = time1.split("-");
+		String[] tokens2 = time2.split("-");
 		
 		long startTime1 = getStartTimeStamp(tokens[0], tokens[1], tokens[2], tokens[3], t1);
 		long endTime1 = getEndTimeStamp(tokens[0], tokens[1], tokens[2], tokens[3], t1);
@@ -1776,10 +1776,12 @@ public class GeoHash {
 		// time2 encloses time1
 		else if(startTime1>=startTime2 && endTime1<=endTime2)
 			return "full";
+		// time2 lies before time1
 		else if(startTime1 == endTime2+1 && endTime2 < endTime1)
-			return "end";
+			return "down";
+		// time2 lies after time1
 		else if(endTime1+1 == startTime2 && startTime1 < startTime2)
-			return "start";
+			return "up";
 		
 		return "ignore";
 	}

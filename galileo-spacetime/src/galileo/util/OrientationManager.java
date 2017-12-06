@@ -3,10 +3,15 @@ package galileo.util;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.common.collect.ContiguousSet;
+import com.google.common.collect.DiscreteDomain;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Range;
+
 public class OrientationManager {
 	
 	// nw,n,ne,e,c,w,sw,s,se
-	// up, c, down
+	// down, mid, up
 	private boolean ignore = false;
 	private List<Integer> chunks = new ArrayList<Integer>();
 	
@@ -68,11 +73,11 @@ public class OrientationManager {
 		}
 		
 		
-		if("start".equals(temporal)) {
+		if("down".equals(temporal)) {
 			t.add(1);
 		} else if("full".equals(temporal)) {
 			t.add(1);t.add(2);t.add(3);
-		} else if("end".equals(temporal)) {
+		} else if("up".equals(temporal)) {
 			t.add(3);
 		} 
 		
@@ -98,21 +103,83 @@ public class OrientationManager {
 	 * @param bp
 	 * @return
 	 */
-	public static List<Integer> getRecordsFromBlock(List<Integer> chunks, BorderingProperties bp) {
+	public static List<Long> getRecordNumbersFromBlock(int chunk, BorderingProperties bp) {
 		
 		String[] spatials = {"nw","n","ne","e","c","w","sw","s","se"};
-		String[] temporals = {"start","mid","end"};
-		
-		for(int i : chunks) {
+		String[] temporals = {"down","mid","up"};
 			
-			int spatialNumber = i % 9 ;
-			System.out.println(spatials[spatialNumber]);
-			int temporalNumber = i / 9 ;
-			System.out.println(temporals[temporalNumber]);
+		int spatialNumber = chunk % 9 ;
+		System.out.println(spatials[spatialNumber]);
+		List<Long> spatialRecordNums = getSpecificRecords(spatials[spatialNumber], 1, bp);
+		
+		
+		int temporalNumber = chunk / 9 ;
+		System.out.println(temporals[temporalNumber]);
+		List<Long> temporalRecordNums = getSpecificRecords(temporals[temporalNumber], 2, bp);
+			
+		if(spatialRecordNums == null || temporalRecordNums == null || spatialRecordNums.size() <= 0 || temporalRecordNums.size() <= 0 )
+			return null;
+		
+		spatialRecordNums.retainAll(temporalRecordNums);
+		return spatialRecordNums;
+		
+	}
+	
+	public static List<Long> getSpecificRecords(String dir, int type, BorderingProperties bp) {
+		/* For spatial */
+		if(type == 1) {
+			
+			if(dir.equals("nw")) {
+				return bp.getNwEntries();
+			} else if(dir.equals("n")) {
+				return bp.getNorthEntries();
+			} else if(dir.equals("ne")) {
+				return bp.getNeEntries();
+			} else if(dir.equals("e")) {
+				return bp.getEastEntries();
+			} else if(dir.equals("w")) {
+				return bp.getWestEntries();
+			} else if(dir.equals("sw")) {
+				return bp.getSwEntries();
+			} else if(dir.equals("s")) {
+				return bp.getSouthEntries();
+			} else if(dir.equals("se")) {
+				return bp.getSeEntries();
+			} else if(dir.equals("c")) {
+				long totalRecords = bp.getTotalRecords();
+				
+				List<Long> allEntries = new ArrayList<Long>(ContiguousSet.create(Range.closed(1l, totalRecords), DiscreteDomain.longs()));
+				allEntries.removeAll(bp.getNorthEntries());
+				allEntries.removeAll(bp.getSouthEntries());
+				allEntries.removeAll(bp.getEastEntries());
+				allEntries.removeAll(bp.getWestEntries());
+				
+				return allEntries;
+			} 
+			
 			
 		}
-		return null;
 		
+		/* For Temporal */
+		/* Remember the "end" part of a time span is referred to as "up" in Bordering properties
+		 * because it is actually the upper timestamp */
+		
+		if(type == 2) {
+			if(dir.equals("down")) {
+				return bp.getDownTimeEntries();
+			} else if(dir.equals("up")) {
+				return bp.getUpTimeEntries();
+			} else if(dir.equals("mid")) {
+				long totalRecords = bp.getTotalRecords();
+				List<Long> allEntries = new ArrayList<Long>(ContiguousSet.create(Range.closed(1l, totalRecords), DiscreteDomain.longs()));
+				allEntries.removeAll(bp.getUpTimeEntries());
+				allEntries.removeAll(bp.getDownTimeEntries());
+				return allEntries;
+			}
+			
+		}
+		
+		return null;
 	}
 	
 	public static void main(String arg[]) {
@@ -121,7 +188,20 @@ public class OrientationManager {
 		chunks.add(24);
 		
 		System.out.println(OrientationManager.getRequiredChunks("sw-end"));
-		System.out.println(OrientationManager.getRecordsFromBlock(chunks,null));
+		System.out.println(OrientationManager.getRecordNumbersFromBlock(24,null));
+		
+		
+		List<Long> allEntries = new ArrayList<Long>(ContiguousSet.create(Range.closed(1l, 10l), DiscreteDomain.longs()));
+		System.out.println(allEntries);
+		List<Long> aa = new ArrayList<Long>();
+		aa.add(1l);
+		aa.add(7l);
+		
+		allEntries.removeAll(aa);
+		System.out.println(allEntries);
+		
+		
+		
 		
 	}
 

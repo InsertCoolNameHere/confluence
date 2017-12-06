@@ -10,6 +10,7 @@ import galileo.serialization.SerializationOutputStream;
 
 public class NeighborDataResponse implements Event {
 	private Block[] blocks;
+	
 
 	public NeighborDataResponse(Block[] blocks) {
 		this.blocks = blocks;

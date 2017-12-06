@@ -1375,10 +1375,9 @@ public class StorageNode implements RequestListener {
 					Bitmap queryBitmap = null;
 					if (geoQuery.getPolygon() != null)
 						queryBitmap = QueryTransform.queryToGridBitmap(geoQuery, blockGrid);
-					List<String> blocks = new ArrayList<String>(path.getPayload());
-					
 						
 					/* The blocks need to be processed part by part */
+					/* Returns a 28 part list for all fragmented records in a single path */
 					NeighborDataQueryProcessor qp = new NeighborDataQueryProcessor(reqFSystem, path, geoQuery, blockGrid, queryBitmap, pathToFragmentsMap.get(path));
 					queryProcessors.add(qp);
 					executor.execute(qp);
@@ -1388,15 +1387,16 @@ public class StorageNode implements RequestListener {
 				boolean status = executor.awaitTermination(10, TimeUnit.MINUTES);
 				
 				if (!status)
-					logger.log(Level.WARNING, "Executor terminated because of the specified timeout=10minutes");
+					logger.log(Level.WARNING, "handleNeighborData:Executor terminated because of the specified timeout=10minutes");
 				
 				/* Handle each response and club into a response*/
+				/* One NeighborDataQueryProcessor got spawned per path */
 				for (NeighborDataQueryProcessor qp : queryProcessors) {
-					if (qp.getFileSize() > 0) {
-						hostFileSize += qp.getFileSize();
-						for (String resultPath : qp.getResultPaths())
-							filePaths.put(resultPath);
-					}
+					/* These are all the fragmented records for a single path*/
+					Path<Feature, String> path = qp.getPath();
+					List<List<String[]>> resultRecordLists = qp.getResultRecordLists();
+					// supercubeRequirementsMap contains each supercube and what it needs from each path
+					
 				}
 				
 				
@@ -1416,6 +1416,33 @@ public class StorageNode implements RequestListener {
 		// Supercube has central time and geohash, so finding neighbor wont be a problem
 		
 		
+	}
+	
+	/**
+	 * 
+	 * @author sapmitra
+	 * @param path
+	 * @param resultRecordLists : a list of 28 lists
+	 * @return
+	 */
+	private JSONObject getNeighborResultsInJSON(Path<Feature, String> path, List<List<String[]>> resultRecordLists) {
+		
+		
+		for(List<String[]> records: resultRecordLists) {
+			JSONArray recordsJSON = new JSONArray();
+			if(records == null) {
+				recordsJSON.put("");
+			}
+			for(String[] record: records) {
+				
+				List<String> myList = Arrays.asList(record);
+				String recStr = myList.toString();
+				recordsJSON.put(recStr.substring(1, recStr.length() - 1));
+			}
+		}
+		
+		
+		return null;
 	}
 	
 	private boolean hasCube(List<Integer> list, int scb) {

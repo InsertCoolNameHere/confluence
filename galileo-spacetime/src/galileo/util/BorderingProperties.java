@@ -14,6 +14,7 @@ public class BorderingProperties {
 	private String nw;
 	private String sw;
 	
+	/* Remember Up refers to upper time, so essentially the end part of this time span */
 	private long up1;
 	private long up2;
 	private long down1;

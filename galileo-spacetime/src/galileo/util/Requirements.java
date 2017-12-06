@@ -8,6 +8,7 @@ import galileo.graph.Path;
 
 public class Requirements {
 	
+	private int pathIndex;
 	private Path<Feature, String> path;
 	private List<Integer> chunks = new ArrayList<Integer>();
 	
@@ -27,6 +28,14 @@ public class Requirements {
 	}
 	public void setChunks(List<Integer> chunks) {
 		this.chunks = chunks;
+	}
+
+	public int getPathIndex() {
+		return pathIndex;
+	}
+
+	public void setPathIndex(int pathIndex) {
+		this.pathIndex = pathIndex;
 	}
 	
 

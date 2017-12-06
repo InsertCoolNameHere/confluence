@@ -74,6 +74,7 @@ import galileo.dataset.feature.Feature;
 import galileo.dataset.feature.FeatureSet;
 import galileo.dataset.feature.FeatureType;
 import galileo.dht.GroupInfo;
+import galileo.dht.NeighborDataParallelQueryProcessor;
 import galileo.dht.NetworkInfo;
 import galileo.dht.NodeInfo;
 import galileo.dht.PartitionException;
@@ -599,7 +600,7 @@ public class GeospatialFileSystem extends FileSystem {
 		
 		/* ADDING METADATA TO METADATA GRAPH */
 		if (!newLine) {
-			/* Creating a bordering property for this block with alist of all beighboring
+			/* Creating a bordering property for this block with alist of all neighboring
 			 * geohashes and times */
 			BorderingProperties bp = GeoHash.getBorderingGeohashHeuristic(geohash, spatialUncertaintyPrecision, temporalUncertaintyPrecision , meta.getTemporalProperties(), this.temporalType);
 			borderMap.put(blockPath, bp);
@@ -1191,6 +1192,8 @@ public class GeospatialFileSystem extends FileSystem {
 	
 
 	/**
+	 * This method just returns the Paths with Orientations
+	 * No actual record is searched here
 	 * 
 	 * @author sapmitra
 	 * @param superCubes
@@ -1323,8 +1326,6 @@ public class GeospatialFileSystem extends FileSystem {
 			
 			for (Path<Feature, String> path : paths) {
 				
-				int id = paths.indexOf(path);
-				
 				String fs1PathTime = sc.getCentralTime();
 				String fs1PathSpace = sc.getCentralGeohash();
 				
@@ -1370,10 +1371,11 @@ public class GeospatialFileSystem extends FileSystem {
 					}
 					// handle supercube requirements map
 					
-					supercubeRequirementsMap.put(sc, new Requirements(path, fragments));
+					supercubeRequirementsMap.put(sc, new Requirements(path, paths.indexOf(path), fragments));
 					
 					
 				} else {
+					supercubeRequirementsMap.put(sc, null);
 					continue;
 				}
 
@@ -1385,7 +1387,6 @@ public class GeospatialFileSystem extends FileSystem {
 		for (Path<Feature, String> path : paths) {
 			totalBlocks+=path.getPayload().size();
 		}
-		
 		
 		if(totalBlocks > 0) {
 			
@@ -1870,7 +1871,7 @@ public class GeospatialFileSystem extends FileSystem {
 	 */
 	private List<List<String[]>> getFeaturePathsFromBlockSet(List<String> blockPaths, PathFragments fragments) throws IOException {
 		
-		Set<Integer> chunks = fragments.getChunks();
+		List<Integer> chunks = new ArrayList<Integer>(fragments.getChunks());
 		
 		/* Records is all possible 27 chunks + one slot for the full block if only the full block is required */
 		List<List<String[]>> records = new ArrayList<List<String[]>>();
@@ -1907,22 +1908,39 @@ public class GeospatialFileSystem extends FileSystem {
 			/* In case we need to process in fragments */
 			
 			byte[] blockBytes = Files.readAllBytes(Paths.get(blockPath));
+			String blockData = new String(blockBytes, "UTF-8");
+			String[] lines = blockData.split("\\r?\\n");
+			int splitLimit = this.featureList.size();
 			
-			/* Record Numbers for bordering regions*/
 			BorderingProperties borderingProperties = borderMap.get(blockPath);
 			
-			
+			/* Gets the actual records numbers needed in a 28 length list of list representing each fragment*/
 			for(int i : chunks) {
+				List<Long> recordsToRead = OrientationManager.getRecordNumbersFromBlock(i, borderingProperties);
 				
+				if(recordsToRead == null || recordsToRead.size() == 0)
+					continue;
+				
+				List<String[]> paths = new ArrayList<String[]>();
+				
+				for (long l : recordsToRead) {
+					String line = lines[(int)l];
+					paths.add(line.split(",", splitLimit));
+				}
+				
+				if(records.get(i) == null) {
+					
+					records.set(i, paths);
+				} else {
+					
+					List<String[]> recordOld = records.get(27);
+					recordOld.addAll(paths);
+					//records.set(27, record);
+				}
 				
 				
 			}
 			
-			String blockData = new String(blockBytes, "UTF-8");
-			String[] lines = blockData.split("\\r?\\n");
-			int splitLimit = this.featureList.size();
-			for (String line : lines)
-				records.add(line.split(",", splitLimit));
 		}
 		return records;
 	}
@@ -2056,6 +2074,7 @@ public class GeospatialFileSystem extends FileSystem {
 	
 	
 	/**
+	 * This should return all records that match in a list of list with 28 entries, some of which may be null
 	 * 
 	 * @author sapmitra
 	 * @param blocks : link to all blocks in a path
@@ -2067,74 +2086,114 @@ public class GeospatialFileSystem extends FileSystem {
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public List<List<String>> queryFragments(List<String> blocks, GeoavailabilityQuery geoQuery, GeoavailabilityGrid grid, Bitmap queryBitmap, PathFragments fragments) 
+	public List<String> queryFragments(List<String> blocks, GeoavailabilityQuery geoQuery, GeoavailabilityGrid grid, Bitmap queryBitmap, PathFragments fragments) 
 			throws IOException, InterruptedException {
-		List<String> resultFiles = new ArrayList<>();
 		
 		/* Represents all possible fragments. Only the fields representing the required fragments will be populated */
 		List<List<String[]>> featurePaths = new ArrayList<List<String[]>>();
 		
+		/* Each string in this list represents a fragment of a path */
+		List<String> recordFragmentsPerPath = new ArrayList<String>();
+		
 		for(int i=0; i < 28; i++) {
 			
 			featurePaths.set(i, null);
+			recordFragmentsPerPath.set(i, "");
 			
 		}
+		
+		// THIS READS THE ACTUAL BLOCKS
+		// RETURNS ALL RECORDS FOR EACH FRAGMENT IN A LIST OF 28
 		
 		boolean skipGridProcessing = false;
 		if (geoQuery.getPolygon() != null && geoQuery.getQuery() != null) {
 			/* If polygon complete encompasses geohash */
 			skipGridProcessing = isGridInsidePolygon(grid, geoQuery);
 			
-			// THIS READS THE ACTUAL BLOCK
-			// Creates a path graph from block data
 			featurePaths = getFeaturePathsFromBlockSet(blocks, fragments);
 		} else if (geoQuery.getPolygon() != null) {
 			/* If grid lies completely inside polygon */
 			skipGridProcessing = isGridInsidePolygon(grid, geoQuery);
 			if (!skipGridProcessing)
-				featurePaths = getFeaturePaths(blockPath);
+				featurePaths = getFeaturePathsFromBlockSet(blocks, fragments);
 		} else if (geoQuery.getQuery() != null) {
-			featurePaths = getFeaturePaths(blockPath);
-		} else {
-			resultFiles.add(blockPath);
-			return resultFiles;
-		}
-
-		if (featurePaths == null) {
-			resultFiles.add(blockPath);
-			return resultFiles;
-		}
-
-		queryBitmap = skipGridProcessing ? null : queryBitmap;
-		int size = featurePaths.size();
-		int partition = java.lang.Math.max(size / numCores, MIN_GRID_POINTS);
-		int parallelism = java.lang.Math.min(size / partition, numCores);
-		if (parallelism > 1) {
-			ExecutorService executor = Executors.newFixedThreadPool(parallelism);
-			List<ParallelQueryProcessor> queryProcessors = new ArrayList<>();
-			for (int i = 0; i < parallelism; i++) {
-				int from = i * partition;
-				int to = (i + 1 != parallelism) ? (i + 1) * partition : size;
-				List<String[]> subset = new ArrayList<>(featurePaths.subList(from, to));
-				ParallelQueryProcessor pqp = new ParallelQueryProcessor(subset, geoQuery.getQuery(), grid, queryBitmap,
-						pathPrefix + "-" + i);
-				queryProcessors.add(pqp);
-				executor.execute(pqp);
+			featurePaths = getFeaturePathsFromBlockSet(blocks, fragments);
+		} 
+		
+		
+		boolean fullyEmpty = true;
+		int parallelism = 0;
+		
+		for(int i=0; i < 28; i++) {
+			
+			if(featurePaths.get(i) != null) {
+				fullyEmpty = false;
+				parallelism++;
 			}
-			featurePaths.clear();
-			executor.shutdown();
-			executor.awaitTermination(10, TimeUnit.MINUTES);
-			for (ParallelQueryProcessor pqp : queryProcessors)
-				if (pqp.getStoragePath() != null)
-					resultFiles.add(pqp.getStoragePath());
-		} else {
-			ParallelQueryProcessor pqp = new ParallelQueryProcessor(featurePaths, geoQuery.getQuery(), grid,
-					queryBitmap, pathPrefix);
-			pqp.run(); // to avoid another thread creation
-			if (pqp.getStoragePath() != null)
-				resultFiles.add(pqp.getStoragePath());
+			
 		}
+		
+		/* No matching records found. No need to query */
+		if(fullyEmpty) {
+			return null;
+		}
+		/* ALL THE RECORDS TO BE QUERIED ARE NOW INSIDE featurePaths */
+		
+		// FURTHER FILTERING OF featurePaths
+		
+		queryBitmap = skipGridProcessing ? null : queryBitmap;
+		
+		if (parallelism > 0) {
+			ExecutorService executor = Executors.newFixedThreadPool(parallelism);
+			List<NeighborDataParallelQueryProcessor> queryProcessors = new ArrayList<>();
+			int i=0;
+			for (List<String[]> subset: featurePaths) {
+				if(subset != null) {
+					
+					NeighborDataParallelQueryProcessor pqp = new NeighborDataParallelQueryProcessor(this, subset, geoQuery.getQuery(), grid, queryBitmap, i);
+					
+					queryProcessors.add(pqp);
+					executor.execute(pqp);
+				}
+				i++;
+			}
+			
+			executor.shutdown();
+			boolean status = executor.awaitTermination(10, TimeUnit.MINUTES);
+			if (!status)
+				logger.log(Level.WARNING, "queryFragments: Executor terminated because of the specified timeout=10minutes");
+			
+			fullyEmpty = true;
+			for(NeighborDataParallelQueryProcessor nqp : queryProcessors) {
+				
+				if(nqp.getRecordsStringRepresentation().length() > 0) {
+					fullyEmpty = false;
+					int index = nqp.getFragNum();
+					recordFragmentsPerPath.add(index, nqp.getRecordsStringRepresentation());
+				}
+				if(fullyEmpty) {
+					return null;
+				}
+			}
+			
+		} 
 
-		return resultFiles;
+		return recordFragmentsPerPath;
+	}
+
+	public List<Pair<String, FeatureType>> getFeatureList() {
+		return featureList;
+	}
+
+	public void setFeatureList(List<Pair<String, FeatureType>> featureList) {
+		this.featureList = featureList;
+	}
+
+	public SpatialHint getSpatialHint() {
+		return spatialHint;
+	}
+
+	public void setSpatialHint(SpatialHint spatialHint) {
+		this.spatialHint = spatialHint;
 	}
 }

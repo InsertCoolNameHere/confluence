@@ -15,6 +15,7 @@ import galileo.fs.GeospatialFileSystem;
 import galileo.graph.Path;
 import galileo.util.PathFragments;
 
+/* This handles a single path */
 public class NeighborDataQueryProcessor implements Runnable{
 	
 	private static final Logger logger = Logger.getLogger("galileo");
@@ -26,7 +27,9 @@ public class NeighborDataQueryProcessor implements Runnable{
 	private GeoavailabilityGrid grid;
 	private GeospatialFileSystem gfs;
 	private Bitmap queryBitmap;
-	private List<List<String>> resultPaths;
+	
+	/* This contains the actual records returned from the query */
+	private List<String> resultRecordLists;
 	private long fileSize;
 	private PathFragments pathFragments;
 	
@@ -51,13 +54,30 @@ public class NeighborDataQueryProcessor implements Runnable{
 	public void run() {
 		
 		try {
-			this.resultPaths = this.gfs.queryFragments(this.blocks, this.geoQuery, this.grid, this.queryBitmap, this.pathFragments);
+			/* This thread is created one for each path */
+			this.resultRecordLists = this.gfs.queryFragments(this.blocks, this.geoQuery, this.grid, this.queryBitmap, this.pathFragments);
 		} catch (IOException | InterruptedException e) {
 			// TODO Auto-generated catch block
 			logger.log(Level.SEVERE, "Something went wrong while querying FS2 for neighbor block. No results obtained.\n" + e.getMessage());
 		}
 		
 		
+	}
+
+	public List<String> getResultRecordLists() {
+		return resultRecordLists;
+	}
+
+	public void setResultRecordLists(List<String> resultRecordLists) {
+		this.resultRecordLists = resultRecordLists;
+	}
+
+	public Path<Feature, String> getPath() {
+		return path;
+	}
+
+	public void setPath(Path<Feature, String> path) {
+		this.path = path;
 	}
 	
 	
