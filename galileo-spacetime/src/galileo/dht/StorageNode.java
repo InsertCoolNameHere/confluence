@@ -1117,7 +1117,7 @@ public class StorageNode implements RequestListener {
 		String fsName2 = event.getFsname2();
 		GeospatialFileSystem fs2 = fsMap.get(fsName2);
 
-		NeighborDataResponse response = new NeighborDataResponse();
+		DataIntegrationResponse response = new DataIntegrationResponse();
 
 		try {
 			if (fs1 != null && fs2 != null) {
@@ -1145,7 +1145,7 @@ public class StorageNode implements RequestListener {
 				Map<Integer, Integer> superCubeNumNodesMap = new HashMap<Integer, Integer>();
 
 				Partitioner<Metadata> partitioner = fs2.getPartitioner();
-
+				Map<String, BorderingProperties> borderMap = fs1.getBorderMap();
 				for (Path<Feature, String> path : paths1) {
 					// All the blocks under a certain directory
 					// There can be multiple blocks under the same directory as long as their names are different
@@ -1163,7 +1163,7 @@ public class StorageNode implements RequestListener {
 					String cGeo = sc.getCentralGeohash();
 
 					// Get the neighbors geohash, cgeo, that actually are needed, along with the centralGeohash
-					String[] validNeighbors = GeoHash.checkForNeighborValidity(queryPolygon, fs1.getSpatialUncertaintyPrecision(), cGeo);
+					String[] validNeighbors = GeoHash.checkForNeighborValidity(queryPolygon, fs1.getSpatialUncertaintyPrecision(), cGeo,borderMap, blocks);
 
 					List<Date> dates = null;
 					List<TemporalProperties> tprops = null;
@@ -1185,8 +1185,47 @@ public class StorageNode implements RequestListener {
 						 * to check
 						 */
 						// getting all dates that may lie between two timestamps
+						
+						/* A string of two timestamps */
+						String timeString = sc.getTime();
+						
+						boolean hasUp = false;
+						boolean hasDown = false;
+						for(String block : blocks) {
+							
+							BorderingProperties bpr = borderMap.get(block);
+							if(hasUp && hasDown) {
+								break;
+							}
+							if(bpr.getUpTimeEntries().size() > 0) {
+								hasUp = true;
+							}
+							if(bpr.getDownTimeEntries().size() > 0) {
+								hasDown = true;
+							}
+						}
+						
+						if(!hasUp || ! hasDown) {
+							String[] tokens = sc.getCentralTime().split("-");
+							String[] timestamps = timeString.split("-");
+							if(!hasUp) {
+								long end = GeoHash.getEndTimeStamp(tokens[0], tokens[1], tokens[2], tokens[3], fs1.getTemporalType());
+								timestamps[1] = String.valueOf(end);
+								
+							}
+							if(!hasDown) {
+								
+								long start = GeoHash.getStartTimeStamp(tokens[0], tokens[1], tokens[2], tokens[3], fs1.getTemporalType());
+								timestamps[0] = String.valueOf(start);
+								
+							}
+							timeString = timestamps[0] + "-" + timestamps[1];
+						}
+						
+						
+								
 						dates = new ArrayList<Date>();
-						dates = SuperCube.handleTemporalRangeForEachBlock(sc.getTime());
+						dates = SuperCube.handleTemporalRangeForEachBlock(timeString);
 
 						tprops = new ArrayList<TemporalProperties>();
 
@@ -1237,32 +1276,34 @@ public class StorageNode implements RequestListener {
 				destinations = new ArrayList<NodeInfo>(setNodes);
 
 				List<NeighborDataEvent> individualRequests = new ArrayList<NeighborDataEvent>();
-				List<NeighborDataEvent> internalEvents = new ArrayList<NeighborDataEvent>();
+				//List<NeighborDataEvent> internalEvents = new ArrayList<NeighborDataEvent>();
 
 				// Before sending out requests to each node, catch the one
 				// directed to this node and save it for later.
 				for (NodeInfo n : destinations) {
 					
 					// See if this is the current node or not
-					boolean thisNode = checkForThisNode(n);
+					//boolean thisNode = checkForThisNode(n);
 
 					String nodeKey = n.getHostname() + "-" + n.getPort();
 					List<Integer> cubeIndices = nodeToCubeMap.get(nodeKey);
-					int uncertaintyPrecision = fs1.getTemporalUncertaintyPrecision() > fs2.getTemporalUncertaintyPrecision() ? 
-							fs2.getTemporalUncertaintyPrecision() : fs1.getTemporalUncertaintyPrecision();
+					
+					/*int uncertaintyPrecision = fs1.getTemporalUncertaintyPrecision() > fs2.getTemporalUncertaintyPrecision() ? 
+							fs2.getTemporalUncertaintyPrecision() : fs1.getTemporalUncertaintyPrecision();*/
+					
 					NeighborDataEvent nEvent = createNeighborRequestPerNode(cubeIndices, allCubes, fsName2,fsName1, superPolygon, event.getTime(), event.getFeatureQuery());
 
-					if (thisNode) {
+					/*if (thisNode) {
 						internalEvents.add(nEvent);
 						destinations.remove(n);
 						continue;
-					}
+					}*/
 
 					individualRequests.add(nEvent);
 				}
 
-				NeighborRequestHandler rikiHandler = new NeighborRequestHandler(internalEvents, individualRequests,
-						new ArrayList<NetworkDestination>(destinations), context, this);
+				NeighborRequestHandler rikiHandler = new NeighborRequestHandler(null, individualRequests, new ArrayList<NetworkDestination>(destinations), context, this,
+						allCubes, superCubeNumNodesMap);
 				rikiHandler.handleRequest(response);
 
 			}
@@ -1327,6 +1368,12 @@ public class StorageNode implements RequestListener {
 	}
 	
 	
+	private NeighborDataResponse createCubeRequirements(Map<SuperCube, List<Requirements>> supercubeRequirementsMap, int totalPaths, String nodeString) {
+		
+		NeighborDataResponse rsp = new NeighborDataResponse(supercubeRequirementsMap, totalPaths, nodeString);
+		return rsp;
+	}
+	
 	/**
 	 * This is a node returning FS2 data to a node with FS1 data that needs it.
 	 * @author sapmitra
@@ -1335,6 +1382,8 @@ public class StorageNode implements RequestListener {
 	 */
 	@EventHandler
 	public void handleNeighborData(NeighborDataEvent event, EventContext context) {
+		
+		String nodeString = hostname + "-" + port;
 		
 		// reqFs is the file-system for which we need the neighbor data i.e fs2
 		String reqfsName = event.getReqFs();
@@ -1359,7 +1408,12 @@ public class StorageNode implements RequestListener {
 				int totalPaths = paths.size();
 				Map<Path<Feature, String>, PathFragments> pathToFragmentsMap = pao.getPathToFragmentsMap();
 				// This will be sent back in the response for the other side to use
-				Map<SuperCube, Requirements> supercubeRequirementsMap = pao.getSupercubeRequirementsMap();
+				Map<SuperCube, List<Requirements>> supercubeRequirementsMap = pao.getSupercubeRequirementsMap();
+				
+				/* SEND BACK SUPERCUBE TO REQUIREMENTS MAP IMMEDIATELY */
+				NeighborDataResponse controlMessage = createCubeRequirements(supercubeRequirementsMap, pao.getPaths().size(), nodeString);
+				context.sendReply(controlMessage);
+				
 				
 				ExecutorService executor = Executors.newFixedThreadPool(Math.min(totalPaths, 2 * numCores));
 				List<NeighborDataQueryProcessor> queryProcessors = new ArrayList<NeighborDataQueryProcessor>();
@@ -1367,9 +1421,10 @@ public class StorageNode implements RequestListener {
 						event.getSuperPolygon());
 				
 				/* One thread per path */
+				/* Keep track of total number of paths, so that the source knows when all the paths have been received */
 				for(Path<Feature, String> path: paths) {
 					String geohash = GeospatialFileSystem.getPathInfo(path, 1);
-
+					int pathIndex = paths.indexOf(path);
 					/* Converts the bounds of geohash into a 1024x1024 region */
 					GeoavailabilityGrid blockGrid = new GeoavailabilityGrid(geohash, GeoHash.MAX_PRECISION * 2 / 3);
 					Bitmap queryBitmap = null;
@@ -1378,7 +1433,7 @@ public class StorageNode implements RequestListener {
 						
 					/* The blocks need to be processed part by part */
 					/* Returns a 28 part list for all fragmented records in a single path */
-					NeighborDataQueryProcessor qp = new NeighborDataQueryProcessor(reqFSystem, path, geoQuery, blockGrid, queryBitmap, pathToFragmentsMap.get(path));
+					NeighborDataQueryProcessor qp = new NeighborDataQueryProcessor(reqFSystem, path, geoQuery, blockGrid, queryBitmap, pathToFragmentsMap.get(path), context, pathIndex, nodeString);
 					queryProcessors.add(qp);
 					executor.execute(qp);
 					
@@ -1388,16 +1443,6 @@ public class StorageNode implements RequestListener {
 				
 				if (!status)
 					logger.log(Level.WARNING, "handleNeighborData:Executor terminated because of the specified timeout=10minutes");
-				
-				/* Handle each response and club into a response*/
-				/* One NeighborDataQueryProcessor got spawned per path */
-				for (NeighborDataQueryProcessor qp : queryProcessors) {
-					/* These are all the fragmented records for a single path*/
-					Path<Feature, String> path = qp.getPath();
-					List<List<String[]>> resultRecordLists = qp.getResultRecordLists();
-					// supercubeRequirementsMap contains each supercube and what it needs from each path
-					
-				}
 				
 				
 			} else {

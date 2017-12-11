@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TimeZone;
@@ -1019,9 +1020,11 @@ public class GeoHash {
 		.      .
 		.      .
 		d------c
+	 * @param blocks 
+	 * @param borderMap 
 	 * @return
 	 */
-	public static String[] checkForNeighborValidity(List<Coordinates> polygon, int precision, String cGeoString ) {
+	public static String[] checkForNeighborValidity(List<Coordinates> polygon, int precision, String cGeoString, Map<String, BorderingProperties> borderMap, List<String> blocks ) {
 		List<String> ignore = new ArrayList<String>();
 		
 		BorderingProperties bp = getBorderingGeohashHeuristic(cGeoString, precision, 0, null, null);
@@ -1158,7 +1161,68 @@ public class GeoHash {
 			}
 		}
 		
+		
+		/* Looking at bordering properties */
+		/* In bordering properties, during storage, N & nw are disjoint areas */
+		
+		List<String> ignoreBorder = new ArrayList<String>(Arrays.asList("n","s","e","w","ne","nw","se","sw"));
+		
+		for(String block : blocks) {
+			
+			if(ignoreBorder.size() > 0) {
+				
+				BorderingProperties bpr = borderMap.get(block);
+				
+				if(ignoreBorder.contains("n")) {
+					if(bpr.getNorthEntries().size() > 0) {
+						ignoreBorder.remove("n");
+					}
+				}
+				if(ignoreBorder.contains("s")) {
+					if(bpr.getSouthEntries().size() > 0) {
+						ignoreBorder.remove("s");
+					}
+				}
+				if(ignoreBorder.contains("e")) {
+					if(bpr.getEastEntries().size() > 0) {
+						ignoreBorder.remove("e");
+					}
+				}
+				if(ignoreBorder.contains("w")) {
+					if(bpr.getWestEntries().size() > 0) {
+						ignoreBorder.remove("w");
+					}
+				}
+				if(ignoreBorder.contains("ne")) {
+					if(bpr.getNeEntries().size() > 0) {
+						ignoreBorder.remove("ne");
+					}
+				}
+				if(ignoreBorder.contains("nw")) {
+					if(bpr.getNwEntries().size() > 0) {
+						ignoreBorder.remove("nw");
+					}
+				}
+				if(ignoreBorder.contains("se")) {
+					if(bpr.getSeEntries().size() > 0) {
+						ignoreBorder.remove("se");
+					}
+				}
+				if(ignoreBorder.contains("sw")) {
+					if(bpr.getSwEntries().size() > 0) {
+						ignoreBorder.remove("sw");
+					}
+				}
+			
+			}
+			
+			
+		}
+		ignore.addAll(ignoreBorder);
+		
+		
 		Set<String> ignoring = new HashSet<String>(ignore);
+		
 		
 		List<String> valids = new ArrayList<String>(Arrays.asList("n","s","e","w","ne","nw","se","sw"));
 		
@@ -1176,6 +1240,8 @@ public class GeoHash {
 		
 		return validArray;
 	}
+	
+	
 	
 	
 	/**
@@ -1347,7 +1413,7 @@ public class GeoHash {
 		cl.add(c4);
 		//cl.add(c5);
 		
-		String[] ss = GeoHash.checkForNeighborValidity(cl, 4, "9x");
+		String[] ss = GeoHash.checkForNeighborValidity(cl, 4, "9x", null, null);
 		
 		for(String s: ss) {
 			System.out.println(s);

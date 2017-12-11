@@ -95,6 +95,14 @@ public class SerializationInputStream extends DataInputStream {
             collection.add(str);
         }
     }
+    public void readIntegerCollection(Collection<Integer> collection)
+    	    throws IOException {
+    	        int size = readInt();
+    	        for (int i = 0; i < size; ++i) {
+    	        	int cubeId = readInt();
+    	            collection.add(cubeId);
+    	        }
+    	    }
     
     public void readStringMap(Map<String, String> map) throws IOException{
     	int size = readInt();

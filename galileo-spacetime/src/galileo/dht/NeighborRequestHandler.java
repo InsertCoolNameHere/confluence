@@ -19,6 +19,7 @@ import org.json.JSONObject;
 import galileo.comm.GalileoEventMap;
 import galileo.comm.MetadataResponse;
 import galileo.comm.NeighborDataEvent;
+import galileo.comm.NeighborDataResponse;
 import galileo.comm.QueryResponse;
 import galileo.event.BasicEventWrapper;
 import galileo.event.Event;
@@ -29,12 +30,14 @@ import galileo.net.MessageListener;
 import galileo.net.NetworkDestination;
 import galileo.net.RequestListener;
 import galileo.serialization.SerializationException;
+import galileo.util.Requirements;
+import galileo.util.SuperCube;
 
 /**
  * This class will collect the responses from all the nodes of galileo and then
  * transfers the result to the listener. Used by the {@link StorageNode} class.
  * 
- * @author kachikaran
+ * @author sapmitra
  */
 public class NeighborRequestHandler implements MessageListener {
 
@@ -42,7 +45,7 @@ public class NeighborRequestHandler implements MessageListener {
 	private GalileoEventMap eventMap;
 	private BasicEventWrapper eventWrapper;
 	private ClientMessageRouter router;
-	private AtomicInteger expectedResponses;
+	private AtomicInteger expectedControlMessages;
 	private Collection<NetworkDestination> nodes;
 	private List<NeighborDataEvent> individualRequests;
 	private List<NeighborDataEvent> internalEvents;
@@ -51,12 +54,27 @@ public class NeighborRequestHandler implements MessageListener {
 	private RequestListener requestListener;
 	private Event response;
 	private long elapsedTime;
+	private List<SuperCube> allCubes;
+	
+	/* This helps track the nuner of control messages coming in */
+	private Map<Integer, Integer> superCubeNumNodesMap;
+	
+	/* Keeping track of how many data messages are coming from a neighbor node */
+	private Map<String, Integer> nodeToNumberOfDataMessagesMap;
+	/* The values are strings like node+pathid */
+	/* Keeping track of which paths are needed by a particular supercube */
+	private Map<Integer, List<String>> supercubeToExpectedPathsMap;
+	
+	private Map<Integer, List<LocalRequirements>> supercubeToRequirementsMap;
+	private Map<Integer, List<String>> pathIdToFragmentDataMap;
+	
 
-	public NeighborRequestHandler(List<NeighborDataEvent> internalEvents, List<NeighborDataEvent> individualRequests, Collection<NetworkDestination> nodes, EventContext clientContext,
-			RequestListener listener) throws IOException {
-		this.nodes = nodes;
+	public NeighborRequestHandler(List<NeighborDataEvent> internalEvents, List<NeighborDataEvent> individualRequests, Collection<NetworkDestination> destinations, EventContext clientContext,
+			RequestListener listener, List<SuperCube> allCubes, Map<Integer, Integer> superCubeNumNodesMap) throws IOException {
+		this.nodes = destinations;
 		this.clientContext = clientContext;
 		this.requestListener = listener;
+		this.allCubes = allCubes;
 
 		this.internalEvents = internalEvents;
 		this.individualRequests = individualRequests;
@@ -65,7 +83,11 @@ public class NeighborRequestHandler implements MessageListener {
 		this.responses = new ArrayList<GalileoMessage>();
 		this.eventMap = new GalileoEventMap();
 		this.eventWrapper = new BasicEventWrapper(this.eventMap);
-		this.expectedResponses = new AtomicInteger(this.nodes.size());
+		this.expectedControlMessages = new AtomicInteger(this.nodes.size());
+		
+		this.supercubeToExpectedPathsMap = new HashMap<Integer, List<String>>();
+		this.nodeToNumberOfDataMessagesMap = new HashMap<String, Integer>();
+		this.supercubeToRequirementsMap = new HashMap<Integer, List<LocalRequirements>>();
 	}
 
 	public void closeRequest() {
@@ -298,12 +320,149 @@ public class NeighborRequestHandler implements MessageListener {
 		}
 		this.requestListener.onRequestCompleted(this.response, clientContext, this);
 	}
+	
+	/* CONTROL MESSAGE */
+	private List<Requirements> handleRequirementsOnControlMessage (String requirementsString, int superCubeId, String nodeName) {
+		
+		String lines[] = requirementsString.trim().split("\\r?\\n");
+		
+		for(String line: lines) {
+			String[] tokens = line.split("-"); 
+			if(tokens.length == 2) {
+				
+				List<String> pathsForThisCube = supercubeToExpectedPathsMap.get(superCubeId);
+				if(pathsForThisCube == null) {
+					pathsForThisCube = new ArrayList<String>();
+				}
+				
+				int pathIndex = Integer.valueOf(tokens[0]);
+				
+				String[] fragments = tokens[1].split(",");
+				
+				pathsForThisCube.add(nodeName+"$"+pathIndex);
+				supercubeToExpectedPathsMap.put(superCubeId, pathsForThisCube);
+				
+				
+				
+				LocalRequirements lr = createRequirement(pathIndex, fragments);
+				
+				
+				List<LocalRequirements> lrs = supercubeToRequirementsMap.get(superCubeId);
+				if(lrs == null) {
+					lrs = new ArrayList<LocalRequirements>();
+				}
+				lrs.add(lr);
+				supercubeToRequirementsMap.put(superCubeId, lrs);
+				
+				
+			} else {
+				return null;
+			}
+		}
+		return null;
+		
+	}
+	
+	
+	private LocalRequirements createRequirement(int pathIndex, String[] fragments) {
+		
+		LocalRequirements lr = new LocalRequirements(pathIndex,fragments, false);
+		return lr;
+	}
+	
+	public static void main(String arg[]) {
+		String s = "abc-";
+		String[] tokens = s.split("-"); 
+		System.out.println(tokens.length);
+		
+		List<String> ll = new ArrayList<String> ();
+		
+		ll.add("1");
+		ll.add("2");
+		ll.remove("3");
+		System.out.println(ll.indexOf("1"));
+	}
 
 	@Override
 	public void onMessage(GalileoMessage message) {
-		if (null != message)
+		
+		try{
+			Event event = this.eventWrapper.unwrap(message);
+			
+			if(event instanceof NeighborDataResponse) {
+				
+				NeighborDataResponse rsp = (NeighborDataResponse)event;
+				boolean isControlMessage = checkMessageType(rsp);
+				
+				/* This is a node telling beforehand what is coming */
+				if(isControlMessage) {
+					/* The machine this response came from */
+					String nodeName =rsp.getNodeString();
+					
+					/* This node is about to send back this many data messages */
+					if(rsp.getTotalPaths() > 0)
+						nodeToNumberOfDataMessagesMap.put(nodeName, rsp.getTotalPaths());
+					
+					for(int superCubeId: rsp.getSupercubeIDList()) {
+						int index = rsp.getSupercubeIDList().indexOf(superCubeId);
+						
+						int expectedNodes = superCubeNumNodesMap.get(superCubeId) - 1;
+						
+						/* One less node to expect control message from */
+						superCubeNumNodesMap.put(superCubeId, expectedNodes);
+						
+						/*Requirements for a single cube came back as 
+						 * pathIndex-0,1,2...\n */
+						String requirementsString = rsp.getRequirementsList().get(index);
+						
+						handleRequirementsOnControlMessage(requirementsString, superCubeId, nodeName);
+					}
+					
+					
+					/* Update supercube requirements */
+				} else {
+					/* Update path fragments available */
+					/* DATA MESSAGE INCOMING */
+					
+					List<String> fragmentedRecords = rsp.getResultRecordLists();
+					String nodeName = rsp.getNodeString();
+					int pathIndex = rsp.getPathIndex();
+					
+					pathIdToFragmentDataMap.put(pathIndex, fragmentedRecords);
+					
+					String pathString = nodeName+"$"+pathIndex;
+					
+					for(int i : supercubeToExpectedPathsMap.keySet()) {
+						List<String> expectedPaths = supercubeToExpectedPathsMap.get(i);
+						
+						expectedPaths.remove(pathString);
+						if(expectedPaths.size() <= 0) {
+							/* LAUNCH THIS SUPERCUBE INTO A NEW THREAD*/
+							logger.log(Level.INFO, "READY TO LAUNCH " + i);
+						} 
+					}
+					
+					
+					
+					
+				}
+			} else {
+				logger.log(Level.SEVERE, "RECEIVED WEIRD NEIGHBOR RESPONSE "+event.getClass());
+			}
+		}  catch (IOException | SerializationException e) {
+			logger.log(Level.SEVERE, "An exception occurred while processing the response message. Details follow:"
+					+ e.getMessage(), e);
+		} catch (Exception e) {
+			logger.log(Level.SEVERE,
+					"An unknown exception occurred while processing the response message. Details follow:"
+							+ e.getMessage(), e);
+		}
+		
+		
+		
+		/*if (null != message)
 			this.responses.add(message);
-		int awaitedResponses = this.expectedResponses.decrementAndGet();
+		int awaitedResponses = this.expectedControlMessages.decrementAndGet();
 		logger.log(Level.INFO, "Awaiting " + awaitedResponses + " more message(s)");
 		if (awaitedResponses <= 0) {
 			this.elapsedTime = System.currentTimeMillis() - this.elapsedTime;
@@ -313,7 +472,23 @@ public class NeighborRequestHandler implements MessageListener {
 					NeighborRequestHandler.this.closeRequest();
 				}
 			}.start();
+		}*/
+	}
+	
+	/**
+	 * returns true for control message false for data message
+	 * @author sapmitra
+	 * @param message
+	 * @return
+	 */
+	public boolean checkMessageType(NeighborDataResponse rsp) {
+		
+		if(!rsp.isActualData()) {
+			this.expectedControlMessages.decrementAndGet();
+			return true;
 		}
+		return false;
+		
 	}
 
 	/**

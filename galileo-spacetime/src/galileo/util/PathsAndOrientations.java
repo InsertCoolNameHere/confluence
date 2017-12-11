@@ -10,10 +10,10 @@ public class PathsAndOrientations {
 	
 	private List<Path<Feature, String>> paths;
 	private Map<Path<Feature, String>, PathFragments> pathToFragmentsMap;
-	private Map<SuperCube,Requirements> supercubeRequirementsMap;
+	private Map<SuperCube,List<Requirements>> supercubeRequirementsMap;
 	private int totalBlocks;
 	
-	public PathsAndOrientations(List<Path<Feature, String>> paths, Map<Path<Feature, String>, PathFragments> pathToFragmentsMap, Map<SuperCube,Requirements> supercubeRequirementsMap, int totalBlocks) {
+	public PathsAndOrientations(List<Path<Feature, String>> paths, Map<Path<Feature, String>, PathFragments> pathToFragmentsMap, Map<SuperCube,List<Requirements>> supercubeRequirementsMap, int totalBlocks) {
 		
 		this.paths = paths;
 		this.pathToFragmentsMap = pathToFragmentsMap;
@@ -38,11 +38,11 @@ public class PathsAndOrientations {
 		this.pathToFragmentsMap = pathToFragmentsMap;
 	}
 
-	public Map<SuperCube, Requirements> getSupercubeRequirementsMap() {
+	public Map<SuperCube,List<Requirements>> getSupercubeRequirementsMap() {
 		return supercubeRequirementsMap;
 	}
 
-	public void setSupercubeRequirementsMap(Map<SuperCube, Requirements> supercubeRequirementsMap) {
+	public void setSupercubeRequirementsMap(Map<SuperCube,List<Requirements>> supercubeRequirementsMap) {
 		this.supercubeRequirementsMap = supercubeRequirementsMap;
 	}
 

@@ -10,7 +10,9 @@ import java.util.logging.Logger;
 import galileo.bmp.Bitmap;
 import galileo.bmp.GeoavailabilityGrid;
 import galileo.bmp.GeoavailabilityQuery;
+import galileo.comm.NeighborDataResponse;
 import galileo.dataset.feature.Feature;
+import galileo.event.EventContext;
 import galileo.fs.GeospatialFileSystem;
 import galileo.graph.Path;
 import galileo.util.PathFragments;
@@ -27,13 +29,20 @@ public class NeighborDataQueryProcessor implements Runnable{
 	private GeoavailabilityGrid grid;
 	private GeospatialFileSystem gfs;
 	private Bitmap queryBitmap;
+	private EventContext context;
+	private String nodeString;
 	
 	/* This contains the actual records returned from the query */
+	/* This is a list of 28 strings, some of which may be empty */
+	/* Each of these string is a full record list of a fragment of this path */
 	private List<String> resultRecordLists;
 	private long fileSize;
 	private PathFragments pathFragments;
+	private int pathIndex;
+	private String pathInfo;
 	
-	public NeighborDataQueryProcessor(GeospatialFileSystem gfs, Path<Feature, String> path, GeoavailabilityQuery gQuery, GeoavailabilityGrid grid, Bitmap queryBitmap, PathFragments pathFragments) {
+	public NeighborDataQueryProcessor(GeospatialFileSystem gfs, Path<Feature, String> path, GeoavailabilityQuery gQuery, 
+			GeoavailabilityGrid grid, Bitmap queryBitmap, PathFragments pathFragments, EventContext context, int pathIndex, String nodeString) {
 		
 		this.gfs = gfs;
 		this.path = path;
@@ -42,6 +51,10 @@ public class NeighborDataQueryProcessor implements Runnable{
 		this.queryBitmap = queryBitmap;
 		this.pathFragments = pathFragments;
 		this.blocks = new ArrayList<String>(path.getPayload());
+		this.context = context;
+		this.pathIndex = pathIndex;
+		this.pathInfo = GeospatialFileSystem.getPathInfo(path, 0);
+		this.nodeString = nodeString;
 		
 		/*for(int i=0; i < 28; i++) {
 			
@@ -56,12 +69,19 @@ public class NeighborDataQueryProcessor implements Runnable{
 		try {
 			/* This thread is created one for each path */
 			this.resultRecordLists = this.gfs.queryFragments(this.blocks, this.geoQuery, this.grid, this.queryBitmap, this.pathFragments);
+			NeighborDataResponse ndr = createNeighborResponse();
+			context.sendReply(ndr);
 		} catch (IOException | InterruptedException e) {
 			// TODO Auto-generated catch block
 			logger.log(Level.SEVERE, "Something went wrong while querying FS2 for neighbor block. No results obtained.\n" + e.getMessage());
 		}
 		
 		
+	}
+
+	private NeighborDataResponse createNeighborResponse() {
+		NeighborDataResponse ndr = new NeighborDataResponse(resultRecordLists, pathIndex, pathInfo, nodeString);
+		return ndr;
 	}
 
 	public List<String> getResultRecordLists() {

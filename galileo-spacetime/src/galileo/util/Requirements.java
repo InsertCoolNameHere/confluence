@@ -1,28 +1,27 @@
 package galileo.util;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import galileo.dataset.feature.Feature;
 import galileo.graph.Path;
+import galileo.serialization.ByteSerializable;
+import galileo.serialization.SerializationException;
+import galileo.serialization.SerializationInputStream;
+import galileo.serialization.SerializationOutputStream;
+import galileo.serialization.ByteSerializable.Deserialize;
 
-public class Requirements {
+public class Requirements implements ByteSerializable{
 	
 	private int pathIndex;
-	private Path<Feature, String> path;
 	private List<Integer> chunks = new ArrayList<Integer>();
 	
-	public Requirements(Path<Feature, String> path, List<Integer> chunks) {
-		this.path = path;
+	public Requirements(int pathIndex,  List<Integer> chunks) {
 		this.chunks = chunks;
+		this.pathIndex = pathIndex;
 	}
-	
-	public Path<Feature, String> getPath() {
-		return path;
-	}
-	public void setPath(Path<Feature, String> path) {
-		this.path = path;
-	}
+
 	public List<Integer> getChunks() {
 		return chunks;
 	}
@@ -36,6 +35,19 @@ public class Requirements {
 
 	public void setPathIndex(int pathIndex) {
 		this.pathIndex = pathIndex;
+	}
+
+	@Override
+	public void serialize(SerializationOutputStream out) throws IOException {
+		out.writeInt(pathIndex);
+		out.writeIntegerCollection(chunks);
+		
+	}
+	
+	@Deserialize
+	public Requirements(SerializationInputStream in) throws IOException, SerializationException {
+		this.pathIndex = in.readInt();
+		in.readIntegerCollection(chunks);
 	}
 	
 

@@ -693,25 +693,34 @@ public class GeospatialFileSystem extends FileSystem {
 	}
 
 	/* Populating border Indices */
+	/* North and nw are disjoint */
 	
 	private void populateGeoHashBorder(String geoHash, BorderingProperties borderingProperties, long recordCount) {
 		
 		if(borderingProperties.getNe().equals(geoHash)) {
 			borderingProperties.addNEEntries(recordCount);
+			logger.info("ENTERED A NE ENTRY");
 		} else if(borderingProperties.getSe().equals(geoHash)) {
 			borderingProperties.addSEEntries(recordCount);
+			logger.info("ENTERED A SE ENTRY");
 		} else if(borderingProperties.getNw().equals(geoHash)) {
 			borderingProperties.addNWEntries(recordCount);
+			logger.info("ENTERED A NW ENTRY");
 		} else if(borderingProperties.getSw().equals(geoHash)) {
 			borderingProperties.addSWEntries(recordCount);
+			logger.info("ENTERED A SW ENTRY");
 		} else if(borderingProperties.getN().contains(geoHash)) {
 			borderingProperties.addNorthEntries(recordCount);
+			logger.info("ENTERED A N ENTRY");
 		} else if(borderingProperties.getE().contains(geoHash)) {
 			borderingProperties.addEastEntries(recordCount);
+			logger.info("ENTERED A E ENTRY");
 		} else if(borderingProperties.getW().contains(geoHash)) {
 			borderingProperties.addWestEntries(recordCount);
+			logger.info("ENTERED A W ENTRY");
 		} else if(borderingProperties.getS().contains(geoHash)) {
 			borderingProperties.addSouthEntries(recordCount);
+			logger.info("ENTERED A S ENTRY");
 		} 
 		
 		
@@ -1319,7 +1328,7 @@ public class GeospatialFileSystem extends FileSystem {
 		 */
 		
 		Map<Path<Feature, String>, PathFragments> pathToFragmentsMap = new HashMap<Path<Feature, String>, PathFragments>();
-		Map<SuperCube,Requirements> supercubeRequirementsMap = new HashMap<SuperCube,Requirements>();
+		Map<SuperCube,List<Requirements>> supercubeRequirementsMap = new HashMap<SuperCube,List<Requirements>>();
 		
 		// For each supercube
 		for (SuperCube sc : superCubes) {
@@ -1371,7 +1380,14 @@ public class GeospatialFileSystem extends FileSystem {
 					}
 					// handle supercube requirements map
 					
-					supercubeRequirementsMap.put(sc, new Requirements(path, paths.indexOf(path), fragments));
+					List<Requirements> requirements;
+					if(supercubeRequirementsMap.get(sc) == null) {
+						requirements = new ArrayList<Requirements>();
+					} else {
+						requirements = supercubeRequirementsMap.get(sc);
+					}
+					requirements.add(new Requirements(paths.indexOf(path), fragments));
+					supercubeRequirementsMap.put(sc, requirements);
 					
 					
 				} else {
@@ -2195,5 +2211,13 @@ public class GeospatialFileSystem extends FileSystem {
 
 	public void setSpatialHint(SpatialHint spatialHint) {
 		this.spatialHint = spatialHint;
+	}
+
+	public Map<String, BorderingProperties> getBorderMap() {
+		return borderMap;
+	}
+
+	public void setBorderMap(Map<String, BorderingProperties> borderMap) {
+		this.borderMap = borderMap;
 	}
 }
