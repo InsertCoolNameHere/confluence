@@ -980,12 +980,7 @@ public class StorageNode implements RequestListener {
 		
 		GeospatialFileSystem gfs;
 		
-		if(request.getPrimaryFS() != 2) {
-			
-			gfs = this.fsMap.get(request.getFsname1());
-		} else {
-			gfs= this.fsMap.get(request.getFsname2());
-		}
+		gfs = this.fsMap.get(request.getFsname1());
 		
 		if(gfs != null) {
 			
@@ -1001,7 +996,8 @@ public class StorageNode implements RequestListener {
 				
 				/* TemporalHierarchyPartitioner */
 				nodes = partitioner.findDestinations(data);
-				logger.info("destinations: " + nodes);
+				
+				logger.info("Destinations for FS1 DataIntegrationRequest: " + nodes);
 				
 				DataIntegrationEvent dintEvent = createDataIntegrationEvent(request);
 				try {
@@ -1108,7 +1104,7 @@ public class StorageNode implements RequestListener {
 	 */
 	@EventHandler
 	public void handleDataIntegration(DataIntegrationEvent event, EventContext context) {
-
+		logger.log(Level.INFO, "RECEIVED A FS1 DATAINTEGRATIONEVENT");
 		// fs1 is the primary filesystem
 		String fsName1 = event.getFsname1();
 		GeospatialFileSystem fs1 = fsMap.get(fsName1);
@@ -1126,10 +1122,20 @@ public class StorageNode implements RequestListener {
 
 				// All blocks of fs1 on this node that match our criteria
 				List<Path<Feature, String>> paths1 = fs1.listPaths(event.getTime(), event.getPolygon(), null, false);
+				
+				// LOGGING
+				logger.log(Level.INFO, "PATHS FROM FS1:");
+				for (Path<Feature, String> path : paths1) {
+					List<String> blocks = new ArrayList<String>(path.getPayload());
+					logger.log(Level.INFO, blocks.toString());
+				}
 
 				List<Coordinates> queryPolygon = event.getPolygon();
 				List<Coordinates> superPolygon = SuperPolygon.getSuperPolygon(queryPolygon, fs2.getSpatialUncertaintyPrecision());
-
+				
+				logger.log(Level.INFO, "QUERY POLYGON :"+queryPolygon);
+				logger.log(Level.INFO, "SUPER POLYGON :"+superPolygon);
+				
 				// For each block of fs1, we need to find what nodes to be queried in fs2
 				// Also, we need to calculate the superblock that needs to be queried at each node
 
@@ -1181,8 +1187,7 @@ public class StorageNode implements RequestListener {
 
 					if (sc.getTime() != null) {
 						/*
-						 * since the time could span over multiple days, we need
-						 * to check
+						 * since the time could span over multiple days, we need to check
 						 */
 						// getting all dates that may lie between two timestamps
 						

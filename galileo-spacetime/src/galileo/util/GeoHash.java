@@ -1262,10 +1262,11 @@ public class GeoHash {
 			long startTS = getStartTimeStamp(tp, temporalType);
 			long endTS = getEndTimeStamp(tp, temporalType);
 			
-			
+			/* Up is the end part of the time slab */
 			bg.setUp1(endTS);
 			bg.setUp2(endTS - timeLapse);
 			
+			/* Down is the beginning part of the time slab */
 			bg.setDown1(startTS);
 			bg.setDown2(startTS + timeLapse);
 		}

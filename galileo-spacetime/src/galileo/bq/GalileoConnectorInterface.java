@@ -41,9 +41,21 @@ abstract class GalileoConnectorInterface {
 		FileSystemRequest fsr = new FileSystemRequest(name, FileSystemAction.CREATE, pr);
 		publisher.publish(server, fsr);
 	}*/
-	public void createFS(String name, SpatialHint sh,List<Pair<String, FeatureType>> featureList, String temporalHint) throws IOException {
-		
-		FilesystemRequest fsRequest = new FilesystemRequest(name, FilesystemAction.CREATE, featureList, sh, 5, 4*60*60,  false, temporalHint);
+	public void createFS(String name, SpatialHint sh,List<Pair<String, FeatureType>> featureList, String temporalHint, int mode) throws IOException {
+		int spUnc = 0;
+		int tempUnc = 0;
+		if(mode == 1) {
+			
+			spUnc = 4;
+			tempUnc = 4*60*60;
+			
+		} else if(mode == 2) {
+			
+			spUnc = 4;
+			tempUnc = 4*60*60;
+			
+		}
+		FilesystemRequest fsRequest = new FilesystemRequest(name, FilesystemAction.CREATE, featureList, sh, spUnc, tempUnc,  false, temporalHint);
 		
 		/*fsRequest.setNodesPerGroup(2);
 		fsRequest.setPrecision(6);*/

@@ -37,7 +37,9 @@ import galileo.dataset.SpatialProperties;
 import galileo.dataset.TemporalProperties;
 import galileo.dataset.feature.Feature;
 import galileo.dataset.feature.FeatureSet;
+import galileo.dataset.feature.FeatureType;
 import galileo.util.GeoHash;
+import galileo.util.Pair;
 
 public class GalileoConnector extends GalileoConnectorInterface {
 	
@@ -139,6 +141,46 @@ public class GalileoConnector extends GalileoConnectorInterface {
 		
 		return new Block("airview", metadata, data.getBytes("UTF-8"));
 	}
+	
+	
+	public static Block createBlock(String edfRecord, String data, String fsName, int mode) throws UnsupportedEncodingException {
+		String[] values = edfRecord.split(",");
+		TemporalProperties temporalProperties = new TemporalProperties(reformatDatetime(values[7]));
+		SpatialProperties spatialProperties = new SpatialProperties(parseFloat(values[24]), parseFloat(values[25]));
+		
+		FeatureSet features = getFeatures(values, mode);
+		
+			
+		Metadata metadata = new Metadata();
+		metadata.setName(GeoHash.encode(parseFloat(values[24]), parseFloat(values[25]), 7));
+		metadata.setTemporalProperties(temporalProperties);
+		//metadata.setsIndex(new SearchIndex("24","25","7"));
+		metadata.setSpatialProperties(spatialProperties);
+		//metadata.setSpatialHint(new SpatialHint("gps_abs_lat", "gps_abs_lon"));
+		metadata.setAttributes(features);
+		
+		return new Block(fsName, metadata, data.getBytes("UTF-8"));
+	}
+
+	/**
+	 * @param values
+	 * @return
+	 */
+	private static FeatureSet getFeatures(String[] values, int mode) {
+		
+		FeatureSet features = new FeatureSet();
+		
+		features.put(new Feature("epoch_time", values[0]));		
+		features.put(new Feature("gps_abs_lat", values[1]));
+		features.put(new Feature("gps_abs_lon", values[2]));
+		if(mode == 1) {
+			features.put(new Feature("fsa_feature", values[3]));
+		} else if( mode == 2) {
+			features.put(new Feature("fsb_feature", values[3]));
+		}
+		return features;
+	}
+	
 	
 	private static float parseFloat(String input){
 		try {

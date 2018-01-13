@@ -16,13 +16,16 @@ import galileo.util.Pair;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Scanner;
 import java.util.TimeZone;
 
-public class MyInsertTest {
+public class MyInsertTest1 {
 
 	// [START processFile]
 	/**
@@ -35,32 +38,47 @@ public class MyInsertTest {
 	 * @throws Exception
 	 */
 	private static boolean FS_CREATED = false;
+	
 	private static void processFile(String filepath, GalileoConnector gc) throws Exception {
 		
-		//Create a filesystem first.
-		
-		List<Pair<String, FeatureType>> featureList = new ArrayList<>();
-		
-  		
-		featureList.add(new Pair<>("epoch_time", FeatureType.FLOAT));
-		featureList.add(new Pair<>("gps_abs_lat", FeatureType.FLOAT));
-		featureList.add(new Pair<>("gps_abs_lon", FeatureType.FLOAT));
-		featureList.add(new Pair<>("fsa_feature", FeatureType.FLOAT));
-		
-		
-		
-		SpatialHint sp = new SpatialHint("gps_abs_lat", "gps_abs_lon");
-		String temporalHint = "epoch_time";
-		//if(!FS_CREATED){
-			gc.createFS("airview", sp, featureList, temporalHint);
-			//FS_CREATED = true;
-		//}
-		
+		// CREATING FS1
+		if( ! FS_CREATED ) {
+			List<Pair<String, FeatureType>> featureList1 = new ArrayList<>();
+	  		
+			featureList1.add(new Pair<>("epoch_time", FeatureType.FLOAT));
+			featureList1.add(new Pair<>("gps_abs_lat", FeatureType.FLOAT));
+			featureList1.add(new Pair<>("gps_abs_lon", FeatureType.FLOAT));
+			featureList1.add(new Pair<>("fsa_feature", FeatureType.FLOAT));
+			
+			
+			SpatialHint sp1 = new SpatialHint("gps_abs_lat", "gps_abs_lon");
+			String temporalHint1 = "epoch_time";
+			//if(!FS_CREATED){
+				gc.createFS("testfs1", sp1, featureList1, temporalHint1, 1);
+				//FS_CREATED = true;
+			//}
+			
+		}
+		try {
+			insertData(filepath, gc, "testfs1", 1);
+		} finally {
+			gc.disconnect();
+		}
+	}
+	/**
+	 * @param filepath
+	 * @param gc
+	 * @throws FileNotFoundException
+	 * @throws UnsupportedEncodingException
+	 * @throws Exception
+	 * @throws IOException
+	 */
+	private static void insertData(String filepath, GalileoConnector gc, String fsName, int mode)
+			throws FileNotFoundException, UnsupportedEncodingException, Exception, IOException {
 		FileInputStream inputStream = null;
 		Scanner sc = null;
 		
-		/* START---- THIS PART JUST VERIFIES IF THE DATA FORMAT IS CORRECT */
-		try {
+		try{
 			inputStream = new FileInputStream(filepath);
 			sc = new Scanner(inputStream);
 			StringBuffer data = new StringBuffer();
@@ -73,17 +91,17 @@ public class MyInsertTest {
 			while (sc.hasNextLine()) {
 				String line = sc.nextLine();
 				String tmpvalues[] = line.split(",");
-				if (line.contains("platform_id,date,")) {
+				if (line.contains("epoch_time,")) {
 					continue;
 				}
-				if (Float.parseFloat(tmpvalues[24]) == 0.0f && Float.parseFloat(tmpvalues[25]) == 0.0f) {
+				if (Float.parseFloat(tmpvalues[1]) == 0.0f && Float.parseFloat(tmpvalues[2]) == 0.0f) {
 					continue;
 				}
 				if (line.contains("NaN") || line.contains("null")) {
 					line.replace("NaN", "0.0");
 					line.replace("null", "0.0");
 				}
-				long epoch = GalileoConnector.reformatDatetime(tmpvalues[7]);
+				long epoch = GalileoConnector.reformatDatetime(tmpvalues[0]);
 				c.setTimeInMillis(epoch);
 				String currentDay = String.format("%d-%d-%d", c.get(Calendar.YEAR), c.get(Calendar.MONTH) + 1,
 						c.get(Calendar.DAY_OF_MONTH));
@@ -95,7 +113,7 @@ public class MyInsertTest {
 					System.out.println(lastLine);
 					
 					/*Using the lastline to create metadata */
-					Block tmp = GalileoConnector.createBlock(lastLine, allLines.substring(0, allLines.length() - 1));
+					Block tmp = GalileoConnector.createBlock(lastLine, allLines.substring(0, allLines.length() - 1), fsName, mode);
 					if (tmp != null) {
 						gc.store(tmp);
 					}
@@ -107,7 +125,6 @@ public class MyInsertTest {
 				lastLine = line;
 				rowCount++;
 			}
-			/* END---- THIS PART JUST VARIFIES IF THE DATA FORMAT IS CORRECT */
 			
 			String allLines = data.toString();
 			System.out.println("Creating a block for " + previousDay + " GMT having " + rowCount + " rows");
@@ -120,15 +137,16 @@ public class MyInsertTest {
 			if (sc.ioException() != null) {
 				throw sc.ioException();
 			}
-		} finally {
+			} finally {
 			if (inputStream != null) {
 				inputStream.close();
 			}
 			if (sc != null) {
 				sc.close();
 			}
-			gc.disconnect();
+			
 		}
+		
 	}
 	// [END processFile]
 
@@ -140,10 +158,11 @@ public class MyInsertTest {
 	 * @param args
 	 */
 	public static void main(String[] args1) {
-		String args[] = new String[3];
+		String args[] = new String[4];
 		args[0] = "phoenix.cs.colostate.edu";
 		args[1] = "5634";
-		args[2] = "/s/chopin/b/grad/sapmitra/GalileoData/eg.csv";
+		args[2] = "/s/chopin/b/grad/sapmitra/GalileoData/eg1.csv";
+		args[3] = "/s/chopin/b/grad/sapmitra/GalileoData/eg2.csv";
 		
 		
 		if (args.length != 3) {
@@ -158,7 +177,7 @@ public class MyInsertTest {
 				if (file.isFile()) {
 					System.out.println("processing - " + args[2]);
 					processFile(args[2], gc);
-				} else {
+				} /*else {
 					if (file.isDirectory()) {
 						File[] files = file.listFiles();
 						for (File f : files) {
@@ -167,7 +186,7 @@ public class MyInsertTest {
 							processFile(f.getAbsolutePath(), gc);
 						}
 					}
-				}
+				}*/
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

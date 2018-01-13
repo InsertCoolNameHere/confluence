@@ -18,6 +18,8 @@ public class DataIntegrationRequest implements Event{
 	private List<Coordinates> polygon;
 	private int timeRelaxation;
 	private int spaceRelaxation;
+	
+	/* FS1 is the primary file system */
 	private String fsname1;
 	private String fsname2;
 	private int primaryFS;

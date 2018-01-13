@@ -682,8 +682,10 @@ public class GeospatialFileSystem extends FileSystem {
 			// calculating temporal border records
 			if(timestamp<=borderingProperties.getDown2() && timestamp >= borderingProperties.getDown1()) {
 				borderingProperties.addDownTimeEntries(recordCount);
+				logger.info("ENTERED DOWN TIME ENTRY");
 			} else if(timestamp<=borderingProperties.getUp1() && timestamp >= borderingProperties.getUp2()) {
 				borderingProperties.addUpTimeEntries(recordCount);
+				logger.info("ENTERED UP TIME ENTRY");
 			}
 			recordCount++;
 		}

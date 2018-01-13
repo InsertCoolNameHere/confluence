@@ -56,7 +56,7 @@ public class BorderingProperties {
 		downTimeEntries = new ArrayList<Long>();
 	}
 	
-	public void updateRecordCount(long n) {
+	public synchronized void updateRecordCount(long n) {
 		totalRecords+=n;
 	}
 
