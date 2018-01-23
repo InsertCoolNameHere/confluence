@@ -1334,12 +1334,13 @@ public class GeospatialFileSystem extends FileSystem {
 		
 		// For each supercube
 		for (SuperCube sc : superCubes) {
-			
+			// For each path that matched the query hyper-polygon and time limit
 			for (Path<Feature, String> path : paths) {
 				
 				String fs1PathTime = sc.getCentralTime();
 				String fs1PathSpace = sc.getCentralGeohash();
 				
+				/* RETURND TEMPORAL$SPATIAL  STRING*/
 				String ret = getPathInfo(path, 0 );
 				if(ret != null){
 					String[] tokens = ret.split("\\$");
@@ -1366,9 +1367,11 @@ public class GeospatialFileSystem extends FileSystem {
 						
 						// entire blocks to be read, no fragments
 						if("full-full".equals(orientation)) {
+							// IGNORE MEANS ALL FRAGMENTS ARE REQUIRED TO BE RETURNED
 							pf.setIgnore(true);
 							pf.addChunks(fragments);
 						} else {
+							pf.setIgnore(false);
 							pf.addChunks(fragments);
 						}
 						
@@ -1847,7 +1850,8 @@ public class GeospatialFileSystem extends FileSystem {
 						this.featurePaths.add(featureValues);
 					}
 				}
-
+				
+				/* THE RESULTS OF THE QUERY GETS WRITTEN TO A LOCAL FILE AND JUST THE PATH TO THAT FILE IS RETURNED FOR SUBSEQUENT FETCHING */
 				if (featurePaths.size() > 0) {
 					try (FileOutputStream fos = new FileOutputStream(this.storagePath)) {
 						Iterator<String[]> pathIterator = featurePaths.iterator();

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -16,11 +17,15 @@ import java.util.logging.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import galileo.bmp.Bitmap;
+import galileo.bmp.GeoavailabilityGrid;
+import galileo.bmp.QueryTransform;
 import galileo.comm.GalileoEventMap;
 import galileo.comm.MetadataResponse;
 import galileo.comm.NeighborDataEvent;
 import galileo.comm.NeighborDataResponse;
 import galileo.comm.QueryResponse;
+import galileo.dht.StorageNode.QueryProcessor;
 import galileo.event.BasicEventWrapper;
 import galileo.event.Event;
 import galileo.event.EventContext;
@@ -30,6 +35,7 @@ import galileo.net.MessageListener;
 import galileo.net.NetworkDestination;
 import galileo.net.RequestListener;
 import galileo.serialization.SerializationException;
+import galileo.util.GeoHash;
 import galileo.util.Requirements;
 import galileo.util.SuperCube;
 
@@ -58,6 +64,7 @@ public class NeighborRequestHandler implements MessageListener {
 	
 	/* This helps track the nuner of control messages coming in */
 	private Map<Integer, Integer> superCubeNumNodesMap;
+	private Map<Integer, String[]> superCubeIdToDataMap;
 	
 	/* Keeping track of how many data messages are coming from a neighbor node */
 	private Map<String, Integer> nodeToNumberOfDataMessagesMap;
@@ -541,5 +548,30 @@ public class NeighborRequestHandler implements MessageListener {
 	@Override
 	public void onDisconnect(NetworkDestination endpoint) {
 
+	}
+	
+	
+	public void readFS1Blocks() {
+		for (String blockKey : blocks) {
+			
+			/* Converts the bounds of geohash into a 1024x1024 region */
+			GeoavailabilityGrid blockGrid = new GeoavailabilityGrid(blockKey,
+					GeoHash.MAX_PRECISION * 2 / 3);
+			Bitmap queryBitmap = null;
+			if (geoQuery.getPolygon() != null)
+				queryBitmap = QueryTransform.queryToGridBitmap(geoQuery, blockGrid);
+			List<String> blocks = blockMap.get(blockKey);
+			for (String blockPath : blocks) {
+				QueryProcessor qp = new QueryProcessor(fs, blockPath, geoQuery, blockGrid, queryBitmap,
+						getResultFilePrefix(event.getQueryId(), fsName, blockKey + blocksProcessed));
+				blocksProcessed++;
+				queryProcessors.add(qp);
+				executor.execute(qp);
+			}
+		}
+		executor.shutdown();
+		boolean status = executor.awaitTermination(10, TimeUnit.MINUTES);
+		if (!status)
+			logger.log(Level.WARNING, "Executor terminated because of the specified timeout=10minutes");
 	}
 }

@@ -240,7 +240,7 @@ public class MDC {
 					int indxB = 0;
 					
 					for(double dd: setBTemp1) {
-						if(Math.abs(d-dd)<=epsilon) {
+						if(java.lang.Math.abs(d-dd)<=epsilon) {
 							found = true;
 							//System.out.println(setATempInd.get(indxA)+","+setBTempInd1.get(indxB));
 							pairs.add(setATempInd.get(indxA)+","+setBTempInd1.get(indxB));
@@ -261,7 +261,7 @@ public class MDC {
 					indxB = 0;
 					if(!firstTime) {
 						for(double dd: setBTemp3) {
-							if(Math.abs(d-dd)<=epsilon) {
+							if(java.lang.Math.abs(d-dd)<=epsilon) {
 								found = true;
 								//System.out.println(setATempInd.get(indxA)+","+setBTempInd3.get(indxB));
 								pairs.add(setATempInd.get(indxA)+","+setBTempInd3.get(indxB));

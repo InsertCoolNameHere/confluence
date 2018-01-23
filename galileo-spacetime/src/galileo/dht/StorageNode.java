@@ -1169,7 +1169,7 @@ public class StorageNode implements RequestListener {
 					String cGeo = sc.getCentralGeohash();
 
 					// Get the neighbors geohash, cgeo, that actually are needed, along with the centralGeohash
-					String[] validNeighbors = GeoHash.checkForNeighborValidity(queryPolygon, fs1.getSpatialUncertaintyPrecision(), cGeo,borderMap, blocks);
+					String[] validNeighborsGeohash = GeoHash.checkForNeighborValidity(queryPolygon, fs1.getSpatialUncertaintyPrecision(), cGeo,borderMap, blocks);
 
 					List<Date> dates = null;
 					List<TemporalProperties> tprops = null;
@@ -1242,7 +1242,7 @@ public class StorageNode implements RequestListener {
 
 					// Found what nodes to query based on supercube data
 					// These are all nodes needed to query to get fs2 data required for this particular supercube in fs1
-					List<NodeInfo> nodes = partitioner.findDestinationsForFS2(searchSp, tprops, fs2.getGeohashPrecision(), validNeighbors);
+					List<NodeInfo> nodes = partitioner.findDestinationsForFS2(searchSp, tprops, fs2.getGeohashPrecision(), validNeighborsGeohash);
 
 					// Hashcode calculation for NodeInfo is based on src and port
 					// Getting unique should not be a problem later
@@ -1412,11 +1412,13 @@ public class StorageNode implements RequestListener {
 				
 				int totalPaths = paths.size();
 				Map<Path<Feature, String>, PathFragments> pathToFragmentsMap = pao.getPathToFragmentsMap();
-				// This will be sent back in the response for the other side to use
+				
+				// ALERTING THE REQUESTING NODE BEFOREHAND ABOUT INCOMING NEIGHBOR DATA
 				Map<SuperCube, List<Requirements>> supercubeRequirementsMap = pao.getSupercubeRequirementsMap();
 				
 				/* SEND BACK SUPERCUBE TO REQUIREMENTS MAP IMMEDIATELY */
-				NeighborDataResponse controlMessage = createCubeRequirements(supercubeRequirementsMap, pao.getPaths().size(), nodeString);
+				/* THERE IS GOING TO BE ONE DATA RESPONSE PER PATH. SO THE NUMBER OF PATHS IS NECESSARY */
+				NeighborDataResponse controlMessage = createCubeRequirements(supercubeRequirementsMap, pathToFragmentsMap.size(), nodeString);
 				context.sendReply(controlMessage);
 				
 				
@@ -1510,7 +1512,7 @@ public class StorageNode implements RequestListener {
 	
 	private int getMatchingCubeIndex(List<SuperCube> list, SuperCube scb) {
 		
-		if(list == null) {
+		if(list == null || list.isEmpty()) {
 			
 			return -1;
 		}
