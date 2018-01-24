@@ -74,6 +74,7 @@ import galileo.dataset.feature.Feature;
 import galileo.dataset.feature.FeatureSet;
 import galileo.dataset.feature.FeatureType;
 import galileo.dht.GroupInfo;
+import galileo.dht.LocalParallelQueryProcessor;
 import galileo.dht.NeighborDataParallelQueryProcessor;
 import galileo.dht.NetworkInfo;
 import galileo.dht.NodeInfo;
@@ -1774,6 +1775,7 @@ public class GeospatialFileSystem extends FileSystem {
 		private GeoavailabilityGrid grid;
 		private Bitmap queryBitmap;
 		private String storagePath;
+		private boolean storeIt = true;
 
 		public ParallelQueryProcessor(List<String[]> featurePaths, Query query, GeoavailabilityGrid grid,
 				Bitmap queryBitmap, String storagePath) {
@@ -1782,6 +1784,16 @@ public class GeospatialFileSystem extends FileSystem {
 			this.grid = grid;
 			this.queryBitmap = queryBitmap;
 			this.storagePath = storagePath + BLOCK_EXTENSION;
+		}
+		
+		public ParallelQueryProcessor(List<String[]> featurePaths, Query query, GeoavailabilityGrid grid,
+				Bitmap queryBitmap, String storagePath, boolean storeIt) {
+			this.featurePaths = featurePaths;
+			this.query = query;
+			this.grid = grid;
+			this.queryBitmap = queryBitmap;
+			this.storagePath = storagePath + BLOCK_EXTENSION;
+			this.storeIt = storeIt;
 		}
 
 		@Override
@@ -1852,25 +1864,27 @@ public class GeospatialFileSystem extends FileSystem {
 				}
 				
 				/* THE RESULTS OF THE QUERY GETS WRITTEN TO A LOCAL FILE AND JUST THE PATH TO THAT FILE IS RETURNED FOR SUBSEQUENT FETCHING */
-				if (featurePaths.size() > 0) {
-					try (FileOutputStream fos = new FileOutputStream(this.storagePath)) {
-						Iterator<String[]> pathIterator = featurePaths.iterator();
-						while (pathIterator.hasNext()) {
-							String[] path = pathIterator.next();
-							StringBuffer pathSB = new StringBuffer();
-							for (int j = 0; j < path.length; j++) {
-								pathSB.append(path[j]);
-								if (j + 1 != path.length)
-									pathSB.append(",");
+				if(storeIt) {
+					if (featurePaths.size() > 0) {
+						try (FileOutputStream fos = new FileOutputStream(this.storagePath)) {
+							Iterator<String[]> pathIterator = featurePaths.iterator();
+							while (pathIterator.hasNext()) {
+								String[] path = pathIterator.next();
+								StringBuffer pathSB = new StringBuffer();
+								for (int j = 0; j < path.length; j++) {
+									pathSB.append(path[j]);
+									if (j + 1 != path.length)
+										pathSB.append(",");
+								}
+								fos.write(pathSB.toString().getBytes("UTF-8"));
+								pathIterator.remove();
+								if (pathIterator.hasNext())
+									fos.write("\n".getBytes("UTF-8"));
 							}
-							fos.write(pathSB.toString().getBytes("UTF-8"));
-							pathIterator.remove();
-							if (pathIterator.hasNext())
-								fos.write("\n".getBytes("UTF-8"));
 						}
+					} else {
+						this.storagePath = null;
 					}
-				} else {
-					this.storagePath = null;
 				}
 			} catch (IOException | BitmapException e) {
 				logger.log(Level.SEVERE, "Something went wrong while querying the filesystem.", e);
@@ -1961,6 +1975,32 @@ public class GeospatialFileSystem extends FileSystem {
 				}
 				
 				
+			}
+			
+		}
+		return records;
+	}
+	
+	
+	
+	
+	private List<String[]> getFeaturePathsLocal(List<String> blockPaths) throws IOException {
+		
+		/* Records is all possible 27 chunks + one slot for the full block if only the full block is required */
+		List<String[]> records = new ArrayList<String[]>();
+		
+		/* Reading each blocks that may lie in a path */
+		for(String blockPath : blockPaths) {
+			
+			/* If only the whole block is needed */
+			
+			/* Getting all the records of this particular block */
+			List<String[]> record = getFeaturePaths(blockPath);
+			
+			if(record != null && record.size() > 0) {
+			
+				records.addAll(record);
+			
 			}
 			
 		}
@@ -2202,6 +2242,91 @@ public class GeospatialFileSystem extends FileSystem {
 
 		return recordFragmentsPerPath;
 	}
+	
+	/**
+	 * 
+	 * @author sapmitra
+	 * @param blocks
+	 * @param geoQuery
+	 * @param grid
+	 * @param queryBitmap
+	 * @param fragments
+	 * @return
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
+	
+	public List<String[]> queryLocal(List<String> blocks, GeoavailabilityQuery geoQuery, GeoavailabilityGrid grid, Bitmap queryBitmap) 
+			throws IOException, InterruptedException {
+		
+		/* Represents all possible fragments. Only the fields representing the required fragments will be populated */
+		List<String[]> featurePaths = new ArrayList<String[]>();
+		List<String[]> returnPaths = new ArrayList<String[]>();
+		// THIS READS THE ACTUAL BLOCKS
+		
+		boolean skipGridProcessing = false;
+		if (geoQuery.getPolygon() != null && geoQuery.getQuery() != null) {
+			/* If polygon complete encompasses geohash */
+			skipGridProcessing = isGridInsidePolygon(grid, geoQuery);
+			
+			featurePaths = getFeaturePathsLocal(blocks);
+		} else if (geoQuery.getPolygon() != null) {
+			/* If grid lies completely inside polygon */
+			skipGridProcessing = isGridInsidePolygon(grid, geoQuery);
+			if (!skipGridProcessing)
+				featurePaths = getFeaturePathsLocal(blocks);
+		} else if (geoQuery.getQuery() != null) {
+			featurePaths = getFeaturePathsLocal(blocks);
+		} 
+		
+		int size = featurePaths.size();
+		int partition = java.lang.Math.max(size / numCores, MIN_GRID_POINTS);
+		int parallelism = java.lang.Math.min(size / partition, numCores);
+		
+		/* ALL THE RECORDS TO BE QUERIED ARE NOW INSIDE featurePaths */
+		
+		// FURTHER FILTERING OF featurePaths
+		
+		queryBitmap = skipGridProcessing ? null : queryBitmap;
+		
+		if (parallelism > 0) {
+			
+			ExecutorService executor = Executors.newFixedThreadPool(parallelism);
+			List<LocalParallelQueryProcessor> queryProcessors = new ArrayList<>();
+			
+			for (int i = 0; i < parallelism; i++) {
+				int from = i * partition;
+				int to = (i + 1 != parallelism) ? (i + 1) * partition : size;
+				List<String[]> subset = new ArrayList<>(featurePaths.subList(from, to));
+				
+				if(subset != null) {
+					
+					LocalParallelQueryProcessor pqp = new LocalParallelQueryProcessor(this, subset, geoQuery.getQuery(), grid, queryBitmap);
+					
+					queryProcessors.add(pqp);
+					executor.execute(pqp);
+				}
+			}
+			
+			executor.shutdown();
+			boolean status = executor.awaitTermination(10, TimeUnit.MINUTES);
+			if (!status)
+				logger.log(Level.WARNING, "queryFragments: Executor terminated because of the specified timeout=10minutes");
+			
+			for(LocalParallelQueryProcessor nqp : queryProcessors) {
+				
+				if(nqp.getFeaturePaths().size() > 0) {
+					returnPaths.addAll(nqp.getFeaturePaths());
+				}
+				
+			}
+			
+		} 
+
+		return returnPaths;
+	}
+	
+	
 
 	public List<Pair<String, FeatureType>> getFeatureList() {
 		return featureList;

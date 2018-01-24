@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -19,6 +21,7 @@ import org.json.JSONObject;
 
 import galileo.bmp.Bitmap;
 import galileo.bmp.GeoavailabilityGrid;
+import galileo.bmp.GeoavailabilityQuery;
 import galileo.bmp.QueryTransform;
 import galileo.comm.GalileoEventMap;
 import galileo.comm.MetadataResponse;
@@ -29,6 +32,7 @@ import galileo.dht.StorageNode.QueryProcessor;
 import galileo.event.BasicEventWrapper;
 import galileo.event.Event;
 import galileo.event.EventContext;
+import galileo.fs.GeospatialFileSystem;
 import galileo.net.ClientMessageRouter;
 import galileo.net.GalileoMessage;
 import galileo.net.MessageListener;
@@ -61,6 +65,8 @@ public class NeighborRequestHandler implements MessageListener {
 	private Event response;
 	private long elapsedTime;
 	private List<SuperCube> allCubes;
+	private GeoavailabilityQuery geoQuery;
+	private GeospatialFileSystem fs1;
 	
 	/* This helps track the nuner of control messages coming in */
 	private Map<Integer, Integer> superCubeNumNodesMap;
@@ -74,10 +80,12 @@ public class NeighborRequestHandler implements MessageListener {
 	
 	private Map<Integer, List<LocalRequirements>> supercubeToRequirementsMap;
 	private Map<Integer, List<String>> pathIdToFragmentDataMap;
+	private int numCores;
 	
 
 	public NeighborRequestHandler(List<NeighborDataEvent> internalEvents, List<NeighborDataEvent> individualRequests, Collection<NetworkDestination> destinations, EventContext clientContext,
-			RequestListener listener, List<SuperCube> allCubes, Map<Integer, Integer> superCubeNumNodesMap) throws IOException {
+			RequestListener listener, List<SuperCube> allCubes, Map<Integer, Integer> superCubeNumNodesMap, 
+			int numCores, GeoavailabilityQuery geoQuery, GeospatialFileSystem fs1) throws IOException {
 		this.nodes = destinations;
 		this.clientContext = clientContext;
 		this.requestListener = listener;
@@ -95,6 +103,9 @@ public class NeighborRequestHandler implements MessageListener {
 		this.supercubeToExpectedPathsMap = new HashMap<Integer, List<String>>();
 		this.nodeToNumberOfDataMessagesMap = new HashMap<String, Integer>();
 		this.supercubeToRequirementsMap = new HashMap<Integer, List<LocalRequirements>>();
+		this.numCores = numCores;
+		this.geoQuery = geoQuery;
+		this.fs1 = fs1;
 	}
 
 	public void closeRequest() {
@@ -551,27 +562,44 @@ public class NeighborRequestHandler implements MessageListener {
 	}
 	
 	
-	public void readFS1Blocks() {
-		for (String blockKey : blocks) {
+	public void handleLocalBlockReads() {
+		
+		
+	}
+	
+	/* Reading all blocks in a particular path */
+	public void readFS1Blocks(List<SuperCube> scs) {
+		
+		ExecutorService executor = Executors.newFixedThreadPool(Math.min(scs.size(), 2 * numCores));
+		List<LocalQueryProcessor> queryProcessors = new ArrayList<LocalQueryProcessor>();
+		
+		for(SuperCube sc: scs) {
+			int totalBlocks = sc.getFs1BlockPath().size();
 			
-			/* Converts the bounds of geohash into a 1024x1024 region */
-			GeoavailabilityGrid blockGrid = new GeoavailabilityGrid(blockKey,
-					GeoHash.MAX_PRECISION * 2 / 3);
+			GeoavailabilityGrid blockGrid = new GeoavailabilityGrid(sc.getCentralGeohash(), GeoHash.MAX_PRECISION * 2 / 3);
+			
 			Bitmap queryBitmap = null;
+			
 			if (geoQuery.getPolygon() != null)
 				queryBitmap = QueryTransform.queryToGridBitmap(geoQuery, blockGrid);
-			List<String> blocks = blockMap.get(blockKey);
-			for (String blockPath : blocks) {
-				QueryProcessor qp = new QueryProcessor(fs, blockPath, geoQuery, blockGrid, queryBitmap,
-						getResultFilePrefix(event.getQueryId(), fsName, blockKey + blocksProcessed));
-				blocksProcessed++;
-				queryProcessors.add(qp);
-				executor.execute(qp);
-			}
+			
+			LocalQueryProcessor qp = new LocalQueryProcessor(fs1, sc.getFs1BlockPath(), geoQuery, blockGrid, queryBitmap);
+			queryProcessors.add(qp);
+			executor.execute(qp);
+				
 		}
 		executor.shutdown();
 		boolean status = executor.awaitTermination(10, TimeUnit.MINUTES);
 		if (!status)
 			logger.log(Level.WARNING, "Executor terminated because of the specified timeout=10minutes");
+		
+		for (LocalQueryProcessor qp : queryProcessors) {
+			if (qp.getResultRecordLists() != null && qp.getResultRecordLists().size() > 0) {
+				
+				for (String[] resultPath : qp.getResultRecordLists())
+					records.put(resultPath);
+			}
+		}
 	}
+	
 }

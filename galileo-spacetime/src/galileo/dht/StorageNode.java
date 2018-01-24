@@ -1306,9 +1306,12 @@ public class StorageNode implements RequestListener {
 
 					individualRequests.add(nEvent);
 				}
-
+				
+				GeoavailabilityQuery geoQuery = new GeoavailabilityQuery(event.getFeatureQuery(),
+						event.getPolygon());
+				
 				NeighborRequestHandler rikiHandler = new NeighborRequestHandler(null, individualRequests, new ArrayList<NetworkDestination>(destinations), context, this,
-						allCubes, superCubeNumNodesMap);
+						allCubes, superCubeNumNodesMap, numCores, geoQuery, fs1);
 				rikiHandler.handleRequest(response);
 
 			}
