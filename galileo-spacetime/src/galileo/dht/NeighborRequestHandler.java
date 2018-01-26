@@ -28,7 +28,6 @@ import galileo.comm.MetadataResponse;
 import galileo.comm.NeighborDataEvent;
 import galileo.comm.NeighborDataResponse;
 import galileo.comm.QueryResponse;
-import galileo.dht.StorageNode.QueryProcessor;
 import galileo.event.BasicEventWrapper;
 import galileo.event.Event;
 import galileo.event.EventContext;
@@ -65,12 +64,12 @@ public class NeighborRequestHandler implements MessageListener {
 	private Event response;
 	private long elapsedTime;
 	private List<SuperCube> allCubes;
+	private Map<Integer, List<String[]>> fs1SuperCubeDataMap;
 	private GeoavailabilityQuery geoQuery;
 	private GeospatialFileSystem fs1;
 	
 	/* This helps track the nuner of control messages coming in */
 	private Map<Integer, Integer> superCubeNumNodesMap;
-	private Map<Integer, String[]> superCubeIdToDataMap;
 	
 	/* Keeping track of how many data messages are coming from a neighbor node */
 	private Map<String, Integer> nodeToNumberOfDataMessagesMap;
@@ -81,11 +80,13 @@ public class NeighborRequestHandler implements MessageListener {
 	private Map<Integer, List<LocalRequirements>> supercubeToRequirementsMap;
 	private Map<Integer, List<String>> pathIdToFragmentDataMap;
 	private int numCores;
+	private Map<Integer, Boolean> superCubeLocalFetchCheck;
 	
 
 	public NeighborRequestHandler(List<NeighborDataEvent> internalEvents, List<NeighborDataEvent> individualRequests, Collection<NetworkDestination> destinations, EventContext clientContext,
 			RequestListener listener, List<SuperCube> allCubes, Map<Integer, Integer> superCubeNumNodesMap, 
 			int numCores, GeoavailabilityQuery geoQuery, GeospatialFileSystem fs1) throws IOException {
+		
 		this.nodes = destinations;
 		this.clientContext = clientContext;
 		this.requestListener = listener;
@@ -106,6 +107,10 @@ public class NeighborRequestHandler implements MessageListener {
 		this.numCores = numCores;
 		this.geoQuery = geoQuery;
 		this.fs1 = fs1;
+		
+		fs1SuperCubeDataMap = new HashMap<Integer, List<String[]>>();
+		superCubeLocalFetchCheck = new HashMap<Integer, Boolean>();
+		
 	}
 
 	public void closeRequest() {
@@ -344,6 +349,7 @@ public class NeighborRequestHandler implements MessageListener {
 		
 		String lines[] = requirementsString.trim().split("\\r?\\n");
 		
+		/* The requirements String of a particular supercube*/
 		for(String line: lines) {
 			String[] tokens = line.split("-"); 
 			if(tokens.length == 2) {
@@ -374,6 +380,7 @@ public class NeighborRequestHandler implements MessageListener {
 				
 				
 			} else {
+				logger.log(Level.SEVERE, "AN INVALID FORMAT FOUND IN CONTROL MESSAGE");
 				return null;
 			}
 		}
@@ -421,9 +428,11 @@ public class NeighborRequestHandler implements MessageListener {
 					if(rsp.getTotalPaths() > 0)
 						nodeToNumberOfDataMessagesMap.put(nodeName, rsp.getTotalPaths());
 					
+					/* The # of supercubes returns =  number of requirements string */
 					for(int superCubeId: rsp.getSupercubeIDList()) {
 						int index = rsp.getSupercubeIDList().indexOf(superCubeId);
 						
+						/* This supercube is expecting response from one less nodes */
 						int expectedNodes = superCubeNumNodesMap.get(superCubeId) - 1;
 						
 						/* One less node to expect control message from */
@@ -525,8 +534,13 @@ public class NeighborRequestHandler implements MessageListener {
 			/* size of individualRequests must be the same as nodes */
 			int count = 0;
 			
-			/* TODO: HANDLE INTERNAL EVENTS BEFORE SENDING OUT REQUESTS */
+			// Reading in all fs1 blocks first
 			
+			LocalReader lr = new LocalReader();
+			lr.run();
+			//readFS1Blocks(allCubes);
+			
+			/* TODO: HANDLE INTERNAL EVENTS BEFORE SENDING OUT REQUESTS */
 			
 			for (NetworkDestination node : nodes) {
 				Event request = individualRequests.get(count);
@@ -561,45 +575,104 @@ public class NeighborRequestHandler implements MessageListener {
 
 	}
 	
-	
-	public void handleLocalBlockReads() {
+	/* Reading all blocks supercube by supercube */
+	/*public void readFS1Blocks(List<SuperCube> scs) {
 		
-		
-	}
-	
-	/* Reading all blocks in a particular path */
-	public void readFS1Blocks(List<SuperCube> scs) {
-		
-		ExecutorService executor = Executors.newFixedThreadPool(Math.min(scs.size(), 2 * numCores));
-		List<LocalQueryProcessor> queryProcessors = new ArrayList<LocalQueryProcessor>();
-		
-		for(SuperCube sc: scs) {
-			int totalBlocks = sc.getFs1BlockPath().size();
+		try {
+			ExecutorService executor = Executors.newFixedThreadPool(Math.min(scs.size(), 2 * numCores));
+			List<LocalQueryProcessor> queryProcessors = new ArrayList<LocalQueryProcessor>();
 			
-			GeoavailabilityGrid blockGrid = new GeoavailabilityGrid(sc.getCentralGeohash(), GeoHash.MAX_PRECISION * 2 / 3);
-			
-			Bitmap queryBitmap = null;
-			
-			if (geoQuery.getPolygon() != null)
-				queryBitmap = QueryTransform.queryToGridBitmap(geoQuery, blockGrid);
-			
-			LocalQueryProcessor qp = new LocalQueryProcessor(fs1, sc.getFs1BlockPath(), geoQuery, blockGrid, queryBitmap);
-			queryProcessors.add(qp);
-			executor.execute(qp);
+			for(SuperCube sc: scs) {
 				
+				GeoavailabilityGrid blockGrid = new GeoavailabilityGrid(sc.getCentralGeohash(), GeoHash.MAX_PRECISION * 2 / 3);
+				
+				Bitmap queryBitmap = null;
+				
+				if (geoQuery.getPolygon() != null)
+					queryBitmap = QueryTransform.queryToGridBitmap(geoQuery, blockGrid);
+				
+				// One of these per SuperCube 
+				LocalQueryProcessor qp = new LocalQueryProcessor(fs1, sc.getFs1BlockPath(), geoQuery, blockGrid, queryBitmap, (int)sc.getId());
+				queryProcessors.add(qp);
+				executor.execute(qp);
+					
+			}
+			executor.shutdown();
+			boolean status = executor.awaitTermination(10, TimeUnit.MINUTES);
+			if (!status)
+				logger.log(Level.WARNING, "Executor terminated because of the specified timeout=10minutes");
+			
+			for (LocalQueryProcessor qp : queryProcessors) {
+				// INDICATING THIS SUPERCUBE IS READY FOR JOIN
+				superCubeLocalFetchCheck.put(qp.getSuperCubeId(), true);
+				if (qp.getResultRecordLists() != null && qp.getResultRecordLists().size() > 0) {
+					fs1SuperCubeDataMap.put(qp.getSuperCubeId(), qp.getResultRecordLists());
+				} else {
+					fs1SuperCubeDataMap.put(qp.getSuperCubeId(), null);
+				}
+			}
+		} catch (Exception e) {
+			logger.log(Level.SEVERE, "Something went wrong while querying FS1 at NeighborRequestHandler", e);
 		}
-		executor.shutdown();
-		boolean status = executor.awaitTermination(10, TimeUnit.MINUTES);
-		if (!status)
-			logger.log(Level.WARNING, "Executor terminated because of the specified timeout=10minutes");
-		
-		for (LocalQueryProcessor qp : queryProcessors) {
-			if (qp.getResultRecordLists() != null && qp.getResultRecordLists().size() > 0) {
+	}*/
+	
+	class LocalReader implements Runnable {
+
+		@Override
+		public void run() {
+			// TODO Auto-generated method stub
+			readFS1Blocks(allCubes);
+		}
+		public void readFS1Blocks(List<SuperCube> scs) {
+			
+			try {
+				ExecutorService executor = Executors.newFixedThreadPool(Math.min(scs.size(), 2 * numCores));
+				List<LocalQueryProcessor> queryProcessors = new ArrayList<LocalQueryProcessor>();
 				
-				for (String[] resultPath : qp.getResultRecordLists())
-					records.put(resultPath);
+				for(SuperCube sc: scs) {
+					
+					GeoavailabilityGrid blockGrid = new GeoavailabilityGrid(sc.getCentralGeohash(), GeoHash.MAX_PRECISION * 2 / 3);
+					
+					Bitmap queryBitmap = null;
+					
+					if (geoQuery.getPolygon() != null)
+						queryBitmap = QueryTransform.queryToGridBitmap(geoQuery, blockGrid);
+					
+					// One of these per SuperCube 
+					LocalQueryProcessor qp = new LocalQueryProcessor(fs1, sc.getFs1BlockPath(), geoQuery, blockGrid, queryBitmap, (int)sc.getId());
+					queryProcessors.add(qp);
+					executor.execute(qp);
+						
+				}
+				executor.shutdown();
+				boolean status = executor.awaitTermination(10, TimeUnit.MINUTES);
+				if (!status)
+					logger.log(Level.WARNING, "Executor terminated because of the specified timeout=10minutes");
+				
+				for (LocalQueryProcessor qp : queryProcessors) {
+					// INDICATING THIS SUPERCUBE IS READY FOR JOIN
+					
+					synchronized(superCubeLocalFetchCheck) {
+						synchronized(fs1SuperCubeDataMap) {
+							superCubeLocalFetchCheck.put(qp.getSuperCubeId(), true);
+						
+						
+							if (qp.getResultRecordLists() != null && qp.getResultRecordLists().size() > 0) {
+								fs1SuperCubeDataMap.put(qp.getSuperCubeId(), qp.getResultRecordLists());
+							} else {
+								fs1SuperCubeDataMap.put(qp.getSuperCubeId(), null);
+							}
+						}
+					}
+				}
+			} catch (Exception e) {
+				logger.log(Level.SEVERE, "Something went wrong while querying FS1 at NeighborRequestHandler", e);
 			}
 		}
 	}
+	
+	
+	
+	
 	
 }

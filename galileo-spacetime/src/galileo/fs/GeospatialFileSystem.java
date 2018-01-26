@@ -2256,12 +2256,13 @@ public class GeospatialFileSystem extends FileSystem {
 	 * @throws InterruptedException
 	 */
 	
+	// gets called once per supercube
 	public List<String[]> queryLocal(List<String> blocks, GeoavailabilityQuery geoQuery, GeoavailabilityGrid grid, Bitmap queryBitmap) 
 			throws IOException, InterruptedException {
 		
-		/* Represents all possible fragments. Only the fields representing the required fragments will be populated */
 		List<String[]> featurePaths = new ArrayList<String[]>();
 		List<String[]> returnPaths = new ArrayList<String[]>();
+		
 		// THIS READS THE ACTUAL BLOCKS
 		
 		boolean skipGridProcessing = false;
@@ -2285,13 +2286,14 @@ public class GeospatialFileSystem extends FileSystem {
 		
 		/* ALL THE RECORDS TO BE QUERIED ARE NOW INSIDE featurePaths */
 		
-		// FURTHER FILTERING OF featurePaths
+		// FURTHER FILTERING OF FEATUREPATHS
 		
 		queryBitmap = skipGridProcessing ? null : queryBitmap;
 		
 		if (parallelism > 0) {
 			
 			ExecutorService executor = Executors.newFixedThreadPool(parallelism);
+			
 			List<LocalParallelQueryProcessor> queryProcessors = new ArrayList<>();
 			
 			for (int i = 0; i < parallelism; i++) {

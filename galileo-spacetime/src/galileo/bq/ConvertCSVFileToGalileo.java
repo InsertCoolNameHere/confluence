@@ -86,7 +86,7 @@ public class ConvertCSVFileToGalileo {
 		SpatialHint sp = new SpatialHint("gps_abs_lat", "gps_abs_lon");
 		String temporalHint = "epoch_time";
 		//if(!FS_CREATED){
-			gc.createFS("airview", sp, featureList, temporalHint);
+			gc.createFS("airview", sp, featureList, temporalHint,1);
 			//FS_CREATED = true;
 		//}
 		

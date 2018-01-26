@@ -1421,6 +1421,7 @@ public class StorageNode implements RequestListener {
 				
 				/* SEND BACK SUPERCUBE TO REQUIREMENTS MAP IMMEDIATELY */
 				/* THERE IS GOING TO BE ONE DATA RESPONSE PER PATH. SO THE NUMBER OF PATHS IS NECESSARY */
+				
 				NeighborDataResponse controlMessage = createCubeRequirements(supercubeRequirementsMap, pathToFragmentsMap.size(), nodeString);
 				context.sendReply(controlMessage);
 				

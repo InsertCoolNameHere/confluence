@@ -101,22 +101,9 @@ public class LocalParallelQueryProcessor implements Runnable{
 					pathIterator.remove();
 				}
 				/*each string[] is a line of record*/
-				for (List<String[]> paths : geoMap.query(queryBitmap).values()) {
-					/* No need to update featurePaths if the remaining section will not be evaluated */
-					if (query != null && this.featurePaths.size() > 0) {
-						this.featurePaths.addAll(paths);
-						continue;
-					} else if(paths != null && paths.size() > 0){
-						for(String[] record : paths) {
-							if(record != null) {
-								String recStr = record.toString();
-								recordsStringRepresentation += recStr.substring(1,recStr.length() - 1) + "\n";
-							}
-						}
-					}
-						
-					
-				}
+				for (List<String[]> paths : geoMap.query(queryBitmap).values()) 
+					this.featurePaths.addAll(paths);
+				
 			}
 			if (query != null && this.featurePaths.size() > 0) {
 				MetadataGraph temporaryGraph = new MetadataGraph();
@@ -158,26 +145,6 @@ public class LocalParallelQueryProcessor implements Runnable{
 				}
 			}
 
-			/*if (featurePaths.size() > 0) {
-				try (FileOutputStream fos = new FileOutputStream(this.storagePath)) {
-					Iterator<String[]> pathIterator = featurePaths.iterator();
-					while (pathIterator.hasNext()) {
-						String[] path = pathIterator.next();
-						StringBuffer pathSB = new StringBuffer();
-						for (int j = 0; j < path.length; j++) {
-							pathSB.append(path[j]);
-							if (j + 1 != path.length)
-								pathSB.append(",");
-						}
-						fos.write(pathSB.toString().getBytes("UTF-8"));
-						pathIterator.remove();
-						if (pathIterator.hasNext())
-							fos.write("\n".getBytes("UTF-8"));
-					}
-				}
-			} else {
-				this.storagePath = null;
-			}*/
 		} catch (BitmapException e) {
 			logger.log(Level.SEVERE, "Something went wrong while querying the filesystem.", e);
 		}

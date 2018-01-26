@@ -35,6 +35,8 @@ public class NeighborDataResponse implements Event {
 	/* CONTROL MESSAGE */
 	public NeighborDataResponse(Map<SuperCube, List<Requirements>> supercubeRequirementsMap, int totalPaths, String nodeString) {
 		// TODO Auto-generated constructor stub
+		
+		// There is one Requirement String for each supercube
 		supercubeIDList = new ArrayList<Integer>();
 		requirementsList = new ArrayList<String>();
 		this.nodeString = nodeString;

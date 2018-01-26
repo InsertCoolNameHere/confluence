@@ -29,6 +29,7 @@ public class LocalQueryProcessor implements Runnable{
 	private GeoavailabilityGrid grid;
 	private GeospatialFileSystem fs1;
 	private Bitmap queryBitmap;
+	private int superCubeId;
 	//private EventContext context;
 	//private String nodeString;
 	
@@ -60,13 +61,15 @@ public class LocalQueryProcessor implements Runnable{
 		}
 	}*/
 	
-	public LocalQueryProcessor(GeospatialFileSystem fs1, List<String> blocks, GeoavailabilityQuery gQuery,GeoavailabilityGrid grid, Bitmap queryBitmap) {
+	public LocalQueryProcessor(GeospatialFileSystem fs1, List<String> blocks, GeoavailabilityQuery gQuery,
+			GeoavailabilityGrid grid, Bitmap queryBitmap, int superCubeId) {
 		
 		this.fs1 = fs1;
 		this.geoQuery = gQuery;
 		this.grid = grid;
 		this.queryBitmap = queryBitmap;
 		this.blocks = blocks;
+		this.superCubeId = superCubeId;
 		
 	}
 
@@ -92,6 +95,14 @@ public class LocalQueryProcessor implements Runnable{
 
 	public void setResultRecordLists(List<String[]> resultRecordLists) {
 		this.resultRecordLists = resultRecordLists;
+	}
+
+	public int getSuperCubeId() {
+		return superCubeId;
+	}
+
+	public void setSuperCubeId(int superCubeId) {
+		this.superCubeId = superCubeId;
 	}
 
 }
