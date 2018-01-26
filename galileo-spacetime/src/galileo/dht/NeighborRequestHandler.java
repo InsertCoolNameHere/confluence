@@ -78,7 +78,7 @@ public class NeighborRequestHandler implements MessageListener {
 	private Map<Integer, List<String>> supercubeToExpectedPathsMap;
 	
 	private Map<Integer, List<LocalRequirements>> supercubeToRequirementsMap;
-	private Map<Integer, List<String>> pathIdToFragmentDataMap;
+	private Map<String, List<String>> pathIdToFragmentDataMap;
 	private int numCores;
 	private Map<Integer, Boolean> superCubeLocalFetchCheck;
 	
@@ -110,6 +110,7 @@ public class NeighborRequestHandler implements MessageListener {
 		
 		fs1SuperCubeDataMap = new HashMap<Integer, List<String[]>>();
 		superCubeLocalFetchCheck = new HashMap<Integer, Boolean>();
+		pathIdToFragmentDataMap = new HashMap<String, List<String>>();
 		
 	}
 
@@ -406,6 +407,11 @@ public class NeighborRequestHandler implements MessageListener {
 		ll.add("2");
 		ll.remove("3");
 		System.out.println(ll.indexOf("1"));
+		
+		Map<String , Integer> ss = new HashMap<>();
+		ss.put("a", 12);
+		
+		System.out.println(ss.get("ab"));
 	}
 
 	@Override
@@ -455,18 +461,27 @@ public class NeighborRequestHandler implements MessageListener {
 					String nodeName = rsp.getNodeString();
 					int pathIndex = rsp.getPathIndex();
 					
-					pathIdToFragmentDataMap.put(pathIndex, fragmentedRecords);
-					
 					String pathString = nodeName+"$"+pathIndex;
+					
+					// List of all FS2 paths along with fragments
+					// synchronize
+					pathIdToFragmentDataMap.put(pathString, fragmentedRecords);
 					
 					for(int i : supercubeToExpectedPathsMap.keySet()) {
 						List<String> expectedPaths = supercubeToExpectedPathsMap.get(i);
 						
-						expectedPaths.remove(pathString);
-						if(expectedPaths.size() <= 0) {
-							/* LAUNCH THIS SUPERCUBE INTO A NEW THREAD*/
-							logger.log(Level.INFO, "READY TO LAUNCH " + i);
-						} 
+						if(expectedPaths.contains(pathString)) {
+							// Checking if a control message has been received from this node
+							boolean noControl = checkForDataBeforeControlMsg(nodeName);
+							
+							
+							
+							expectedPaths.remove(pathString);
+							if(expectedPaths.size() <= 0) {
+								/* LAUNCH THIS SUPERCUBE INTO A NEW THREAD*/
+								logger.log(Level.INFO, "READY TO LAUNCH " + i);
+							} 
+						}
 					}
 					
 					
@@ -502,6 +517,20 @@ public class NeighborRequestHandler implements MessageListener {
 		}*/
 	}
 	
+	/**
+	 * @param pathString
+	 * @return
+	 * 
+	 * checks if a data message has arrived before control message.
+	 * The supercube in question needs to be stored for bookkeeping
+	 */
+	private boolean checkForDataBeforeControlMsg(String nodeName) {
+		// TODO Auto-generated method stub
+		if(nodeToNumberOfDataMessagesMap.get(nodeName) == null)
+			return true;
+		return false;
+	}
+
 	/**
 	 * returns true for control message false for data message
 	 * @author sapmitra
