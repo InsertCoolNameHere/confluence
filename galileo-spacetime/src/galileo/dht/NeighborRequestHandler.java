@@ -64,6 +64,7 @@ public class NeighborRequestHandler implements MessageListener {
 	private Event response;
 	private long elapsedTime;
 	private List<SuperCube> allCubes;
+	private List<Integer> cleanupCansdidateCubes;
 	private Map<Integer, List<String[]>> fs1SuperCubeDataMap;
 	private GeoavailabilityQuery geoQuery;
 	private GeospatialFileSystem fs1;
@@ -111,6 +112,7 @@ public class NeighborRequestHandler implements MessageListener {
 		fs1SuperCubeDataMap = new HashMap<Integer, List<String[]>>();
 		superCubeLocalFetchCheck = new HashMap<Integer, Boolean>();
 		pathIdToFragmentDataMap = new HashMap<String, List<String>>();
+		cleanupCansdidateCubes = new ArrayList<Integer>();
 		
 	}
 
@@ -354,30 +356,31 @@ public class NeighborRequestHandler implements MessageListener {
 		for(String line: lines) {
 			String[] tokens = line.split("-"); 
 			if(tokens.length == 2) {
-				
-				List<String> pathsForThisCube = supercubeToExpectedPathsMap.get(superCubeId);
-				if(pathsForThisCube == null) {
-					pathsForThisCube = new ArrayList<String>();
+				int pathIndex = -99;
+				synchronized(supercubeToExpectedPathsMap) {
+					
+					List<String> pathsForThisCube = supercubeToExpectedPathsMap.get(superCubeId);
+					if(pathsForThisCube == null) {
+						pathsForThisCube = new ArrayList<String>();
+					}
+					
+					supercubeToExpectedPathsMap.put(superCubeId, pathsForThisCube);
+					
+					pathIndex = Integer.valueOf(tokens[0]);
+					pathsForThisCube.add(nodeName+"$"+pathIndex);
+					
 				}
-				
-				int pathIndex = Integer.valueOf(tokens[0]);
-				
 				String[] fragments = tokens[1].split(",");
-				
-				pathsForThisCube.add(nodeName+"$"+pathIndex);
-				supercubeToExpectedPathsMap.put(superCubeId, pathsForThisCube);
-				
-				
-				
 				LocalRequirements lr = createRequirement(pathIndex, fragments);
 				
-				
-				List<LocalRequirements> lrs = supercubeToRequirementsMap.get(superCubeId);
-				if(lrs == null) {
-					lrs = new ArrayList<LocalRequirements>();
+				synchronized(supercubeToRequirementsMap) {
+					List<LocalRequirements> lrs = supercubeToRequirementsMap.get(superCubeId);
+					if(lrs == null) {
+						lrs = new ArrayList<LocalRequirements>();
+					}
+					lrs.add(lr);
+					supercubeToRequirementsMap.put(superCubeId, lrs);
 				}
-				lrs.add(lr);
-				supercubeToRequirementsMap.put(superCubeId, lrs);
 				
 				
 			} else {
@@ -408,8 +411,16 @@ public class NeighborRequestHandler implements MessageListener {
 		ll.remove("3");
 		System.out.println(ll.indexOf("1"));
 		
-		Map<String , Integer> ss = new HashMap<>();
-		ss.put("a", 12);
+		Map<String , List<Integer>> ss = new HashMap<>();
+		List<Integer> la = new ArrayList<Integer> ();
+		la.add(1);
+		la.add(2);
+		la.add(3);
+		
+		ss.put("ab", la);
+		
+		List<Integer> la1 = ss.get("ab");
+		la1.remove(new Integer(1));
 		
 		System.out.println(ss.get("ab"));
 	}
@@ -431,18 +442,23 @@ public class NeighborRequestHandler implements MessageListener {
 					String nodeName =rsp.getNodeString();
 					
 					/* This node is about to send back this many data messages */
-					if(rsp.getTotalPaths() > 0)
-						nodeToNumberOfDataMessagesMap.put(nodeName, rsp.getTotalPaths());
+					if(rsp.getTotalPaths() > 0) {
+						synchronized(nodeToNumberOfDataMessagesMap) {
+							nodeToNumberOfDataMessagesMap.put(nodeName, rsp.getTotalPaths());
+						}
+					}
 					
 					/* The # of supercubes returns =  number of requirements string */
 					for(int superCubeId: rsp.getSupercubeIDList()) {
 						int index = rsp.getSupercubeIDList().indexOf(superCubeId);
 						
 						/* This supercube is expecting response from one less nodes */
-						int expectedNodes = superCubeNumNodesMap.get(superCubeId) - 1;
-						
-						/* One less node to expect control message from */
-						superCubeNumNodesMap.put(superCubeId, expectedNodes);
+						synchronized(superCubeNumNodesMap) {
+							int expectedNodes = superCubeNumNodesMap.get(superCubeId) - 1;
+							
+							/* One less node to expect control message from */
+							superCubeNumNodesMap.put(superCubeId, expectedNodes);
+						}
 						
 						/*Requirements for a single cube came back as 
 						 * pathIndex-0,1,2...\n */
@@ -450,7 +466,6 @@ public class NeighborRequestHandler implements MessageListener {
 						
 						handleRequirementsOnControlMessage(requirementsString, superCubeId, nodeName);
 					}
-					
 					
 					/* Update supercube requirements */
 				} else {
@@ -465,15 +480,33 @@ public class NeighborRequestHandler implements MessageListener {
 					
 					// List of all FS2 paths along with fragments
 					// synchronize
-					pathIdToFragmentDataMap.put(pathString, fragmentedRecords);
+					synchronized(pathIdToFragmentDataMap) {
+						
+						pathIdToFragmentDataMap.put(pathString, fragmentedRecords);
+						
+					}
 					
+					// synchronize on supercubeToExpectedPathsMap
 					for(int i : supercubeToExpectedPathsMap.keySet()) {
 						List<String> expectedPaths = supercubeToExpectedPathsMap.get(i);
 						
 						if(expectedPaths.contains(pathString)) {
 							// Checking if a control message has been received from this node
 							boolean noControl = checkForDataBeforeControlMsg(nodeName);
+							boolean noLocalFetch = false;
+							synchronized (superCubeLocalFetchCheck) {
+								noLocalFetch = checkForLocalFetch(i);
+							}
 							
+							
+							
+							
+							if(noControl || noLocalFetch) {
+								// means control message for this node has not come in yet
+								// This supercube has to be shelved and checked later on using the cleanup service
+								if(!cleanupCansdidateCubes.contains(i))
+									cleanupCansdidateCubes.add(i);
+							}
 							
 							
 							expectedPaths.remove(pathString);
@@ -484,6 +517,7 @@ public class NeighborRequestHandler implements MessageListener {
 						}
 					}
 					
+					// after this, launch a thread that checks for any supercube that is ready and launches it.
 					
 					
 					
@@ -517,6 +551,16 @@ public class NeighborRequestHandler implements MessageListener {
 		}*/
 	}
 	
+	private boolean checkForLocalFetch(int i) {
+		// TODO Auto-generated method stub
+		boolean found = false;
+		
+		
+		found = superCubeLocalFetchCheck.get(i);
+		
+		return found;
+	}
+
 	/**
 	 * @param pathString
 	 * @return
@@ -526,9 +570,12 @@ public class NeighborRequestHandler implements MessageListener {
 	 */
 	private boolean checkForDataBeforeControlMsg(String nodeName) {
 		// TODO Auto-generated method stub
-		if(nodeToNumberOfDataMessagesMap.get(nodeName) == null)
-			return true;
-		return false;
+		boolean hasNoControl = false;
+		synchronized(nodeToNumberOfDataMessagesMap) {
+			if(nodeToNumberOfDataMessagesMap.get(nodeName) == null)
+				hasNoControl = true;
+		}
+		return hasNoControl;
 	}
 
 	/**
