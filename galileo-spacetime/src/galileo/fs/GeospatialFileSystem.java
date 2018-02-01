@@ -1775,7 +1775,6 @@ public class GeospatialFileSystem extends FileSystem {
 		private GeoavailabilityGrid grid;
 		private Bitmap queryBitmap;
 		private String storagePath;
-		private boolean storeIt = true;
 
 		public ParallelQueryProcessor(List<String[]> featurePaths, Query query, GeoavailabilityGrid grid,
 				Bitmap queryBitmap, String storagePath) {
@@ -1786,15 +1785,6 @@ public class GeospatialFileSystem extends FileSystem {
 			this.storagePath = storagePath + BLOCK_EXTENSION;
 		}
 		
-		public ParallelQueryProcessor(List<String[]> featurePaths, Query query, GeoavailabilityGrid grid,
-				Bitmap queryBitmap, String storagePath, boolean storeIt) {
-			this.featurePaths = featurePaths;
-			this.query = query;
-			this.grid = grid;
-			this.queryBitmap = queryBitmap;
-			this.storagePath = storagePath + BLOCK_EXTENSION;
-			this.storeIt = storeIt;
-		}
 
 		@Override
 		public void run() {
@@ -1864,28 +1854,28 @@ public class GeospatialFileSystem extends FileSystem {
 				}
 				
 				/* THE RESULTS OF THE QUERY GETS WRITTEN TO A LOCAL FILE AND JUST THE PATH TO THAT FILE IS RETURNED FOR SUBSEQUENT FETCHING */
-				if(storeIt) {
-					if (featurePaths.size() > 0) {
-						try (FileOutputStream fos = new FileOutputStream(this.storagePath)) {
-							Iterator<String[]> pathIterator = featurePaths.iterator();
-							while (pathIterator.hasNext()) {
-								String[] path = pathIterator.next();
-								StringBuffer pathSB = new StringBuffer();
-								for (int j = 0; j < path.length; j++) {
-									pathSB.append(path[j]);
-									if (j + 1 != path.length)
-										pathSB.append(",");
-								}
-								fos.write(pathSB.toString().getBytes("UTF-8"));
-								pathIterator.remove();
-								if (pathIterator.hasNext())
-									fos.write("\n".getBytes("UTF-8"));
+				
+				if (featurePaths.size() > 0) {
+					try (FileOutputStream fos = new FileOutputStream(this.storagePath)) {
+						Iterator<String[]> pathIterator = featurePaths.iterator();
+						while (pathIterator.hasNext()) {
+							String[] path = pathIterator.next();
+							StringBuffer pathSB = new StringBuffer();
+							for (int j = 0; j < path.length; j++) {
+								pathSB.append(path[j]);
+								if (j + 1 != path.length)
+									pathSB.append(",");
 							}
+							fos.write(pathSB.toString().getBytes("UTF-8"));
+							pathIterator.remove();
+							if (pathIterator.hasNext())
+								fos.write("\n".getBytes("UTF-8"));
 						}
-					} else {
-						this.storagePath = null;
 					}
+				} else {
+					this.storagePath = null;
 				}
+				
 			} catch (IOException | BitmapException e) {
 				logger.log(Level.SEVERE, "Something went wrong while querying the filesystem.", e);
 				this.storagePath = null;
@@ -2352,5 +2342,33 @@ public class GeospatialFileSystem extends FileSystem {
 
 	public void setBorderMap(Map<String, BorderingProperties> borderMap) {
 		this.borderMap = borderMap;
+	}
+	
+	public String getName() {
+		return name;
+	}
+
+	public int getTemporalPosn() {
+		return temporalPosn;
+	}
+
+	public void setTemporalPosn(int temporalPosn) {
+		this.temporalPosn = temporalPosn;
+	}
+
+	public int getSpatialPosn1() {
+		return spatialPosn1;
+	}
+
+	public void setSpatialPosn1(int spatialPosn1) {
+		this.spatialPosn1 = spatialPosn1;
+	}
+
+	public int getSpatialPosn2() {
+		return spatialPosn2;
+	}
+
+	public void setSpatialPosn2(int spatialPosn2) {
+		this.spatialPosn2 = spatialPosn2;
 	}
 }

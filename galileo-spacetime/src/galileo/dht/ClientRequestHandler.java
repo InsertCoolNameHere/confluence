@@ -16,6 +16,8 @@ import java.util.logging.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import galileo.comm.DataIntegrationFinalResponse;
+import galileo.comm.DataIntegrationResponse;
 import galileo.comm.GalileoEventMap;
 import galileo.comm.MetadataResponse;
 import galileo.comm.QueryResponse;
@@ -106,7 +108,20 @@ public class ClientRequestHandler implements MessageListener {
 			Event event;
 			try {
 				event = this.eventWrapper.unwrap(gresponse);
-				if (event instanceof QueryResponse && this.response instanceof QueryResponse) {
+				if(event instanceof DataIntegrationResponse && this.response instanceof DataIntegrationFinalResponse) {
+					
+					DataIntegrationFinalResponse actualResponse = (DataIntegrationFinalResponse) this.response;
+					
+					DataIntegrationResponse eventResponse = (DataIntegrationResponse) event;
+					
+					for(String path: eventResponse.getResultPaths()) {
+						
+						String newPath = eventResponse.getNodeName()+":"+eventResponse+"$$"+path;
+						actualResponse.addResultPath(newPath);
+					}
+					
+					
+				} else if (event instanceof QueryResponse && this.response instanceof QueryResponse) {
 					QueryResponse actualResponse = (QueryResponse) this.response;
 					actualResponse.setElapsedTime(elapsedTime);
 					QueryResponse eventResponse = (QueryResponse) event;

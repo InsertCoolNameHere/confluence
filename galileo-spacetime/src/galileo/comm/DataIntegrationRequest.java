@@ -24,7 +24,8 @@ public class DataIntegrationRequest implements Event{
 	private String fsname2;
 	private int primaryFS;
 	private Query featureQuery;
-	
+	private double latRelax;
+	private double longRelax;
 	
 	public boolean isSpatial() {
 		return polygon != null;
@@ -68,6 +69,8 @@ public class DataIntegrationRequest implements Event{
 		fsname1 = in.readString();
 		fsname2 = in.readString();
 		primaryFS = in.readInt();
+		latRelax = in.readDouble();
+		longRelax = in.readDouble();
 		
 		
 		
@@ -91,6 +94,8 @@ public class DataIntegrationRequest implements Event{
 		out.writeString(fsname1);
 		out.writeString(fsname2);
 		out.writeInt(primaryFS);
+		out.writeDouble(latRelax);
+		out.writeDouble(longRelax);
 		
 	}
 
@@ -156,6 +161,22 @@ public class DataIntegrationRequest implements Event{
 
 	public void setFeatureQuery(Query featureQuery) {
 		this.featureQuery = featureQuery;
+	}
+
+	public double getLatRelax() {
+		return latRelax;
+	}
+
+	public void setLatRelax(double latRelax) {
+		this.latRelax = latRelax;
+	}
+
+	public double getLongRelax() {
+		return longRelax;
+	}
+
+	public void setLongRelax(double longRelax) {
+		this.longRelax = longRelax;
 	}
 
 }

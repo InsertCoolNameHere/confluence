@@ -10,26 +10,52 @@ public class MDC {
 	List<Integer> bValidEntries = new ArrayList<Integer>();
 	
 	public static void main(String arg[]) {
+		List<String[]> aRecords = new ArrayList<>();
+		String[] a1 = {"2","1","3"}; 
+		aRecords.add(a1);
 		
-		String aRecords = "2,1,3$$1,5,7$$14,3,2$$16,1,12$$7,7,7";
-		String bRecords = "12,1,5$$2,1,3$$-1,2,3$$1,5,7$$0,0,0$$9,9,9$$16,1,12$$7,7,7";
+		String[] a2 = {"1","5","7"}; 
+		aRecords.add(a2);
+		
+		String[] a3 = {"4","3","2"}; 
+		aRecords.add(a3);
+		
+		String[] a4 = {"16","1","12"}; 
+		aRecords.add(a4);
+		
+		String[] a5 = {"7","7","7"}; 
+		aRecords.add(a5);
+		
+		
+		//,"1,5,7","4,3,2","16,1,12","7,7,7"};
+		String bRecords = "12,1,5\n2,1,3\n-1,2,3\n1,5,7\n0,0,0\n9,9,9\n16,1,12\n7,7,7";
 		int[] aPosns = {0,1,2};
 		int[] bPosns = {0,1,2};
 		double[] epsilons = {0.1,0.1,0.2};
 		
 		MDC m = new MDC();
 		System.out.println(System.currentTimeMillis());
-		m.iterativeMultiDimJoin(aRecords, bRecords, aPosns, bPosns, epsilons);
+		System.out.println(m.iterativeMultiDimJoin(aRecords, bRecords, aPosns, bPosns, epsilons));
 		System.out.println(System.currentTimeMillis());
 	}
 	
-	public void iterativeMultiDimJoin(String aRecords, String bRecords, int[] aPosns, int[] bPosns, double[] epsilons) {
+	/*public static void main(String arg[]) {
+		String[] ss = new String[3];
+		ss[0] = "hi";
+		ss[1] = "hello";
+		ss[2] = "lo";
+		
+		System.out.println(java.util.Arrays.toString(ss));
+	}*/
+	
+	
+	public List<String> iterativeMultiDimJoin(List<String[]> indvARecords,/*String aRecords,*/ String bRecords, int[] aPosns, int[] bPosns, double[] epsilons) {
 		/* Do not modify these 2 data */
 		String doublePattern = "-?([0-9]*)\\.?([0-9]*)";
 		String intPattern = "-?([0-9])([0-9]*)";
 		
-		String[] indvARecords = aRecords.split("\\$\\$");
-		String[] indvBRecords = bRecords.split("\\$\\$");
+		//String[] indvARecords = aRecords.split("\\$\\$");
+		String[] indvBRecords = bRecords.split("\\n");
 
 		List<double[]> splitARecords = new ArrayList<double[]>();
 		List<double[]> splitBRecords = new ArrayList<double[]>();
@@ -40,11 +66,10 @@ public class MDC {
 		
 		int ind = 0;
 		
-		for(String line: indvARecords) {
-			String[] frs = line.split(",");
+		for(String[] frs: indvARecords) {
 			
-			if(Pattern.matches(doublePattern, frs[aPosns[0]]) && Pattern.matches(doublePattern, frs[aPosns[1]])
-					&& Pattern.matches(intPattern, frs[aPosns[2]])){
+			if(Pattern.matches(doublePattern, frs[aPosns[1]]) && Pattern.matches(doublePattern, frs[aPosns[2]])
+					&& Pattern.matches(intPattern, frs[aPosns[0]])){
 				double[] tempArr = new double[3];
 				tempArr[0] = Double.valueOf(frs[aPosns[0]]);
 				tempArr[1] = Double.valueOf(frs[aPosns[1]]);
@@ -60,8 +85,12 @@ public class MDC {
 		for(String line: indvBRecords) {
 			String[] frs = line.split(",");
 			
-			if(Pattern.matches(doublePattern, frs[bPosns[0]]) && Pattern.matches(doublePattern, frs[bPosns[1]])
-					&& Pattern.matches(intPattern, frs[bPosns[2]])){
+			if(line.trim().isEmpty()) {
+				ind++;
+				continue;
+			}
+			if(Pattern.matches(doublePattern, frs[bPosns[1]]) && Pattern.matches(doublePattern, frs[bPosns[2]])
+					&& Pattern.matches(intPattern, frs[bPosns[0]])){
 				
 				double[] tempArr = new double[3];
 				tempArr[0] = Double.valueOf(frs[bPosns[0]]);
@@ -141,8 +170,22 @@ public class MDC {
 			
 		}
 		
+		List<String> retJoinRecords = new ArrayList<String> ();
+		for(String line : pairs) {
+			
+			String[] pr = line.split(",");
+			int i1 = Integer.valueOf(pr[0]);
+			int i2 = Integer.valueOf(pr[1]);
+			
+			String ret1 = java.util.Arrays.toString(indvARecords.get(i1));
+			String ret2 = indvBRecords[i2];
+			
+			retJoinRecords.add(ret1+"$$"+ret2);
+			
+		}
 		
-		System.out.println("FINAL ANSWER: "+ pairs);
+		//System.out.println("FINAL ANSWER: "+ pairs);
+		return retJoinRecords;
 	}
 	
 	
@@ -150,7 +193,7 @@ public class MDC {
 	/* setA and setB are ordered according to the dimension in question */
 	public List<String> oneDJoin(List<Double> setA, List<Integer> aInd, List<Double> setB, List<Integer> bInd, 
 			double epsilon, List<double[]> splitAs, List<double[]> splitBs) {
-		
+		//System.out.println("HERE");
 		List<String> pairs = new ArrayList<String>();
 		
 		List<Integer> aValids = new ArrayList<Integer>();

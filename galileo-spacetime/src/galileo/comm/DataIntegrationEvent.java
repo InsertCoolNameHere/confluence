@@ -22,6 +22,9 @@ public class DataIntegrationEvent implements Event{
 	private String fsname2;
 	private int primaryFS;
 	private Query featureQuery;
+	private double latRelax;
+	private double longRelax;
+	private String id;
 	
 	
 	public boolean isSpatial() {
@@ -66,7 +69,9 @@ public class DataIntegrationEvent implements Event{
 		fsname1 = in.readString();
 		fsname2 = in.readString();
 		primaryFS = in.readInt();
-		
+		latRelax = in.readDouble();
+		longRelax = in.readDouble();
+		id = in.readString();
 		
 		
 	}
@@ -89,6 +94,10 @@ public class DataIntegrationEvent implements Event{
 		out.writeString(fsname1);
 		out.writeString(fsname2);
 		out.writeInt(primaryFS);
+		out.writeDouble(latRelax);
+		out.writeDouble(longRelax);
+		out.writeString(id);
+		
 		
 	}
 
@@ -154,6 +163,30 @@ public class DataIntegrationEvent implements Event{
 
 	public void setFeatureQuery(Query featureQuery) {
 		this.featureQuery = featureQuery;
+	}
+
+	public double getLatRelax() {
+		return latRelax;
+	}
+
+	public void setLatRelax(double latRelax) {
+		this.latRelax = latRelax;
+	}
+
+	public double getLongRelax() {
+		return longRelax;
+	}
+
+	public void setLongRelax(double longRelax) {
+		this.longRelax = longRelax;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
 	}
 
 }

@@ -1,10 +1,12 @@
 package galileo.dht;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -20,9 +22,11 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import galileo.bmp.Bitmap;
+import galileo.bmp.BitmapException;
 import galileo.bmp.GeoavailabilityGrid;
 import galileo.bmp.GeoavailabilityQuery;
 import galileo.bmp.QueryTransform;
+import galileo.comm.DataIntegrationResponse;
 import galileo.comm.GalileoEventMap;
 import galileo.comm.MetadataResponse;
 import galileo.comm.NeighborDataEvent;
@@ -39,6 +43,7 @@ import galileo.net.NetworkDestination;
 import galileo.net.RequestListener;
 import galileo.serialization.SerializationException;
 import galileo.util.GeoHash;
+import galileo.util.MDC;
 import galileo.util.Requirements;
 import galileo.util.SuperCube;
 
@@ -64,10 +69,12 @@ public class NeighborRequestHandler implements MessageListener {
 	private Event response;
 	private long elapsedTime;
 	private List<SuperCube> allCubes;
-	private List<Integer> cleanupCansdidateCubes;
+	private List<Integer> cleanupCandidateCubes;
 	private Map<Integer, List<String[]>> fs1SuperCubeDataMap;
 	private GeoavailabilityQuery geoQuery;
 	private GeospatialFileSystem fs1;
+	private String eventId;
+	private String queryResultsDir;
 	
 	/* This helps track the nuner of control messages coming in */
 	private Map<Integer, Integer> superCubeNumNodesMap;
@@ -81,17 +88,27 @@ public class NeighborRequestHandler implements MessageListener {
 	private Map<Integer, List<LocalRequirements>> supercubeToRequirementsMap;
 	private Map<String, List<String>> pathIdToFragmentDataMap;
 	private int numCores;
-	private Map<Integer, Boolean> superCubeLocalFetchCheck;
+	private List<Integer> superCubeLocalFetchCheck;
+	private List<String> resultFiles;
+	private ExecutorService executor;
+	private int cubesLeft;
+	private int[] aPosns;
+	private int[] bPosns;
+	private double[] epsilons;
+	private String hostName;
+	private String port;
 	
 
 	public NeighborRequestHandler(List<NeighborDataEvent> internalEvents, List<NeighborDataEvent> individualRequests, Collection<NetworkDestination> destinations, EventContext clientContext,
 			RequestListener listener, List<SuperCube> allCubes, Map<Integer, Integer> superCubeNumNodesMap, 
-			int numCores, GeoavailabilityQuery geoQuery, GeospatialFileSystem fs1) throws IOException {
+			int numCores, GeoavailabilityQuery geoQuery, GeospatialFileSystem fs1, String eventId, String queryResultsDir, 
+			int[] aPosns, int[] bPosns, double[] epsilons, String hostName, String port) throws IOException {
 		
 		this.nodes = destinations;
 		this.clientContext = clientContext;
 		this.requestListener = listener;
 		this.allCubes = allCubes;
+		this.cubesLeft = allCubes.size();
 
 		this.internalEvents = internalEvents;
 		this.individualRequests = individualRequests;
@@ -110,240 +127,45 @@ public class NeighborRequestHandler implements MessageListener {
 		this.fs1 = fs1;
 		
 		fs1SuperCubeDataMap = new HashMap<Integer, List<String[]>>();
-		superCubeLocalFetchCheck = new HashMap<Integer, Boolean>();
+		superCubeLocalFetchCheck = new ArrayList<Integer>();
 		pathIdToFragmentDataMap = new HashMap<String, List<String>>();
-		cleanupCansdidateCubes = new ArrayList<Integer>();
+		cleanupCandidateCubes = new ArrayList<Integer>();
+		resultFiles = new ArrayList<String>();
+		this.eventId = eventId;
+		this.queryResultsDir = queryResultsDir;
+		this.executor = Executors.newFixedThreadPool(Math.min(allCubes.size(), 2 * numCores));
+		
+		this.aPosns = aPosns;
+		this.bPosns =  bPosns;
+		this.epsilons = epsilons;
+		
+		this.hostName = hostName;
+		this.port = port;
 		
 	}
 
 	public void closeRequest() {
+		executor.shutdown();
+		boolean status;
+		try {
+			status = executor.awaitTermination(2, TimeUnit.MINUTES);
+			if (!status)
+				logger.log(Level.WARNING, "Executor terminated because of the specified timeout=10minutes");
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
 		silentClose(); // closing the router to make sure that no new responses
 						// are added.
-		class LocalFeature implements Comparable<LocalFeature> {
-			String name;
-			String type;
-			int order;
 
-			LocalFeature(String name, String type, int order) {
-				this.name = name;
-				this.type = type;
-				this.order = order;
-			}
-
-			@Override
-			public boolean equals(Object obj) {
-				if (obj == null || !(obj instanceof LocalFeature))
-					return false;
-				LocalFeature other = (LocalFeature) obj;
-				if (this.name.equalsIgnoreCase(other.name) && this.type.equalsIgnoreCase(other.type)
-						&& this.order == other.order)
-					return true;
-				return false;
-			}
-
-			@Override
-			public int hashCode() {
-				return name.hashCode() + type.hashCode() + String.valueOf(this.order).hashCode();
-			}
-
-			@Override
-			public int compareTo(LocalFeature o) {
-				return this.order - o.order;
-			}
-		}
-		Map<String, Set<LocalFeature>> resultMap = new HashMap<String, Set<LocalFeature>>();
-		int responseCount = 0;
-
-		for (GalileoMessage gresponse : this.responses) {
-			responseCount++;
-			Event event;
-			try {
-				event = this.eventWrapper.unwrap(gresponse);
-				if (event instanceof QueryResponse && this.response instanceof QueryResponse) {
-					QueryResponse actualResponse = (QueryResponse) this.response;
-					actualResponse.setElapsedTime(elapsedTime);
-					QueryResponse eventResponse = (QueryResponse) event;
-					JSONObject responseJSON = actualResponse.getJSONResults();
-					JSONObject eventJSON = eventResponse.getJSONResults();
-					if (responseJSON.length() == 0) {
-						for (String name : JSONObject.getNames(eventJSON))
-							responseJSON.put(name, eventJSON.get(name));
-					} else {
-						if (responseJSON.has("queryId") && eventJSON.has("queryId")
-								&& responseJSON.getString("queryId").equalsIgnoreCase(eventJSON.getString("queryId"))) {
-							if (actualResponse.isDryRun()) {
-								JSONObject actualResults = responseJSON.getJSONObject("result");
-								JSONObject eventResults = eventJSON.getJSONObject("result");
-								if (null != JSONObject.getNames(eventResults)) {
-									for (String name : JSONObject.getNames(eventResults)) {
-										if (actualResults.has(name)) {
-											JSONArray ar = actualResults.getJSONArray(name);
-											JSONArray er = eventResults.getJSONArray(name);
-											for (int i = 0; i < er.length(); i++) {
-												ar.put(er.get(i));
-											}
-										} else {
-											actualResults.put(name, eventResults.getJSONArray(name));
-										}
-									}
-								}
-							} else {
-								JSONArray actualResults = responseJSON.getJSONArray("result");
-								JSONArray eventResults = eventJSON.getJSONArray("result");
-								for (int i = 0; i < eventResults.length(); i++)
-									actualResults.put(eventResults.getJSONObject(i));
-							}
-							if (responseJSON.has("hostProcessingTime")) {
-								JSONObject aHostProcessingTime = responseJSON.getJSONObject("hostProcessingTime");
-								JSONObject eHostProcessingTime = eventJSON.getJSONObject("hostProcessingTime");
-
-								JSONObject aHostFileSize = responseJSON.getJSONObject("hostFileSize");
-								JSONObject eHostFileSize = eventJSON.getJSONObject("hostFileSize");
-
-								for (String key : eHostProcessingTime.keySet())
-									aHostProcessingTime.put(key, eHostProcessingTime.getLong(key));
-								for (String key : eHostFileSize.keySet())
-									aHostFileSize.put(key, eHostFileSize.getLong(key));
-
-								responseJSON.put("totalFileSize",
-										responseJSON.getLong("totalFileSize") + eventJSON.getLong("totalFileSize"));
-								responseJSON.put("totalNumPaths",
-										responseJSON.getLong("totalNumPaths") + eventJSON.getLong("totalNumPaths"));
-								responseJSON.put("totalProcessingTime",
-										java.lang.Math.max(responseJSON.getLong("totalProcessingTime"),
-												eventJSON.getLong("totalProcessingTime")));
-								responseJSON.put("totalBlocksProcessed", responseJSON.getLong("totalBlocksProcessed")
-										+ eventJSON.getLong("totalBlocksProcessed"));
-							}
-						}
-					}
-				} else if (event instanceof MetadataResponse && this.response instanceof MetadataResponse) {
-					MetadataResponse emr = (MetadataResponse) event;
-					JSONArray emrResults = emr.getResponse().getJSONArray("result");
-					JSONObject emrJSON = emr.getResponse();
-					if ("galileo#features".equalsIgnoreCase(emrJSON.getString("kind"))) {
-						for (int i = 0; i < emrResults.length(); i++) {
-							JSONObject fsJSON = emrResults.getJSONObject(i);
-							for (String fsName : fsJSON.keySet()) {
-								Set<LocalFeature> featureSet = resultMap.get(fsName);
-								if (featureSet == null) {
-									featureSet = new HashSet<LocalFeature>();
-									resultMap.put(fsName, featureSet);
-								}
-								JSONArray features = fsJSON.getJSONArray(fsName);
-								for (int j = 0; j < features.length(); j++) {
-									JSONObject jsonFeature = features.getJSONObject(j);
-									featureSet.add(new LocalFeature(jsonFeature.getString("name"),
-											jsonFeature.getString("type"), jsonFeature.getInt("order")));
-								}
-							}
-						}
-						if (this.responses.size() == responseCount) {
-							JSONObject jsonResponse = new JSONObject();
-							jsonResponse.put("kind", "galileo#features");
-							JSONArray fsArray = new JSONArray();
-							for (String fsName : resultMap.keySet()) {
-								JSONObject fsJSON = new JSONObject();
-								JSONArray features = new JSONArray();
-								for (LocalFeature feature : new TreeSet<>(resultMap.get(fsName)))
-									features.put(new JSONObject().put("name", feature.name).put("type", feature.type)
-											.put("order", feature.order));
-								fsJSON.put(fsName, features);
-								fsArray.put(fsJSON);
-							}
-							jsonResponse.put("result", fsArray);
-							this.response = new MetadataResponse(jsonResponse);
-						}
-					} else if ("galileo#filesystem".equalsIgnoreCase(emrJSON.getString("kind"))) {
-						MetadataResponse amr = (MetadataResponse) this.response;
-						JSONObject amrJSON = amr.getResponse();
-						if (amrJSON.getJSONArray("result").length() == 0)
-							amrJSON.put("result", emrResults);
-						else {
-							JSONArray amrResults = amrJSON.getJSONArray("result");
-							for (int i = 0; i < emrResults.length(); i++) {
-								JSONObject emrFilesystem = emrResults.getJSONObject(i);
-								for (int j = 0; j < amrResults.length(); j++) {
-									JSONObject amrFilesystem = amrResults.getJSONObject(j);
-									if (amrFilesystem.getString("name")
-											.equalsIgnoreCase(emrFilesystem.getString("name"))) {
-										long latestTime = amrFilesystem.getLong("latestTime");
-										long earliestTime = amrFilesystem.getLong("earliestTime");
-										if (latestTime == 0 || latestTime < emrFilesystem.getLong("latestTime")) {
-											amrFilesystem.put("latestTime", emrFilesystem.getLong("latestTime"));
-											amrFilesystem.put("latestSpace", emrFilesystem.getString("latestSpace"));
-										}
-										if (earliestTime == 0 || (earliestTime > emrFilesystem.getLong("earliestTime")
-												&& emrFilesystem.getLong("earliestTime") != 0)) {
-											amrFilesystem.put("earliestTime", emrFilesystem.getLong("earliestTime"));
-											amrFilesystem.put("earliestSpace",
-													emrFilesystem.getString("earliestSpace"));
-										}
-										break;
-									}
-								}
-							}
-						}
-					} else if ("galileo#overview".equalsIgnoreCase(emrJSON.getString("kind"))) {
-						logger.info(emrJSON.getString("kind") + ": emr results length = " + emrResults.length());
-						MetadataResponse amr = (MetadataResponse) this.response;
-						JSONObject amrJSON = amr.getResponse();
-						if (amrJSON.getJSONArray("result").length() == 0)
-							amrJSON.put("result", emrResults);
-						else {
-							JSONArray amrResults = amrJSON.getJSONArray("result");
-							for (int i = 0; i < emrResults.length(); i++) {
-								JSONObject efsJSON = emrResults.getJSONObject(i);
-								String efsName = efsJSON.keys().next();
-								JSONObject afsJSON = null;
-								for (int j = 0; j < amrResults.length(); j++) {
-									if (amrResults.getJSONObject(j).has(efsName)) {
-										afsJSON = amrResults.getJSONObject(j);
-										break;
-									}
-								}
-								if (afsJSON == null)
-									amrResults.put(efsJSON);
-								else {
-									JSONArray eGeohashes = efsJSON.getJSONArray(efsName);
-									JSONArray aGeohashes = afsJSON.getJSONArray(efsName);
-									for (int j = 0; j < eGeohashes.length(); j++) {
-										JSONObject eGeohash = eGeohashes.getJSONObject(j);
-										JSONObject aGeohash = null;
-										for (int k = 0; k < aGeohashes.length(); k++) {
-											if (aGeohashes.getJSONObject(k).getString("region")
-													.equalsIgnoreCase(eGeohash.getString("region"))) {
-												aGeohash = aGeohashes.getJSONObject(k);
-												break;
-											}
-										}
-										if (aGeohash == null)
-											aGeohashes.put(eGeohash);
-										else {
-											long eTimestamp = eGeohash.getLong("latestTimestamp");
-											int blockCount = aGeohash.getInt("blockCount")
-													+ eGeohash.getInt("blockCount");
-											long fileSize = aGeohash.getInt("fileSize") + eGeohash.getInt("fileSize");
-											aGeohash.put("blockCount", blockCount);
-											aGeohash.put("fileSize", fileSize);
-											if (eTimestamp > aGeohash.getLong("latestTimestamp"))
-												aGeohash.put("latestTimestamp", eTimestamp);
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			} catch (IOException | SerializationException e) {
-				logger.log(Level.SEVERE, "An exception occurred while processing the response message. Details follow:"
-						+ e.getMessage(), e);
-			} catch (Exception e) {
-				logger.log(Level.SEVERE,
-						"An unknown exception occurred while processing the response message. Details follow:"
-								+ e.getMessage(), e);
-			}
-		}
+		if (this.response instanceof DataIntegrationResponse) {
+			DataIntegrationResponse actualResponse = (DataIntegrationResponse) this.response;
+			actualResponse.setResultPaths(resultFiles);
+			actualResponse.setNodeName(hostName);
+			actualResponse.setNodePort(port);
+			
+		} 
 		this.requestListener.onRequestCompleted(this.response, clientContext, this);
 	}
 	
@@ -364,14 +186,13 @@ public class NeighborRequestHandler implements MessageListener {
 						pathsForThisCube = new ArrayList<String>();
 					}
 					
-					supercubeToExpectedPathsMap.put(superCubeId, pathsForThisCube);
-					
 					pathIndex = Integer.valueOf(tokens[0]);
 					pathsForThisCube.add(nodeName+"$"+pathIndex);
+					supercubeToExpectedPathsMap.put(superCubeId, pathsForThisCube);
 					
 				}
 				String[] fragments = tokens[1].split(",");
-				LocalRequirements lr = createRequirement(pathIndex, fragments);
+				LocalRequirements lr = createRequirement(pathIndex, fragments, nodeName);
 				
 				synchronized(supercubeToRequirementsMap) {
 					List<LocalRequirements> lrs = supercubeToRequirementsMap.get(superCubeId);
@@ -393,37 +214,12 @@ public class NeighborRequestHandler implements MessageListener {
 	}
 	
 	
-	private LocalRequirements createRequirement(int pathIndex, String[] fragments) {
+	private LocalRequirements createRequirement(int pathIndex, String[] fragments, String nodeName) {
 		
-		LocalRequirements lr = new LocalRequirements(pathIndex,fragments, false);
+		LocalRequirements lr = new LocalRequirements(pathIndex,fragments, false, nodeName);
 		return lr;
 	}
 	
-	public static void main(String arg[]) {
-		String s = "abc-";
-		String[] tokens = s.split("-"); 
-		System.out.println(tokens.length);
-		
-		List<String> ll = new ArrayList<String> ();
-		
-		ll.add("1");
-		ll.add("2");
-		ll.remove("3");
-		System.out.println(ll.indexOf("1"));
-		
-		Map<String , List<Integer>> ss = new HashMap<>();
-		List<Integer> la = new ArrayList<Integer> ();
-		la.add(1);
-		la.add(2);
-		la.add(3);
-		
-		ss.put("ab", la);
-		
-		List<Integer> la1 = ss.get("ab");
-		la1.remove(new Integer(1));
-		
-		System.out.println(ss.get("ab"));
-	}
 
 	@Override
 	public void onMessage(GalileoMessage message) {
@@ -439,7 +235,7 @@ public class NeighborRequestHandler implements MessageListener {
 				/* This is a node telling beforehand what is coming */
 				if(isControlMessage) {
 					/* The machine this response came from */
-					String nodeName =rsp.getNodeString();
+					String nodeName = rsp.getNodeString();
 					
 					/* This node is about to send back this many data messages */
 					if(rsp.getTotalPaths() > 0) {
@@ -470,6 +266,7 @@ public class NeighborRequestHandler implements MessageListener {
 					/* Update supercube requirements */
 				} else {
 					/* Update path fragments available */
+					/* TCP SHOULD ENSURE THAT THE CONTROL MESSAGES ARRIVE BEFORE DATA MESSAGES */
 					/* DATA MESSAGE INCOMING */
 					
 					List<String> fragmentedRecords = rsp.getResultRecordLists();
@@ -478,47 +275,69 @@ public class NeighborRequestHandler implements MessageListener {
 					
 					String pathString = nodeName+"$"+pathIndex;
 					
-					// List of all FS2 paths along with fragments
-					// synchronize
+					// Taking the fragments in a path to fragments map 
 					synchronized(pathIdToFragmentDataMap) {
 						
 						pathIdToFragmentDataMap.put(pathString, fragmentedRecords);
 						
 					}
 					
-					// synchronize on supercubeToExpectedPathsMap
-					for(int i : supercubeToExpectedPathsMap.keySet()) {
-						List<String> expectedPaths = supercubeToExpectedPathsMap.get(i);
-						
-						if(expectedPaths.contains(pathString)) {
-							// Checking if a control message has been received from this node
-							boolean noControl = checkForDataBeforeControlMsg(nodeName);
-							boolean noLocalFetch = false;
-							synchronized (superCubeLocalFetchCheck) {
-								noLocalFetch = checkForLocalFetch(i);
+					// Checking if a control message has been received from this node
+					boolean noControl = checkForDataBeforeControlMsg(nodeName);
+					
+					if(noControl)
+						logger.log(Level.INFO, "NO CONTROL MESSAGE HAS COME IN FOR NODE" + nodeName);
+					
+					// We assume the control message from this node has already been received and processed
+					synchronized(supercubeToExpectedPathsMap) {
+						for(int i : supercubeToExpectedPathsMap.keySet()) {
+							
+							List<String> expectedPaths = supercubeToExpectedPathsMap.get(i);
+							
+							if(expectedPaths.contains(pathString)) {
+								// checking if a local fetch on this supercube has finished
+								boolean noLocalFetch = false;
+								
+								synchronized (superCubeLocalFetchCheck) {
+									noLocalFetch = checkForLocalFetch(i);
+								}
+								
+								synchronized(cleanupCandidateCubes) {
+									if(noLocalFetch) {
+										// means control message for this node has not come in yet
+										// This supercube has to be shelved and checked later on using the cleanup service
+										if(!cleanupCandidateCubes.contains(i))
+											cleanupCandidateCubes.add(i);
+										
+										CleanupService cs = new CleanupService();
+										cs.run();
+										
+									}
+								}
+								
+								if(noLocalFetch)
+									continue;
+								
+								expectedPaths.remove(pathString);
+								
+								// This supercube has everything it needs
+								if(expectedPaths.size() <= 0) {
+									
+									/* LAUNCH THIS SUPERCUBE INTO A NEW THREAD*/
+									logger.log(Level.INFO, "READY TO LAUNCH " + i);
+									
+									//JoiningThread jt = new JoiningThread(fs1SuperCubeDataMap.get(i), bRecords, aPosns, bPosns, epsilons, cubeId);
+									JoiningThread jt = new JoiningThread(i);
+									executor.execute(jt);
+									
+									// executor shutdown could be done in closeRequest()
+								}
 							}
-							
-							
-							
-							
-							if(noControl || noLocalFetch) {
-								// means control message for this node has not come in yet
-								// This supercube has to be shelved and checked later on using the cleanup service
-								if(!cleanupCansdidateCubes.contains(i))
-									cleanupCansdidateCubes.add(i);
-							}
-							
-							
-							expectedPaths.remove(pathString);
-							if(expectedPaths.size() <= 0) {
-								/* LAUNCH THIS SUPERCUBE INTO A NEW THREAD*/
-								logger.log(Level.INFO, "READY TO LAUNCH " + i);
-							} 
 						}
 					}
 					
 					// after this, launch a thread that checks for any supercube that is ready and launches it.
-					
+					// cleanup thread
 					
 					
 				}
@@ -556,7 +375,7 @@ public class NeighborRequestHandler implements MessageListener {
 		boolean found = false;
 		
 		
-		found = superCubeLocalFetchCheck.get(i);
+		found = superCubeLocalFetchCheck.contains(i);
 		
 		return found;
 	}
@@ -651,47 +470,6 @@ public class NeighborRequestHandler implements MessageListener {
 
 	}
 	
-	/* Reading all blocks supercube by supercube */
-	/*public void readFS1Blocks(List<SuperCube> scs) {
-		
-		try {
-			ExecutorService executor = Executors.newFixedThreadPool(Math.min(scs.size(), 2 * numCores));
-			List<LocalQueryProcessor> queryProcessors = new ArrayList<LocalQueryProcessor>();
-			
-			for(SuperCube sc: scs) {
-				
-				GeoavailabilityGrid blockGrid = new GeoavailabilityGrid(sc.getCentralGeohash(), GeoHash.MAX_PRECISION * 2 / 3);
-				
-				Bitmap queryBitmap = null;
-				
-				if (geoQuery.getPolygon() != null)
-					queryBitmap = QueryTransform.queryToGridBitmap(geoQuery, blockGrid);
-				
-				// One of these per SuperCube 
-				LocalQueryProcessor qp = new LocalQueryProcessor(fs1, sc.getFs1BlockPath(), geoQuery, blockGrid, queryBitmap, (int)sc.getId());
-				queryProcessors.add(qp);
-				executor.execute(qp);
-					
-			}
-			executor.shutdown();
-			boolean status = executor.awaitTermination(10, TimeUnit.MINUTES);
-			if (!status)
-				logger.log(Level.WARNING, "Executor terminated because of the specified timeout=10minutes");
-			
-			for (LocalQueryProcessor qp : queryProcessors) {
-				// INDICATING THIS SUPERCUBE IS READY FOR JOIN
-				superCubeLocalFetchCheck.put(qp.getSuperCubeId(), true);
-				if (qp.getResultRecordLists() != null && qp.getResultRecordLists().size() > 0) {
-					fs1SuperCubeDataMap.put(qp.getSuperCubeId(), qp.getResultRecordLists());
-				} else {
-					fs1SuperCubeDataMap.put(qp.getSuperCubeId(), null);
-				}
-			}
-		} catch (Exception e) {
-			logger.log(Level.SEVERE, "Something went wrong while querying FS1 at NeighborRequestHandler", e);
-		}
-	}*/
-	
 	class LocalReader implements Runnable {
 
 		@Override
@@ -730,7 +508,7 @@ public class NeighborRequestHandler implements MessageListener {
 					
 					synchronized(superCubeLocalFetchCheck) {
 						synchronized(fs1SuperCubeDataMap) {
-							superCubeLocalFetchCheck.put(qp.getSuperCubeId(), true);
+							superCubeLocalFetchCheck.add(qp.getSuperCubeId());
 						
 						
 							if (qp.getResultRecordLists() != null && qp.getResultRecordLists().size() > 0) {
@@ -745,6 +523,160 @@ public class NeighborRequestHandler implements MessageListener {
 				logger.log(Level.SEVERE, "Something went wrong while querying FS1 at NeighborRequestHandler", e);
 			}
 		}
+	}
+	
+	class CleanupService implements Runnable {
+		
+		@Override
+		public void run() {
+			
+			while(cubesLeft > 0 || !cleanupCandidateCubes.isEmpty()) {
+				synchronized(cleanupCandidateCubes) {
+					for(int c : cleanupCandidateCubes) {
+						// Checking if a local fetch on this cube has occurred
+						boolean localFetch = false;
+						
+						synchronized (superCubeLocalFetchCheck) {
+							localFetch = checkForLocalFetch(c);
+						}
+						// local fetch has now finished
+						if(localFetch) {
+							synchronized(supercubeToExpectedPathsMap) {
+								List<String> expectedPaths = supercubeToExpectedPathsMap.get(c);
+								
+								synchronized(pathIdToFragmentDataMap) {
+									
+									Set<String> allPaths = pathIdToFragmentDataMap.keySet();
+									for(String ePath: expectedPaths) {
+										
+										if(allPaths.contains(ePath)) {
+											expectedPaths.remove(ePath);
+										}
+										
+									}
+								}
+								
+								if(expectedPaths.isEmpty()) {
+									// This cube is ready to be launched
+									int indx = cleanupCandidateCubes.indexOf(c);
+									cleanupCandidateCubes.remove(indx);
+									JoiningThread jt = new JoiningThread(c);
+									executor.execute(jt);
+									//cubesLeft--;
+								}
+							}
+						}
+					}
+				}
+				
+			}
+			
+		}
+		
+	}
+	
+	
+	class JoiningThread implements Runnable {
+		List<String[]> indvARecords;
+		String bRecords;
+		/*int[] aPosns; 
+		int[] bPosns; 
+		double[] epsilons;*/
+		String storagePath;
+		
+		/*public JoiningThread(List<String[]> indvARecords,String bRecords, int[] aPosns, int[] bPosns, double[] epsilons, int cubeId) {
+			// TODO Auto-generated constructor stub
+			this.indvARecords = indvARecords;
+			this.bRecords = bRecords;
+			this.aPosns = aPosns;
+			this.bPosns = bPosns;
+			this.epsilons = epsilons;
+			this.storagePath = getResultFilePrefix(eventId, fs1.getName(), cubeId);
+			
+		}*/
+		public JoiningThread(int i) {
+			
+			synchronized(fs1SuperCubeDataMap) {
+				this.indvARecords = fs1SuperCubeDataMap.get(i);
+			}
+			synchronized(supercubeToRequirementsMap) {
+				List<LocalRequirements> listReq = supercubeToRequirementsMap.get(i);
+				
+				String bRecords = "";
+				for(LocalRequirements lr: listReq) {
+					int pi = lr.getPathIndex();
+					String key = lr.getNodeName()+"$"+pi;
+					List<Integer> frags = lr.getFragments();
+					
+					synchronized(pathIdToFragmentDataMap) {
+						List<String> allFrags = pathIdToFragmentDataMap.get(key);
+						int cnt = 0;
+						for(int frag: frags) {
+							bRecords += allFrags.get(frag);
+							if(cnt == frags.size() - 1)
+								continue;
+							bRecords+="\n";
+							cnt++;
+						}
+					}
+					
+				}
+				
+				this.bRecords = bRecords;
+				this.storagePath = getResultFilePrefix(eventId, fs1.getName(), i);
+			}
+		}
+		@Override
+		public void run() {
+			
+			MDC m = new MDC();
+			List<String> joinRes = m.iterativeMultiDimJoin(indvARecords, bRecords, aPosns, bPosns, epsilons);
+			// TODO Auto-generated method stub
+			
+			
+			if (joinRes.size() > 0) {
+				FileOutputStream fos = null;
+				try {
+					fos = new FileOutputStream(this.storagePath+".blk");
+					for (String res : joinRes) {
+						
+						fos.write(res.getBytes("UTF-8"));
+						
+						
+						fos.write("\n".getBytes("UTF-8"));
+					}
+					fos.close();
+					
+				} catch (IOException e) {
+					logger.log(Level.SEVERE, "Something went wrong while storing to the filesystem.", e);
+					this.storagePath = null;
+				}
+			} else {
+				this.storagePath = null;
+			}
+				
+			synchronized(resultFiles) {
+				if(storagePath != null)
+					resultFiles.add(storagePath);
+			}
+			cubesLeft--;
+			
+			if(cubesLeft <= 0) {
+				// LAUNCH CLOSE REQUEST
+				logger.log(Level.INFO, "All Joins finished and saved");
+				new Thread() {
+					public void run() {
+						NeighborRequestHandler.this.closeRequest();
+					}
+				}.start();
+			}
+			
+		}
+
+	}
+	
+	private String getResultFilePrefix(String queryId, String fsName, int cubeIdentifier) {
+		return this.queryResultsDir + "/" + String.format("%s-%s-%s", fsName, queryId, cubeIdentifier);
 	}
 	
 	

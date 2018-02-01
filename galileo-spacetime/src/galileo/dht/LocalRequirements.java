@@ -10,8 +10,9 @@ public class LocalRequirements {
 	/* TO be used later*/
 	private String pathName;
 	private List<Integer> fragments;
+	private String nodeName;
 	
-	public LocalRequirements(int pathIndex, String[] fragments2, boolean isReceived) {
+	public LocalRequirements(int pathIndex, String[] fragments2, boolean isReceived, String nodeName) {
 		fragments = new ArrayList<Integer>();
 		for(String str : fragments2) {
 			fragments.add(Integer.valueOf(str));
@@ -20,6 +21,7 @@ public class LocalRequirements {
 		
 		this.pathIndex = pathIndex;
 		this.isReceived = isReceived;
+		this.nodeName = nodeName;
 	}
 	public int getPathIndex() {
 		return pathIndex;
@@ -44,6 +46,12 @@ public class LocalRequirements {
 	}
 	public void setFragments(List<Integer> fragments) {
 		this.fragments = fragments;
+	}
+	public String getNodeName() {
+		return nodeName;
+	}
+	public void setNodeName(String nodeName) {
+		this.nodeName = nodeName;
 	}
 	
 

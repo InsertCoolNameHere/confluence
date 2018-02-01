@@ -70,6 +70,7 @@ import galileo.bmp.QueryTransform;
 import galileo.comm.BlockRequest;
 import galileo.comm.BlockResponse;
 import galileo.comm.DataIntegrationEvent;
+import galileo.comm.DataIntegrationFinalResponse;
 import galileo.comm.DataIntegrationRequest;
 import galileo.comm.DataIntegrationResponse;
 import galileo.comm.FilesystemAction;
@@ -139,6 +140,7 @@ public class StorageNode implements RequestListener {
 	private int port;
 	private String rootDir;
 	private String resultsDir;
+	private String queryResultsDir;
 	private int numCores;
 
 	private File pidFile;
@@ -176,6 +178,7 @@ public class StorageNode implements RequestListener {
 		SystemConfig.reload();
 		this.rootDir = SystemConfig.getRootDir();
 		this.resultsDir = this.rootDir + "/.results";
+		this.queryResultsDir = this.rootDir + "/.qresults";
 		this.nodeStatus = new StatusLine(SystemConfig.getRootDir() + "/status.txt");
 		this.fsFile = new File(SystemConfig.getRootDir() + "/storage-node.fs");
 		if (!this.fsFile.exists())
@@ -984,7 +987,7 @@ public class StorageNode implements RequestListener {
 		
 		if(gfs != null) {
 			
-			DataIntegrationResponse response = new DataIntegrationResponse();
+			DataIntegrationFinalResponse response = new DataIntegrationFinalResponse(eventId);
 			
 			Metadata data = getQueryMetadata(request, gfs);
 			
@@ -999,7 +1002,7 @@ public class StorageNode implements RequestListener {
 				
 				logger.info("Destinations for FS1 DataIntegrationRequest: " + nodes);
 				
-				DataIntegrationEvent dintEvent = createDataIntegrationEvent(request);
+				DataIntegrationEvent dintEvent = createDataIntegrationEvent(request, eventId);
 				try {
 					ClientRequestHandler reqHandler = new ClientRequestHandler(new ArrayList<NetworkDestination>(nodes),
 							context, this);
@@ -1037,9 +1040,9 @@ public class StorageNode implements RequestListener {
 	 * @param request
 	 * @return
 	 */
-	private DataIntegrationEvent createDataIntegrationEvent(DataIntegrationRequest request) {
+	private DataIntegrationEvent createDataIntegrationEvent(DataIntegrationRequest request, String eventId) {
 		DataIntegrationEvent dintEvent = new DataIntegrationEvent();
-		
+		dintEvent.setId(eventId);
 		if(request.hasFeatureQuery()) {
 			dintEvent.setFeatureQuery(request.getFeatureQuery());
 		}
@@ -1054,6 +1057,8 @@ public class StorageNode implements RequestListener {
 		dintEvent.setFsname1(request.getFsname1());
 		dintEvent.setFsname2(request.getFsname2());
 		dintEvent.setPrimaryFS(request.getPrimaryFS());
+		dintEvent.setLatRelax(request.getLatRelax());
+		dintEvent.setLongRelax(request.getLongRelax());
 
 		return dintEvent;
 	}
@@ -1108,12 +1113,19 @@ public class StorageNode implements RequestListener {
 		// fs1 is the primary filesystem
 		String fsName1 = event.getFsname1();
 		GeospatialFileSystem fs1 = fsMap.get(fsName1);
+		String eventId = event.getId();
 		
 		// fs2 is the secondary filesystem
 		String fsName2 = event.getFsname2();
 		GeospatialFileSystem fs2 = fsMap.get(fsName2);
-
-		DataIntegrationResponse response = new DataIntegrationResponse();
+		
+		
+		/* Getting positions */
+		int[] aPosns  = {fs1.getTemporalPosn(), fs1.getSpatialPosn1(), fs1.getSpatialPosn2()};
+		int[] bPosns  = {fs2.getTemporalPosn(), fs2.getSpatialPosn1(), fs2.getSpatialPosn2()};
+		double[] epsilons = {event.getTimeRelaxation(), event.getLatRelax(), event.getLongRelax()};
+		
+		DataIntegrationResponse response = new DataIntegrationResponse(eventId);
 
 		try {
 			if (fs1 != null && fs2 != null) {
@@ -1311,7 +1323,7 @@ public class StorageNode implements RequestListener {
 						event.getPolygon());
 				
 				NeighborRequestHandler rikiHandler = new NeighborRequestHandler(null, individualRequests, new ArrayList<NetworkDestination>(destinations), context, this,
-						allCubes, superCubeNumNodesMap, numCores, geoQuery, fs1);
+						allCubes, superCubeNumNodesMap, numCores, geoQuery, fs1, eventId, queryResultsDir, aPosns, bPosns, epsilons, hostname, String.valueOf(port));
 				rikiHandler.handleRequest(response);
 
 			}
