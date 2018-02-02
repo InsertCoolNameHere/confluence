@@ -25,6 +25,11 @@ public class SuperCube implements ByteSerializable{
 	private String centralgeohash;
 	private String centralTime;
 	
+	@Override
+	public String toString() {
+		return id+" "+centralgeohash+" "+polygon+" "+centralTime+" "+time;
+	}
+	
 	public List<Coordinates> getPolygon() {
 		return polygon;
 	}

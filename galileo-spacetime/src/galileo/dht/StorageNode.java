@@ -976,6 +976,7 @@ public class StorageNode implements RequestListener {
 	@EventHandler
 	public void handleDataIntegrationRequest(DataIntegrationRequest request, EventContext context) {
 		
+		logger.info("RIKI: DATA INTEGRATION REQUEST RECEIVED");
 		String featureQueryString = request.getFeatureQueryString();
 		logger.log(Level.INFO, "Feature query request: {0}", featureQueryString);
 		
@@ -1109,7 +1110,7 @@ public class StorageNode implements RequestListener {
 	 */
 	@EventHandler
 	public void handleDataIntegration(DataIntegrationEvent event, EventContext context) {
-		logger.log(Level.INFO, "RECEIVED A FS1 DATAINTEGRATIONEVENT");
+		logger.log(Level.INFO, "RIKI: RECEIVED A FS1 DATAINTEGRATIONEVENT");
 		// fs1 is the primary filesystem
 		String fsName1 = event.getFsname1();
 		GeospatialFileSystem fs1 = fsMap.get(fsName1);
@@ -1119,11 +1120,13 @@ public class StorageNode implements RequestListener {
 		String fsName2 = event.getFsname2();
 		GeospatialFileSystem fs2 = fsMap.get(fsName2);
 		
-		
 		/* Getting positions */
 		int[] aPosns  = {fs1.getTemporalPosn(), fs1.getSpatialPosn1(), fs1.getSpatialPosn2()};
 		int[] bPosns  = {fs2.getTemporalPosn(), fs2.getSpatialPosn1(), fs2.getSpatialPosn2()};
+		
 		double[] epsilons = {event.getTimeRelaxation(), event.getLatRelax(), event.getLongRelax()};
+		
+		logger.log(Level.INFO, "RIKI: RELAXATIONS:"+Arrays.toString(epsilons));
 		
 		DataIntegrationResponse response = new DataIntegrationResponse(eventId);
 
@@ -1145,8 +1148,8 @@ public class StorageNode implements RequestListener {
 				List<Coordinates> queryPolygon = event.getPolygon();
 				List<Coordinates> superPolygon = SuperPolygon.getSuperPolygon(queryPolygon, fs2.getSpatialUncertaintyPrecision());
 				
-				logger.log(Level.INFO, "QUERY POLYGON :"+queryPolygon);
-				logger.log(Level.INFO, "SUPER POLYGON :"+superPolygon);
+				logger.log(Level.INFO, "RIKI :QUERY POLYGON :"+queryPolygon);
+				logger.log(Level.INFO, "RIKI: SUPER POLYGON :"+superPolygon);
 				
 				// For each block of fs1, we need to find what nodes to be queried in fs2
 				// Also, we need to calculate the superblock that needs to be queried at each node
@@ -1164,10 +1167,12 @@ public class StorageNode implements RequestListener {
 
 				Partitioner<Metadata> partitioner = fs2.getPartitioner();
 				Map<String, BorderingProperties> borderMap = fs1.getBorderMap();
+				
 				for (Path<Feature, String> path : paths1) {
 					// All the blocks under a certain directory
 					// There can be multiple blocks under the same directory as long as their names are different
 					List<String> blocks = new ArrayList<String>(path.getPayload());
+					logger.log(Level.INFO, "RIKI :FS1 BLOCKS MATCHED :"+blocks);
 
 					// EXTRACT THE SUPERCUBE FOR EACH OF THE BLOCK RETURNED
 					// Supercube also contains info about the core time and geoHash
@@ -1182,7 +1187,9 @@ public class StorageNode implements RequestListener {
 
 					// Get the neighbors geohash, cgeo, that actually are needed, along with the centralGeohash
 					String[] validNeighborsGeohash = GeoHash.checkForNeighborValidity(queryPolygon, fs1.getSpatialUncertaintyPrecision(), cGeo,borderMap, blocks);
-
+					
+					logger.log(Level.INFO, "RIKI :VALID NEIGHBOR GEOHASHES :"+ Arrays.toString(validNeighborsGeohash));
+					
 					List<Date> dates = null;
 					List<TemporalProperties> tprops = null;
 
@@ -1191,6 +1198,7 @@ public class StorageNode implements RequestListener {
 					/* Adding this new supercube to the list */
 					if (indx < 0) {
 						indx = allCubes.size();
+						logger.log(Level.INFO, "RIKI :NEW SUPERCUBE :"+sc);
 						sc.setId(indx);
 						allCubes.add(sc);
 					}
@@ -1255,7 +1263,7 @@ public class StorageNode implements RequestListener {
 					// Found what nodes to query based on supercube data
 					// These are all nodes needed to query to get fs2 data required for this particular supercube in fs1
 					List<NodeInfo> nodes = partitioner.findDestinationsForFS2(searchSp, tprops, fs2.getGeohashPrecision(), validNeighborsGeohash);
-
+					
 					// Hashcode calculation for NodeInfo is based on src and port
 					// Getting unique should not be a problem later
 					destinations.addAll(nodes);
@@ -1287,10 +1295,12 @@ public class StorageNode implements RequestListener {
 					}
 
 				}
+				
 				// send consolidated request for blocks to each of those nodes
-
 				Set<NodeInfo> setNodes = new TreeSet<NodeInfo>(destinations);
 				destinations = new ArrayList<NodeInfo>(setNodes);
+				
+				logger.log(Level.INFO, "RIKI :FS2 REQUESTS BEING SENT OUT TO :"+ destinations);
 
 				List<NeighborDataEvent> individualRequests = new ArrayList<NeighborDataEvent>();
 				//List<NeighborDataEvent> internalEvents = new ArrayList<NeighborDataEvent>();
@@ -1402,6 +1412,7 @@ public class StorageNode implements RequestListener {
 	 */
 	@EventHandler
 	public void handleNeighborData(NeighborDataEvent event, EventContext context) {
+		logger.log(Level.INFO, "RIKI : NEIGHBORHOOD REQUEST RECIVED");
 		
 		String nodeString = hostname + "-" + port;
 		
@@ -1436,7 +1447,7 @@ public class StorageNode implements RequestListener {
 				
 				NeighborDataResponse controlMessage = createCubeRequirements(supercubeRequirementsMap, pathToFragmentsMap.size(), nodeString);
 				context.sendReply(controlMessage);
-				
+				logger.log(Level.INFO, "RIKI : CONTROL MESSAGE SENT");
 				
 				ExecutorService executor = Executors.newFixedThreadPool(Math.min(totalPaths, 2 * numCores));
 				List<NeighborDataQueryProcessor> queryProcessors = new ArrayList<NeighborDataQueryProcessor>();
@@ -1446,6 +1457,7 @@ public class StorageNode implements RequestListener {
 				/* One thread per path */
 				/* Keep track of total number of paths, so that the source knows when all the paths have been received */
 				for(Path<Feature, String> path: paths) {
+					logger.log(Level.INFO, "RIKI : FS2 PATHS:"+path.getPayload());
 					String geohash = GeospatialFileSystem.getPathInfo(path, 1);
 					int pathIndex = paths.indexOf(path);
 					/* Converts the bounds of geohash into a 1024x1024 region */
@@ -1465,7 +1477,7 @@ public class StorageNode implements RequestListener {
 				boolean status = executor.awaitTermination(10, TimeUnit.MINUTES);
 				
 				if (!status)
-					logger.log(Level.WARNING, "handleNeighborData:Executor terminated because of the specified timeout=10minutes");
+					logger.log(Level.WARNING, "RIKI: handleNeighborData:Executor terminated because of the specified timeout=10minutes");
 				
 				
 			} else {

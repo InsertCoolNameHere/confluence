@@ -234,9 +234,10 @@ public class NeighborRequestHandler implements MessageListener {
 				
 				/* This is a node telling beforehand what is coming */
 				if(isControlMessage) {
+					
 					/* The machine this response came from */
 					String nodeName = rsp.getNodeString();
-					
+					logger.log(Level.INFO, "RIKI : CONTROL MESSAGE RECEIVED FROM "+nodeName);
 					/* This node is about to send back this many data messages */
 					if(rsp.getTotalPaths() > 0) {
 						synchronized(nodeToNumberOfDataMessagesMap) {
@@ -272,6 +273,7 @@ public class NeighborRequestHandler implements MessageListener {
 					List<String> fragmentedRecords = rsp.getResultRecordLists();
 					String nodeName = rsp.getNodeString();
 					int pathIndex = rsp.getPathIndex();
+					logger.log(Level.INFO, "RIKI : DATA MESSAGE RECEIVED FROM "+nodeName);
 					
 					String pathString = nodeName+"$"+pathIndex;
 					
