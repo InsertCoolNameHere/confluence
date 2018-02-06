@@ -177,7 +177,7 @@ public class GeospatialFileSystem extends FileSystem {
 		this.nodesPerGroup = nodesPerGroup;
 		this.geohashIndex = new HashSet<>();
 		
-		
+		//logger.log(Level.INFO, "RIKI: GROUPS: "+networkInfo.getGroups());
 		this.borderMap = new HashMap<String, BorderingProperties>();
 		/* featurelist is a comma separated list of feature names: type(int) */
 		if (featureList != null) {
@@ -196,7 +196,7 @@ public class GeospatialFileSystem extends FileSystem {
 		this.storageRoot = storageDirectory;
 		this.temporalType = TemporalType.fromType(temporalType);
 		this.numCores = Runtime.getRuntime().availableProcessors();
-
+		//logger.log(Level.INFO, "RIKI: NETWORK3: "+networkInfo);
 		if (nodesPerGroup <= 0) {
 			this.network = new NetworkInfo();
 			List<GroupInfo> groups = networkInfo.getGroups();
@@ -420,6 +420,13 @@ public class GeospatialFileSystem extends FileSystem {
 		state.put("latestTime", this.latestTime != null ? this.latestTime.getEnd() : JSONObject.NULL);
 		state.put("latestSpace", this.latestSpace != null ? this.latestSpace : JSONObject.NULL);
 		state.put("readOnly", this.isReadOnly());
+		state.put("spatialUncertaintyPrecision", this.spatialUncertaintyPrecision);
+		state.put("temporalUncertaintyPrecision", this.temporalUncertaintyPrecision);
+		state.put("temporalHint", this.temporalHint);
+		state.put("temporalPosn", this.temporalPosn);
+		state.put("spatialPosn1", this.spatialPosn1);
+		state.put("spatialPosn2", this.spatialPosn2);
+		
 		return state;
 	}
 
@@ -440,6 +447,7 @@ public class GeospatialFileSystem extends FileSystem {
 			JSONObject spHintJSON = state.getJSONObject("spatialHint");
 			spHint = new SpatialHint(spHintJSON.getString("latHint"), spHintJSON.getString("lngHint"));
 		}
+		//logger.log(Level.INFO, "RIKI: NETWORK2: "+networkInfo);
 		GeospatialFileSystem gfs = new GeospatialFileSystem(storageNode, storageRoot, name, geohashPrecision,
 				nodesPerGroup, temporalType, networkInfo, featureList, spHint, true);
 		gfs.earliestTime = (state.get("earliestTime") != JSONObject.NULL)
@@ -452,6 +460,16 @@ public class GeospatialFileSystem extends FileSystem {
 		for (int i = 0; i < geohashIndices.length(); i++)
 			geohashIndex.add(geohashIndices.getString(i));
 		gfs.geohashIndex = geohashIndex;
+		gfs.numCores = Runtime.getRuntime().availableProcessors();
+		
+		gfs.spatialUncertaintyPrecision = state.getInt("spatialUncertaintyPrecision");
+		gfs.temporalUncertaintyPrecision = state.getInt("temporalUncertaintyPrecision");
+		gfs.temporalHint = state.getString("temporalHint");
+		gfs.temporalPosn = state.getInt("temporalPosn");
+		gfs.spatialPosn1 = state.getInt("spatialPosn1");
+		gfs.spatialPosn2 = state.getInt("spatialPosn2");
+		
+		
 		return gfs;
 	}
 
@@ -605,6 +623,7 @@ public class GeospatialFileSystem extends FileSystem {
 			 * geohashes and times */
 			BorderingProperties bp = GeoHash.getBorderingGeohashHeuristic(geohash, spatialUncertaintyPrecision, temporalUncertaintyPrecision , meta.getTemporalProperties(), this.temporalType);
 			borderMap.put(blockPath, bp);
+			logger.log(Level.INFO, "RIKI: BORDERMAP CREATED "+bp);
 			
 			storeMetadata(meta, blockPath);
 		}
@@ -683,10 +702,10 @@ public class GeospatialFileSystem extends FileSystem {
 			// calculating temporal border records
 			if(timestamp<=borderingProperties.getDown2() && timestamp >= borderingProperties.getDown1()) {
 				borderingProperties.addDownTimeEntries(recordCount);
-				logger.info("ENTERED DOWN TIME ENTRY");
+				logger.info("RIKI: ENTERED DOWN TIME ENTRY");
 			} else if(timestamp<=borderingProperties.getUp1() && timestamp >= borderingProperties.getUp2()) {
 				borderingProperties.addUpTimeEntries(recordCount);
-				logger.info("ENTERED UP TIME ENTRY");
+				logger.info("RIKI: ENTERED UP TIME ENTRY");
 			}
 			recordCount++;
 		}
@@ -702,29 +721,31 @@ public class GeospatialFileSystem extends FileSystem {
 		
 		if(borderingProperties.getNe().equals(geoHash)) {
 			borderingProperties.addNEEntries(recordCount);
-			logger.info("ENTERED A NE ENTRY");
+			logger.info("RIKI: ENTERED A NE ENTRY "+geoHash +" "+this.name);
 		} else if(borderingProperties.getSe().equals(geoHash)) {
 			borderingProperties.addSEEntries(recordCount);
-			logger.info("ENTERED A SE ENTRY");
+			logger.info("RIKI: ENTERED A SE ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getNw().equals(geoHash)) {
 			borderingProperties.addNWEntries(recordCount);
-			logger.info("ENTERED A NW ENTRY");
+			logger.info("RIKI: ENTERED A NW ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getSw().equals(geoHash)) {
 			borderingProperties.addSWEntries(recordCount);
-			logger.info("ENTERED A SW ENTRY");
+			logger.info("RIKI: ENTERED A SW ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getN().contains(geoHash)) {
 			borderingProperties.addNorthEntries(recordCount);
-			logger.info("ENTERED A N ENTRY");
+			logger.info("RIKI: ENTERED A N ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getE().contains(geoHash)) {
 			borderingProperties.addEastEntries(recordCount);
-			logger.info("ENTERED A E ENTRY");
+			logger.info("RIKI: ENTERED A E ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getW().contains(geoHash)) {
 			borderingProperties.addWestEntries(recordCount);
-			logger.info("ENTERED A W ENTRY");
+			logger.info("RIKI: ENTERED A W ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getS().contains(geoHash)) {
 			borderingProperties.addSouthEntries(recordCount);
-			logger.info("ENTERED A S ENTRY");
-		} 
+			logger.info("RIKI: ENTERED A S ENTRY "+geoHash+" "+this.name);
+		} else {
+			logger.info("RIKI: ENTERED A CENTRAL ENTRY "+geoHash+" "+this.name);
+		}
 		
 		
 	}

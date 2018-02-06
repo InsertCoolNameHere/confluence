@@ -86,6 +86,7 @@ public class DataIntegrationEvent implements Event{
 		if (isSpatial())
 			out.writeSerializableCollection(polygon);
 		
+		out.writeBoolean(hasFeatureQuery());
 		if (hasFeatureQuery())
 			out.writeSerializable(this.featureQuery);
 		

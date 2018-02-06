@@ -116,7 +116,7 @@ public class ClientRequestHandler implements MessageListener {
 					
 					for(String path: eventResponse.getResultPaths()) {
 						
-						String newPath = eventResponse.getNodeName()+":"+eventResponse+"$$"+path;
+						String newPath = eventResponse.getNodeName()+":"+eventResponse.getNodePort()+"$$"+path;
 						actualResponse.addResultPath(newPath);
 					}
 					
@@ -311,6 +311,7 @@ public class ClientRequestHandler implements MessageListener {
 
 	@Override
 	public void onMessage(GalileoMessage message) {
+		logger.log(Level.INFO, "RIKI: RESPONSE RECEIVED");
 		if (null != message)
 			this.responses.add(message);
 		int awaitedResponses = this.expectedResponses.decrementAndGet();

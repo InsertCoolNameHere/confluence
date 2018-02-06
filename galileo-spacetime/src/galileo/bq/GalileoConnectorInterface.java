@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.util.List;
 
 import galileo.client.EventPublisher;
+import galileo.comm.DataIntegrationRequest;
 import galileo.comm.FilesystemAction;
 import galileo.comm.FilesystemRequest;
 import galileo.comm.StorageRequest;
@@ -46,23 +47,28 @@ abstract class GalileoConnectorInterface {
 		int tempUnc = 0;
 		if(mode == 1) {
 			
-			spUnc = 4;
+			spUnc = 5;
 			tempUnc = 4*60*60;
 			
 		} else if(mode == 2) {
 			
-			spUnc = 4;
+			spUnc = 5;
 			tempUnc = 4*60*60;
 			
 		}
 		FilesystemRequest fsRequest = new FilesystemRequest(name, FilesystemAction.CREATE, featureList, sh, spUnc, tempUnc,  false, temporalHint);
 		
-		/*fsRequest.setNodesPerGroup(2);
-		fsRequest.setPrecision(6);*/
+		fsRequest.setNodesPerGroup(2);
+		//fsRequest.setPrecision(6);
 		fsRequest.setTemporalType(TemporalType.DAY_OF_MONTH);
 		
 		publisher.publish(server, fsRequest);
 	}
+	
+	public void integrate(DataIntegrationRequest dr) throws IOException {
+		publisher.publish(server, dr);
+	}
+	
 	public void disconnect() {
 		messageRouter.shutdown();
 	}

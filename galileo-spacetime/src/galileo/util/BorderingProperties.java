@@ -34,6 +34,12 @@ public class BorderingProperties {
 	private List<Long> seEntries;
 	private List<Long> swEntries;
 	
+	public String toString() {
+		String ret = "";
+		ret+=n+" "+s+" "+e+" "+w+" "+down1+" "+down2+" "+up1+" "+up2;
+		return ret;
+	}
+	
 	public BorderingProperties() {
 		
 		n = new ArrayList<String>();

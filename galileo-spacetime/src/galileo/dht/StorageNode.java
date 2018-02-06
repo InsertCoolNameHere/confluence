@@ -235,8 +235,11 @@ public class StorageNode implements RequestListener {
 			resultsDir.mkdirs();
 
 		this.fsMap = new HashMap<>();
+		//logger.log(Level.INFO, "RIKI: NETWORK: "+network);
+		//logger.log(Level.INFO, "RIKI: FSFILE: "+fsFile);
 		try (BufferedReader br = new BufferedReader(new FileReader(fsFile))) {
 			String jsonSource = br.readLine();
+			//logger.log(Level.INFO, "RIKI: JSON: "+jsonSource);
 			if (jsonSource != null && jsonSource.length() > 0) {
 				JSONObject fsJSON = new JSONObject(jsonSource);
 				for (String fsName : JSONObject.getNames(fsJSON)) {
@@ -1001,7 +1004,7 @@ public class StorageNode implements RequestListener {
 				/* TemporalHierarchyPartitioner */
 				nodes = partitioner.findDestinations(data);
 				
-				logger.info("Destinations for FS1 DataIntegrationRequest: " + nodes);
+				logger.info("RIKI: Destinations for FS1 DataIntegrationRequest: " + nodes);
 				
 				DataIntegrationEvent dintEvent = createDataIntegrationEvent(request, eventId);
 				try {
@@ -1146,9 +1149,11 @@ public class StorageNode implements RequestListener {
 				}
 
 				List<Coordinates> queryPolygon = event.getPolygon();
-				List<Coordinates> superPolygon = SuperPolygon.getSuperPolygon(queryPolygon, fs2.getSpatialUncertaintyPrecision());
 				
 				logger.log(Level.INFO, "RIKI :QUERY POLYGON :"+queryPolygon);
+				logger.log(Level.INFO, "RIKI :PRECISION :"+fs2.getSpatialUncertaintyPrecision());
+				List<Coordinates> superPolygon = SuperPolygon.getSuperPolygon(queryPolygon, fs2.getSpatialUncertaintyPrecision());
+				
 				logger.log(Level.INFO, "RIKI: SUPER POLYGON :"+superPolygon);
 				
 				// For each block of fs1, we need to find what nodes to be queried in fs2
@@ -1204,7 +1209,7 @@ public class StorageNode implements RequestListener {
 					}
 
 					SpatialProperties searchSp = new SpatialProperties(new SpatialRange(sc.getPolygon()));
-
+					
 					if (sc.getTime() != null) {
 						/*
 						 * since the time could span over multiple days, we need to check
@@ -1213,6 +1218,8 @@ public class StorageNode implements RequestListener {
 						
 						/* A string of two timestamps */
 						String timeString = sc.getTime();
+						
+						logger.log(Level.INFO, "RIKI :TIME1 :"+sc.getTime());
 						
 						boolean hasUp = false;
 						boolean hasDown = false;
@@ -1231,6 +1238,7 @@ public class StorageNode implements RequestListener {
 						}
 						
 						if(!hasUp || ! hasDown) {
+							logger.log(Level.INFO, "RIKI :CENTRALTIME1 :"+sc.getCentralTime());
 							String[] tokens = sc.getCentralTime().split("-");
 							String[] timestamps = timeString.split("-");
 							if(!hasUp) {
@@ -1429,10 +1437,12 @@ public class StorageNode implements RequestListener {
 		try{
 			PathsAndOrientations pao = reqFSystem.listIntersectingPathsWithOrientation(superCubes, superPolygon, event.getQueryTime(), null, srcFSystem.getTemporalType());
 			
+			logger.log(Level.INFO, "RIKI : INTERSECTING PATHS CALCULATED");
+			
 			if(pao != null) {
 				
 				/* Now to actually reading in the blocks */
-				int totalBlocks = pao.getTotalBlocks();
+				//int totalBlocks = pao.getTotalBlocks();
 				
 				List<Path<Feature, String>> paths = pao.getPaths();
 				
@@ -1635,6 +1645,7 @@ public class StorageNode implements RequestListener {
 			} else {
 				s.setTime(null);
 			}
+			logger.log(Level.INFO, "TIME2 "+s.getTime());
 			
 		}
 		
@@ -1644,7 +1655,12 @@ public class StorageNode implements RequestListener {
 	
 	public static void main1(String arg[]) throws ParseException {
 		
-		GeoHash.getEndTimeStamp("2014", "12", "2", "04", TemporalType.YEAR);
+		JSONObject fsJSON = new JSONObject("{\"testfs1\":{\"temporalType\":5,\"precision\":4,\"nodesPerGroup\":0,\"earliestTime\":null,\"readOnly\":false,\"featureList\":\"epoch_time:3,gps_abs_lat:3,gps_abs_lon:3,fsa_feature:3\",\"temporalString\":\"DAY_OF_MONTH\",\"earliestSpace\":null,\"latestSpace\":null,\"storageRoot\":\"/s/phoenix/a/tmp/galileo-sapmitra\",\"spatialHint\":{\"latHint\":\"gps_abs_lat\",\"lngHint\":\"gps_abs_lon\"},\"name\":\"testfs1\",\"geohashIndex\":[],\"latestTime\":null}}");
+		for (String fsName : JSONObject.getNames(fsJSON)) {
+			System.out.println(fsName);
+			fsJSON.getJSONObject(fsName);
+		}
+		
 		
 	}
 	

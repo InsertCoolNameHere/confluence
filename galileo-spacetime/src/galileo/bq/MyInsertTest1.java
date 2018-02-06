@@ -54,13 +54,14 @@ public class MyInsertTest1 {
 			SpatialHint sp1 = new SpatialHint("gps_abs_lat", "gps_abs_lon");
 			String temporalHint1 = "epoch_time";
 			//if(!FS_CREATED){
-				gc.createFS("testfs1", sp1, featureList1, temporalHint1, 1);
-				//FS_CREATED = true;
+			gc.createFS("testfs1", sp1, featureList1, temporalHint1, 1);
+			FS_CREATED = true;
 			//}
 			
 		}
 		try {
 			insertData(filepath, gc, "testfs1", 1);
+			Thread.sleep(5000);
 		} finally {
 			gc.disconnect();
 		}
@@ -90,8 +91,10 @@ public class MyInsertTest1 {
 			String lastLine = "";
 			while (sc.hasNextLine()) {
 				String line = sc.nextLine();
+				if(line.trim().isEmpty())
+					continue;
 				String tmpvalues[] = line.split(",");
-				if (line.contains("epoch_time,")) {
+				if (line.contains("epoch_time")) {
 					continue;
 				}
 				if (Float.parseFloat(tmpvalues[1]) == 0.0f && Float.parseFloat(tmpvalues[2]) == 0.0f) {
@@ -129,7 +132,7 @@ public class MyInsertTest1 {
 			String allLines = data.toString();
 			System.out.println("Creating a block for " + previousDay + " GMT having " + rowCount + " rows");
 			System.out.println(lastLine);
-			Block tmp = GalileoConnector.createBlock(lastLine, allLines.substring(0, allLines.length() - 1));
+			Block tmp = GalileoConnector.createBlock1(lastLine, allLines.substring(0, allLines.length() - 1));
 			if (tmp != null) {
 				gc.store(tmp);
 			}
@@ -158,13 +161,12 @@ public class MyInsertTest1 {
 	 * @param args
 	 */
 	public static void main(String[] args1) {
-		String args[] = new String[4];
+		String args[] = new String[3];
 		args[0] = "phoenix.cs.colostate.edu";
 		args[1] = "5634";
-		args[2] = "/s/chopin/b/grad/sapmitra/GalileoData/eg1.csv";
-		args[3] = "/s/chopin/b/grad/sapmitra/GalileoData/eg2.csv";
+		args[2] = "/s/chopin/b/grad/sapmitra/Documents/Conflux/fs1.csv";
 		
-		
+		System.out.println(args.length);
 		if (args.length != 3) {
 			System.out.println(
 					"Usage: ConvertCSVFileToGalileo [galileo-hostname] [galileo-port-number] [path-to-csv-file]");

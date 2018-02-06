@@ -44,7 +44,8 @@ public class DataIntegrationRequest implements Event{
 			return featureQuery.toString();
 		return "";
 	}
-	
+	public DataIntegrationRequest() {
+	}
 
 	@Deserialize
 	public DataIntegrationRequest(SerializationInputStream in) throws IOException, SerializationException {
@@ -86,6 +87,7 @@ public class DataIntegrationRequest implements Event{
 		if (isSpatial())
 			out.writeSerializableCollection(polygon);
 		
+		out.writeBoolean(hasFeatureQuery());
 		if (hasFeatureQuery())
 			out.writeSerializable(this.featureQuery);
 		

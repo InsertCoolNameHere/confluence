@@ -37,7 +37,7 @@ public class MyInsertTest2 {
 	 *            GalileoConnector instance
 	 * @throws Exception
 	 */
-	private static boolean FS_CREATED = false;
+	private static boolean FS_CREATED = true;
 	
 	private static void processFile(String filepath, GalileoConnector gc) throws Exception {
 		
@@ -55,13 +55,14 @@ public class MyInsertTest2 {
 			SpatialHint sp2 = new SpatialHint("gps_abs_lat", "gps_abs_lon");
 			String temporalHint2 = "epoch_time";
 			//if(!FS_CREATED){
-				gc.createFS("testfs2", sp2, featureList2, temporalHint2, 2);
-				//FS_CREATED = true;
+			gc.createFS("testfs2", sp2, featureList2, temporalHint2, 2);
+			FS_CREATED = true;
 			//}
 		
 		}
 		try {
 			insertData(filepath, gc, "testfs2", 2);
+			Thread.sleep(5000);
 		} finally {
 			gc.disconnect();
 		}
@@ -91,8 +92,10 @@ public class MyInsertTest2 {
 			String lastLine = "";
 			while (sc.hasNextLine()) {
 				String line = sc.nextLine();
+				if(line.trim().isEmpty())
+					continue;
 				String tmpvalues[] = line.split(",");
-				if (line.contains("epoch_time,")) {
+				if (line.contains("epoch_time")) {
 					continue;
 				}
 				if (Float.parseFloat(tmpvalues[1]) == 0.0f && Float.parseFloat(tmpvalues[2]) == 0.0f) {
@@ -130,7 +133,7 @@ public class MyInsertTest2 {
 			String allLines = data.toString();
 			System.out.println("Creating a block for " + previousDay + " GMT having " + rowCount + " rows");
 			System.out.println(lastLine);
-			Block tmp = GalileoConnector.createBlock(lastLine, allLines.substring(0, allLines.length() - 1));
+			Block tmp = GalileoConnector.createBlock2(lastLine, allLines.substring(0, allLines.length() - 1));
 			if (tmp != null) {
 				gc.store(tmp);
 			}
@@ -159,11 +162,10 @@ public class MyInsertTest2 {
 	 * @param args
 	 */
 	public static void main(String[] args1) {
-		String args[] = new String[4];
+		String args[] = new String[3];
 		args[0] = "phoenix.cs.colostate.edu";
 		args[1] = "5634";
-		args[2] = "/s/chopin/b/grad/sapmitra/GalileoData/eg1.csv";
-		args[3] = "/s/chopin/b/grad/sapmitra/GalileoData/eg2.csv";
+		args[2] = "/s/chopin/b/grad/sapmitra/Documents/Conflux/fs2_3.csv";
 		
 		
 		if (args.length != 3) {
@@ -177,7 +179,7 @@ public class MyInsertTest2 {
 				File file = new File(args[2]);
 				if (file.isFile()) {
 					System.out.println("processing - " + args[2]);
-					processFile(args[3], gc);
+					processFile(args[2], gc);
 				} /*else {
 					if (file.isDirectory()) {
 						File[] files = file.listFiles();
