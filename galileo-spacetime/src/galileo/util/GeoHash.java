@@ -190,7 +190,7 @@ public class GeoHash {
 	 * @return
 	 * @throws ParseException
 	 */
-	public static long getStartTimeStamp(String year, String month, String day, String hour, TemporalType temporalType) throws ParseException {
+	public static long getStartTimeStamp(String day, String month, String year, String hour, TemporalType temporalType) throws ParseException {
 		
 		Calendar calendar = Calendar.getInstance(TemporalHash.TIMEZONE);
 		calendar.setTimeZone(TemporalHash.TIMEZONE);
@@ -263,7 +263,7 @@ public class GeoHash {
 	 * @param temporalType
 	 * @return
 	 */
-	public static long getEndTimeStamp(String year, String month, String day, String hour, TemporalType temporalType) {
+	public static long getEndTimeStamp(String day, String month, String year, String hour, TemporalType temporalType) {
 		
 		Calendar calendar = Calendar.getInstance(TemporalHash.TIMEZONE);
 		calendar.setTimeZone(TemporalHash.TIMEZONE);

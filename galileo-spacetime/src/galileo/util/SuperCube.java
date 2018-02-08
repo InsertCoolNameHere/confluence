@@ -4,9 +4,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import galileo.comm.TemporalType;
 import galileo.dataset.Coordinates;
 import galileo.dht.hash.TemporalHash;
 import galileo.serialization.ByteSerializable;
@@ -75,8 +77,19 @@ public class SuperCube implements ByteSerializable{
 	@Override
 	public void serialize(SerializationOutputStream out) throws IOException {
 		out.writeLong(id);
-		out.writeStringCollection(fs1BlockPaths);
-		out.writeSerializableCollection(polygon);
+		if(fs1BlockPaths != null && fs1BlockPaths.size() > 0) {
+			out.writeBoolean(true);
+			out.writeStringCollection(fs1BlockPaths);
+		} else {
+			out.writeBoolean(false);
+		}
+		
+		if(polygon != null && polygon.size() > 0) {
+			out.writeBoolean(true);
+			out.writeSerializableCollection(polygon);
+		} else {
+			out.writeBoolean(false);
+		}
 		
 		if(this.time != null && !this.time.isEmpty()) {
 			out.writeBoolean(true);
@@ -99,8 +112,18 @@ public class SuperCube implements ByteSerializable{
 	@Deserialize
 	public SuperCube(SerializationInputStream in) throws IOException, SerializationException {
 		this.id = in.readLong();
-		in.readStringCollection(this.fs1BlockPaths);
-		in.readSerializableCollection(Coordinates.class, this.polygon);
+		
+		boolean hasfs1BlockPaths = in.readBoolean();
+		if(hasfs1BlockPaths) {
+			fs1BlockPaths = new ArrayList<String>();
+			in.readStringCollection(this.fs1BlockPaths);
+		}
+		
+		boolean hasPolygon = in.readBoolean();
+		if(hasPolygon) {
+			this.polygon = new ArrayList<Coordinates>();
+			in.readSerializableCollection(Coordinates.class, this.polygon);
+		}
 		
 		boolean hasTimeString = in.readBoolean();
 		
@@ -142,7 +165,10 @@ public class SuperCube implements ByteSerializable{
 	public static void addToCubeNodeMap(Map<Integer, List<String>> supercubeToNodeMap, Map<Integer, Integer> superCubeNumNodesMap, String key, int index) {
 		
 		List<String> nodesQueried = supercubeToNodeMap.get(index);
-		int numNodes = superCubeNumNodesMap.get(index);
+		int numNodes = 0;
+		if(superCubeNumNodesMap.get(index) != null) {
+			numNodes = superCubeNumNodesMap.get(index);
+		}
 		
 		if(nodesQueried == null) {
 			nodesQueried = new ArrayList<String>();
@@ -230,15 +256,7 @@ public class SuperCube implements ByteSerializable{
 	}
 	
 	public static void main(String arg[]) {
-		List<String> sl = new ArrayList<>();
-		sl.add(new String("hi"));
-		sl.add("abc");
-		sl.add("123");
-		System.out.println(sl);
-		sl.remove("abc");
-		System.out.println(sl);
-		sl.add("321");
-		System.out.println(sl);
+		SuperCube.addToCubeNodeMap(new HashMap<Integer, List<String>> (), new HashMap<Integer, Integer> (), "sdsd", 1);
 	}
 	
 	/*public static void main(String arg[]) throws IOException {

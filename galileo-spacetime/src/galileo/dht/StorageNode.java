@@ -1236,19 +1236,22 @@ public class StorageNode implements RequestListener {
 								hasDown = true;
 							}
 						}
-						
-						if(!hasUp || ! hasDown) {
+						logger.log(Level.INFO, "RIKI :HHHH :"+hasUp+" "+hasDown);
+						if(!hasUp || !hasDown) {
 							logger.log(Level.INFO, "RIKI :CENTRALTIME1 :"+sc.getCentralTime());
+							logger.log(Level.INFO, "RIKI :TEMPORALTYPE :"+fs1.getTemporalType());
 							String[] tokens = sc.getCentralTime().split("-");
 							String[] timestamps = timeString.split("-");
 							if(!hasUp) {
 								long end = GeoHash.getEndTimeStamp(tokens[0], tokens[1], tokens[2], tokens[3], fs1.getTemporalType());
+								logger.log(Level.INFO, "RIKI :END :"+end);
 								timestamps[1] = String.valueOf(end);
 								
 							}
 							if(!hasDown) {
 								
 								long start = GeoHash.getStartTimeStamp(tokens[0], tokens[1], tokens[2], tokens[3], fs1.getTemporalType());
+								logger.log(Level.INFO, "RIKI :START :"+start);
 								timestamps[0] = String.valueOf(start);
 								
 							}
@@ -1343,6 +1346,7 @@ public class StorageNode implements RequestListener {
 				NeighborRequestHandler rikiHandler = new NeighborRequestHandler(null, individualRequests, new ArrayList<NetworkDestination>(destinations), context, this,
 						allCubes, superCubeNumNodesMap, numCores, geoQuery, fs1, eventId, queryResultsDir, aPosns, bPosns, epsilons, hostname, String.valueOf(port));
 				rikiHandler.handleRequest(response);
+				logger.log(Level.INFO, "RIKI :FS2 REQUESTS FINISHED SENDING :"+ destinations);
 
 			}
 
@@ -1435,6 +1439,7 @@ public class StorageNode implements RequestListener {
 		
 		//Partitioner<Metadata> fsPartitioner = reqFSystem.getPartitioner();
 		try{
+			logger.log(Level.INFO, "RIKI : QUERY TIME: "+ event.getQueryTime());
 			PathsAndOrientations pao = reqFSystem.listIntersectingPathsWithOrientation(superCubes, superPolygon, event.getQueryTime(), null, srcFSystem.getTemporalType());
 			
 			logger.log(Level.INFO, "RIKI : INTERSECTING PATHS CALCULATED");
@@ -1454,7 +1459,7 @@ public class StorageNode implements RequestListener {
 				
 				/* SEND BACK SUPERCUBE TO REQUIREMENTS MAP IMMEDIATELY */
 				/* THERE IS GOING TO BE ONE DATA RESPONSE PER PATH. SO THE NUMBER OF PATHS IS NECESSARY */
-				
+				logger.log(Level.INFO, "RIKI : ABOUT TO SEND CONTROL MESSAGE");
 				NeighborDataResponse controlMessage = createCubeRequirements(supercubeRequirementsMap, pathToFragmentsMap.size(), nodeString);
 				context.sendReply(controlMessage);
 				logger.log(Level.INFO, "RIKI : CONTROL MESSAGE SENT");

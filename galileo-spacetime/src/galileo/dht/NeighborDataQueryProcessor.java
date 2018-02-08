@@ -81,6 +81,7 @@ public class NeighborDataQueryProcessor implements Runnable{
 
 	private NeighborDataResponse createNeighborResponse() {
 		NeighborDataResponse ndr = new NeighborDataResponse(resultRecordLists, pathIndex, pathInfo, nodeString);
+		logger.log(Level.INFO, "RIKI: SELECTED RECORDS:" + pathInfo+">>"+resultRecordLists);
 		return ndr;
 	}
 

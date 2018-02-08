@@ -58,7 +58,7 @@ public class NeighborDataResponse implements Event {
 			
 		}
 		this.totalPaths = totalPaths;
-		
+		this.isActualData = false;
 		
 	}
 
@@ -79,11 +79,17 @@ public class NeighborDataResponse implements Event {
 		this.isActualData = in.readBoolean();
 		if(!isActualData) {
 			this.nodeString = in.readString();
-			in.readIntegerCollection(supercubeIDList);
-			in.readStringCollection(requirementsList);
-			this.totalPaths = in.readInt();
+			supercubeIDList = new ArrayList<Integer>();
+			requirementsList = new ArrayList<String>();
+			boolean hasList = in.readBoolean();
+			if(hasList) {
+				in.readIntegerCollection(supercubeIDList);
+				in.readStringCollection(requirementsList);
+				this.totalPaths = in.readInt();
+			}
 		} else {
 			this.nodeString = in.readString();
+			resultRecordLists = new ArrayList<String>();
 			in.readStringCollection(resultRecordLists);
 			this.pathIndex = in.readInt();
 			this.pathInfo = in.readString();
@@ -97,14 +103,21 @@ public class NeighborDataResponse implements Event {
 		out.writeBoolean(isActualData);
 		if(!isActualData) {
 			out.writeString(nodeString);
-			out.writeIntegerCollection(supercubeIDList);
-			out.writeStringCollection(requirementsList);
-			out.writeInt(totalPaths);
+			if(supercubeIDList != null && supercubeIDList.size() > 0) {
+				out.writeBoolean(true);
+				out.writeIntegerCollection(supercubeIDList);
+				out.writeStringCollection(requirementsList);
+				out.writeInt(totalPaths);
+			} else {
+				out.writeBoolean(false);
+			}
+			
 		} else {
 			out.writeString(nodeString);
 			out.writeStringCollection(resultRecordLists);
 			out.writeInt(pathIndex);
 			out.writeString(pathInfo);
+			
 		}
 			
 	}

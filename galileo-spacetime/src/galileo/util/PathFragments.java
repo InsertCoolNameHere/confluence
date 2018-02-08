@@ -60,5 +60,10 @@ public class PathFragments {
 		this.chunks.addAll(chunks);
 	}
 	
+	public String toString() {
+		String ret = ignore + " " + spatial + chunks;
+		return ret;
+	}
+	
 
 }

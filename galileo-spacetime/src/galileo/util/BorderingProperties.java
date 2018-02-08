@@ -3,6 +3,9 @@ package galileo.util;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 public class BorderingProperties {
 	
 	private List<String> n;
@@ -36,8 +39,117 @@ public class BorderingProperties {
 	
 	public String toString() {
 		String ret = "";
-		ret+=n+" "+s+" "+e+" "+w+" "+down1+" "+down2+" "+up1+" "+up2;
+		ret+=n+" "+s+" "+e+" "+w+" "+down1+" "+down2+" "+up1+" "+up2+" "+northEntries+" "
+				+southEntries+" "+eastEntries+" "+westEntries+" "+neEntries+" "+nwEntries+" "+seEntries+" "+swEntries+" ";
 		return ret;
+	}
+	
+	public JSONObject getJsonStringRepresentation(String path) {
+		JSONObject bmap = new JSONObject();
+		
+		bmap.put("blockName", path);
+		bmap.put("n",n);
+		bmap.put("s",s);
+		bmap.put("e",e);
+		bmap.put("w",w);
+		bmap.put("ne",ne);
+		bmap.put("nw",nw);
+		bmap.put("se",se);
+		bmap.put("sw",sw);
+		
+		bmap.put("northEntries",northEntries);
+		bmap.put("southEntries",southEntries);
+		bmap.put("eastEntries",eastEntries);
+		bmap.put("westEntries",westEntries);
+		bmap.put("neEntries",neEntries);
+		bmap.put("nwEntries",nwEntries);
+		bmap.put("seEntries",seEntries);
+		bmap.put("swEntries",swEntries);
+		
+		bmap.put("up1", up1);
+		bmap.put("up2", up2);
+		bmap.put("down1", down1);
+		bmap.put("down2", down2);
+		
+		bmap.put("totalRecords", totalRecords);
+		
+		bmap.put("upTimeEntries",upTimeEntries);
+		bmap.put("downTimeEntries",downTimeEntries);
+		
+		
+		return bmap;
+	}
+	
+	public void populateObject(JSONObject jsonObj) {
+		this.up1 = jsonObj.getLong("up1");
+		this.up2 = jsonObj.getLong("up2");
+		this.down1 = jsonObj.getLong("down1");
+		this.down2 = jsonObj.getLong("down2");
+		this.totalRecords = jsonObj.getLong("totalRecords");
+		
+		JSONArray ns = jsonObj.getJSONArray("n");
+		for (int i = 0; i < ns.length(); i++)
+			n.add(ns.getString(i));
+		
+		JSONArray ss = jsonObj.getJSONArray("s");
+		for (int i = 0; i < ss.length(); i++)
+			s.add(ss.getString(i));
+		
+		JSONArray es = jsonObj.getJSONArray("e");
+		for (int i = 0; i < es.length(); i++)
+			e.add(es.getString(i));
+		
+		JSONArray ws = jsonObj.getJSONArray("w");
+		for (int i = 0; i < ws.length(); i++)
+			w.add(ws.getString(i));
+		
+		
+		this.ne = jsonObj.getString("ne");
+		this.nw = jsonObj.getString("nw");
+		this.se = jsonObj.getString("se");
+		this.sw = jsonObj.getString("sw");
+		
+		
+		JSONArray nEntries = jsonObj.getJSONArray("northEntries");
+		for (int i = 0; i < nEntries.length(); i++)
+			northEntries.add(nEntries.getLong(i));
+		
+		JSONArray sEntries = jsonObj.getJSONArray("southEntries");
+		for (int i = 0; i < sEntries.length(); i++)
+			southEntries.add(sEntries.getLong(i));
+		
+		JSONArray eEntries = jsonObj.getJSONArray("eastEntries");
+		for (int i = 0; i < eEntries.length(); i++)
+			eastEntries.add(eEntries.getLong(i));
+		
+		JSONArray wEntries = jsonObj.getJSONArray("westEntries");
+		for (int i = 0; i < wEntries.length(); i++)
+			westEntries.add(wEntries.getLong(i));
+		
+		JSONArray neEntriess = jsonObj.getJSONArray("neEntries");
+		for (int i = 0; i < neEntriess.length(); i++)
+			neEntries.add(neEntriess.getLong(i));
+		
+		JSONArray nwEntriess = jsonObj.getJSONArray("nwEntries");
+		for (int i = 0; i < nwEntriess.length(); i++)
+			nwEntries.add(nwEntriess.getLong(i));
+		
+		JSONArray seEntriess = jsonObj.getJSONArray("seEntries");
+		for (int i = 0; i < seEntriess.length(); i++)
+			seEntries.add(seEntriess.getLong(i));
+		
+		JSONArray swEntriess = jsonObj.getJSONArray("swEntries");
+		for (int i = 0; i < swEntriess.length(); i++)
+			swEntries.add(swEntriess.getLong(i));
+		
+		JSONArray upTimeEntriess = jsonObj.getJSONArray("upTimeEntries");
+		for (int i = 0; i < upTimeEntriess.length(); i++)
+			upTimeEntries.add(upTimeEntriess.getLong(i));
+		
+		JSONArray downTimeEntriess = jsonObj.getJSONArray("downTimeEntries");
+		for (int i = 0; i < downTimeEntriess.length(); i++)
+			downTimeEntries.add(downTimeEntriess.getLong(i));
+		
 	}
 	
 	public BorderingProperties() {

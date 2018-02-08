@@ -422,10 +422,22 @@ public class GeospatialFileSystem extends FileSystem {
 		state.put("readOnly", this.isReadOnly());
 		state.put("spatialUncertaintyPrecision", this.spatialUncertaintyPrecision);
 		state.put("temporalUncertaintyPrecision", this.temporalUncertaintyPrecision);
-		state.put("temporalHint", this.temporalHint);
+		//state.put("temporalHint", this.temporalHint);
 		state.put("temporalPosn", this.temporalPosn);
 		state.put("spatialPosn1", this.spatialPosn1);
 		state.put("spatialPosn2", this.spatialPosn2);
+		
+		logger.log(Level.INFO, "RIKI: BORDERMAP" + borderMap.keySet().size());
+		logger.log(Level.INFO, "RIKI: BORDERMAP" + borderMap.size());
+		
+		if(borderMap.size() > 0) {
+			JSONArray bMaps = new JSONArray();
+			for(String path : borderMap.keySet()) {
+				JSONObject bpJSON = borderMap.get(path).getJsonStringRepresentation(path);
+				bMaps.put(bpJSON);
+			}
+			state.put("borderMaps", bMaps);
+		}
 		
 		return state;
 	}
@@ -464,11 +476,24 @@ public class GeospatialFileSystem extends FileSystem {
 		
 		gfs.spatialUncertaintyPrecision = state.getInt("spatialUncertaintyPrecision");
 		gfs.temporalUncertaintyPrecision = state.getInt("temporalUncertaintyPrecision");
-		gfs.temporalHint = state.getString("temporalHint");
+		//gfs.temporalHint = state.getString("temporalHint");
 		gfs.temporalPosn = state.getInt("temporalPosn");
 		gfs.spatialPosn1 = state.getInt("spatialPosn1");
 		gfs.spatialPosn2 = state.getInt("spatialPosn2");
 		
+		gfs.borderMap = new HashMap<String, BorderingProperties>();
+		if(state.has("borderMaps")) {
+			JSONArray bMaps = state.getJSONArray("borderMaps");
+			if(bMaps != null && bMaps.length() > 0) {
+				for (int i = 0; i < bMaps.length(); i++) {
+					JSONObject jsonObject = bMaps.getJSONObject(i);
+					String key = jsonObject.getString("blockName");
+					BorderingProperties bp = new BorderingProperties(); 
+					bp.populateObject(jsonObject);
+					gfs.borderMap.put(key, bp);
+				}
+			}
+		}
 		
 		return gfs;
 	}
@@ -561,9 +586,24 @@ public class GeospatialFileSystem extends FileSystem {
 	}
 	
 	public static void main(String arg[]) throws FileSystemException, IOException, SerializationException, PartitionException, HashException, HashTopologyException, ParseException {
-		GeospatialFileSystem gf = new GeospatialFileSystem(null, "/s/chopin/b/grad/sapmitra/Music", "hi", 0, 0, TemporalType.DAY_OF_MONTH.getType(), null, null, null, false);
-		gf.setTemporalUncertaintyPrecision(50000);
-		gf.buildTemporalExpressionForFS2("2014-12-03-xx");
+		Coordinates c1 = new Coordinates(39.711308f, -94.14132f);
+		Coordinates c2 = new Coordinates(39.135788f, -94.06672f);
+		Coordinates c3 = new Coordinates(39.101475f, -95.56087f);
+		Coordinates c4 = new Coordinates(39.861824f, -95.36784f);
+		
+		List<Coordinates> cl = new ArrayList<Coordinates>();
+		cl.add(c1);
+		cl.add(c2);
+		cl.add(c3);
+		cl.add(c4);
+		
+		GeoavailabilityQuery geoQuery = new GeoavailabilityQuery(null,cl);
+		GeoavailabilityGrid blockGrid = new GeoavailabilityGrid("9zh8", GeoHash.MAX_PRECISION * 2 / 3);
+		//queryBitmap = QueryTransform.queryToGridBitmap(geoQuery, blockGrid);
+
+		//boolean b = isGridInsidePolygonTest(blockGrid, geoQuery);
+		//System.out.println(b);
+
 	}
 	
 	
@@ -616,6 +656,10 @@ public class GeospatialFileSystem extends FileSystem {
 		Serializer.persist(block.getMetadata(), metadataPath);
 		File gblock = new File(blockPath);
 		boolean newLine = gblock.exists();
+		
+		/*for(String path: borderMap.keySet()) {
+			logger.log(Level.INFO, "RIKI: PATH: "+path+ "$$"+ borderMap.get(path));
+		}*/
 		
 		/* ADDING METADATA TO METADATA GRAPH */
 		if (!newLine) {
@@ -903,8 +947,8 @@ public class GeospatialFileSystem extends FileSystem {
 		TemporalType ttQuery = getTemporalType(tokens);
 		
 		/* This represents the bounds for the actual query entered */
-		long startBasedOnQuery = GeoHash.getStartTimeStamp(tokens[0], tokens[1], tokens[2], tokens[3], ttQuery) - temporalUncertaintyPrecision;
-		long endBasedOnQuery = GeoHash.getEndTimeStamp(tokens[0], tokens[1], tokens[2], tokens[3], ttQuery) + temporalUncertaintyPrecision;
+		long startBasedOnQuery = GeoHash.getStartTimeStamp(tokens[2], tokens[1], tokens[0], tokens[3], ttQuery) - temporalUncertaintyPrecision;
+		long endBasedOnQuery = GeoHash.getEndTimeStamp(tokens[2], tokens[1], tokens[0], tokens[3], ttQuery) + temporalUncertaintyPrecision;
 		
 		List<List<Expression>> allTemporalExpressions = new ArrayList<List<Expression>>();
 		
@@ -930,8 +974,8 @@ public class GeospatialFileSystem extends FileSystem {
 		}
 		
 		/* This represents the span of time already searched by the baseExpression */
-		long startBasedOnBExp = GeoHash.getStartTimeStamp(tokensFS[0], tokensFS[1], tokensFS[2], tokensFS[3], temporalType);
-		long endBasedOnBExp = GeoHash.getEndTimeStamp(tokensFS[0], tokensFS[1], tokensFS[2], tokensFS[3], temporalType);
+		long startBasedOnBExp = GeoHash.getStartTimeStamp(tokensFS[2], tokensFS[1], tokensFS[0], tokensFS[3], temporalType);
+		long endBasedOnBExp = GeoHash.getEndTimeStamp(tokensFS[2], tokensFS[1], tokensFS[0], tokensFS[3], temporalType);
 		
 		
 		// check if the temporal expression for the base query string encloses the bounding flaps of the querytime
@@ -1251,7 +1295,7 @@ public class GeospatialFileSystem extends FileSystem {
 		/* Both space and time in query */
 		
 		if (superPolygon != null && superPolygon.size() > 0 && temporalExpressionList != null && temporalExpressionList.size() > 0) {
-			
+			logger.log(Level.SEVERE, "RIKI: ENTERED HERE");
 			SpatialProperties sp = new SpatialProperties(new SpatialRange(superPolygon));
 			
 			List<Coordinates> geometry = sp.getSpatialRange().hasPolygon() ? sp.getSpatialRange().getPolygon() : sp.getSpatialRange().getBounds();
@@ -1353,11 +1397,15 @@ public class GeospatialFileSystem extends FileSystem {
 		
 		Map<Path<Feature, String>, PathFragments> pathToFragmentsMap = new HashMap<Path<Feature, String>, PathFragments>();
 		Map<SuperCube,List<Requirements>> supercubeRequirementsMap = new HashMap<SuperCube,List<Requirements>>();
+		//logger.log(Level.SEVERE, "RIKI: ABOUT TO ENTER LOOP" + superCubes);
 		
 		// For each supercube
+		// CALCULATE THE FRAGMENTS THAT ARE NEEDED
 		for (SuperCube sc : superCubes) {
 			// For each path that matched the query hyper-polygon and time limit
 			for (Path<Feature, String> path : paths) {
+				//logger.log(Level.SEVERE, "RIKI: INSODE LOOP");
+				logger.info("RIKI: FS2 PATHS FOR FRAGMENTS: "+path.getPayload());
 				
 				String fs1PathTime = sc.getCentralTime();
 				String fs1PathSpace = sc.getCentralGeohash();
@@ -1779,11 +1827,13 @@ public class GeospatialFileSystem extends FileSystem {
 			Point<Integer> point = GeoHash.coordinatesToXY(coords);
 			polygon.addPoint(point.X(), point.Y());
 		}
+		
 		logger.info("checking geohash " + grid.getBaseHash() + " intersection with the polygon");
 		SpatialRange hashRange = grid.getBaseRange();
 		Pair<Coordinates, Coordinates> pair = hashRange.get2DCoordinates();
 		Point<Integer> upperLeft = GeoHash.coordinatesToXY(pair.a);
 		Point<Integer> lowerRight = GeoHash.coordinatesToXY(pair.b);
+		
 		if (polygon.contains(new Rectangle(upperLeft.X(), upperLeft.Y(), lowerRight.X() - upperLeft.X(),
 				lowerRight.Y() - upperLeft.Y())))
 			return true;
@@ -1924,7 +1974,7 @@ public class GeospatialFileSystem extends FileSystem {
 		List<List<String[]>> records = new ArrayList<List<String[]>>();
 		
 		for(int i=0; i< 28; i++) {
-			records.set(i, null);
+			records.add(null);
 		}
 		
 		
@@ -2170,14 +2220,13 @@ public class GeospatialFileSystem extends FileSystem {
 		
 		for(int i=0; i < 28; i++) {
 			
-			featurePaths.set(i, null);
-			recordFragmentsPerPath.set(i, "");
+			featurePaths.add(null);
+			recordFragmentsPerPath.add("");
 			
 		}
-		
+		logger.info("RIKI: PATH FRAGMENTS:"+fragments);
 		// THIS READS THE ACTUAL BLOCKS
 		// RETURNS ALL RECORDS FOR EACH FRAGMENT IN A LIST OF 28
-		
 		boolean skipGridProcessing = false;
 		if (geoQuery.getPolygon() != null && geoQuery.getQuery() != null) {
 			/* If polygon complete encompasses geohash */
@@ -2187,8 +2236,9 @@ public class GeospatialFileSystem extends FileSystem {
 		} else if (geoQuery.getPolygon() != null) {
 			/* If grid lies completely inside polygon */
 			skipGridProcessing = isGridInsidePolygon(grid, geoQuery);
-			if (!skipGridProcessing)
-				featurePaths = getFeaturePathsFromBlockSet(blocks, fragments);
+			
+			featurePaths = getFeaturePathsFromBlockSet(blocks, fragments);
+			logger.info("RIKI: FOUNDPATHS:"+featurePaths);
 		} else if (geoQuery.getQuery() != null) {
 			featurePaths = getFeaturePathsFromBlockSet(blocks, fragments);
 		} 
@@ -2205,7 +2255,7 @@ public class GeospatialFileSystem extends FileSystem {
 			}
 			
 		}
-		
+		logger.info("RIKI: FULLYEMPTY:"+fullyEmpty +" "+blocks);
 		/* No matching records found. No need to query */
 		if(fullyEmpty) {
 			return null;
@@ -2243,6 +2293,7 @@ public class GeospatialFileSystem extends FileSystem {
 					fullyEmpty = false;
 					int index = nqp.getFragNum();
 					recordFragmentsPerPath.add(index, nqp.getRecordsStringRepresentation());
+					logger.log(Level.INFO, "RIKI: INDIVIDUAL FRAGMENTS "+nqp.getRecordsStringRepresentation());
 				}
 				if(fullyEmpty) {
 					return null;
