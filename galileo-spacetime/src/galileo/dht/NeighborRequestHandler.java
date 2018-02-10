@@ -135,6 +135,7 @@ public class NeighborRequestHandler implements MessageListener {
 		this.queryResultsDir = queryResultsDir;
 		this.executor = Executors.newFixedThreadPool(Math.min(allCubes.size(), 2 * numCores));
 		
+		this.superCubeNumNodesMap = superCubeNumNodesMap;
 		this.aPosns = aPosns;
 		this.bPosns =  bPosns;
 		this.epsilons = epsilons;
@@ -273,7 +274,16 @@ public class NeighborRequestHandler implements MessageListener {
 					List<String> fragmentedRecords = rsp.getResultRecordLists();
 					String nodeName = rsp.getNodeString();
 					int pathIndex = rsp.getPathIndex();
-					logger.log(Level.INFO, "RIKI : DATA MESSAGE RECEIVED FROM "+nodeName);
+					
+					/*LOGGING*/
+					
+					String ret = "";
+					for(String ss : rsp.getResultRecordLists()) {
+						if(ss != null && !ss.isEmpty()) {
+							ret += ss + "$$";
+						}
+					}
+					logger.log(Level.INFO, "RIKI : DATA MESSAGE RECEIVED FROM "+nodeName + " " + ret);
 					
 					String pathString = nodeName+"$"+pathIndex;
 					
@@ -554,7 +564,6 @@ public class NeighborRequestHandler implements MessageListener {
 										if(allPaths.contains(ePath)) {
 											expectedPaths.remove(ePath);
 										}
-										
 									}
 								}
 								

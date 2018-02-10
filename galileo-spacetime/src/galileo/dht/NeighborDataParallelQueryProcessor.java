@@ -3,6 +3,7 @@ package galileo.dht;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,7 @@ public class NeighborDataParallelQueryProcessor implements Runnable{
 	private Bitmap queryBitmap;
 	private GeospatialFileSystem gfs;
 	private int fragNum;
+	private List<String> blocks;
 	
 	/* The final records from this fragment will not be in a string array format, rather a full string */
 	private String recordsStringRepresentation;
@@ -56,7 +58,8 @@ public class NeighborDataParallelQueryProcessor implements Runnable{
 	 * @param grid
 	 * @param queryBitmap
 	 */
-	public NeighborDataParallelQueryProcessor(GeospatialFileSystem gfs, List<String[]> featurePaths, Query query, GeoavailabilityGrid grid, Bitmap queryBitmap, int fragNum) {
+	public NeighborDataParallelQueryProcessor(GeospatialFileSystem gfs, List<String[]> featurePaths, Query query, GeoavailabilityGrid grid, Bitmap queryBitmap, int fragNum
+			, List<String> blocks) {
 		
 		this.featurePaths = featurePaths;
 		this.query = query;
@@ -64,6 +67,7 @@ public class NeighborDataParallelQueryProcessor implements Runnable{
 		this.queryBitmap = queryBitmap;
 		this.gfs = gfs;
 		this.fragNum = fragNum;
+		this.blocks = blocks;
 	}
 	
 	/**
@@ -82,7 +86,12 @@ public class NeighborDataParallelQueryProcessor implements Runnable{
 	public void run() {
 		
 		try{
+			logger.info("RIKI: FEATUREPATHS IN SUBSET "+featurePaths.size() +" "+blocks);
+			boolean fullRequired = false;
+			
 			if (queryBitmap != null) {
+				fullRequired = true;
+				logger.info("RIKI: QUERY BITMAP FOUND "+blocks);
 				int latOrder = -1, lngOrder = -1, index = 0;
 				for (Pair<String, FeatureType> columnPair : gfs.getFeatureList()) {
 					if (columnPair.a.equalsIgnoreCase(gfs.getSpatialHint().getLatitudeHint()))
@@ -124,6 +133,8 @@ public class NeighborDataParallelQueryProcessor implements Runnable{
 				}
 			}
 			if (query != null && this.featurePaths.size() > 0) {
+				logger.info("RIKI: SHOULD NOT ENTER "+blocks);
+				fullRequired = true;
 				MetadataGraph temporaryGraph = new MetadataGraph();
 				Iterator<String[]> pathIterator = this.featurePaths.iterator();
 				while (pathIterator.hasNext()) {
@@ -163,6 +174,21 @@ public class NeighborDataParallelQueryProcessor implements Runnable{
 					recordsStringRepresentation += recStr.substring(1,recStr.length() - 1) + "\n";
 					//this.featurePaths.add(featureValues);
 				}
+			} 
+			logger.info("RIKI: SHOULD ENTER "+blocks + fullRequired + " "+ this.featurePaths.size() + ">>"+recordsStringRepresentation+"<<");
+			
+			if(!fullRequired && this.featurePaths.size() > 0 && (recordsStringRepresentation == null || recordsStringRepresentation.isEmpty())) {
+				
+				recordsStringRepresentation = "";
+				
+				for(String[] record : featurePaths) {
+					if(record != null) {
+						String recStr = Arrays.toString(record);
+						recordsStringRepresentation += recStr.substring(1,recStr.length() - 1) + "\n";
+					}
+				}
+				
+				logger.info("RIKI: THIS SCENARIO "+ recordsStringRepresentation + " "+blocks);
 			}
 
 			/*if (featurePaths.size() > 0) {

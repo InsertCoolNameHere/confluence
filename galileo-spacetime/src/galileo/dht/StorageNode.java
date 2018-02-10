@@ -1472,7 +1472,7 @@ public class StorageNode implements RequestListener {
 				/* One thread per path */
 				/* Keep track of total number of paths, so that the source knows when all the paths have been received */
 				for(Path<Feature, String> path: paths) {
-					logger.log(Level.INFO, "RIKI : FS2 PATHS:"+path.getPayload());
+					logger.log(Level.INFO, "RIKI : FS2 PATHS + FRAGMENTS:"+path.getPayload()+" "+ pathToFragmentsMap.get(path));
 					String geohash = GeospatialFileSystem.getPathInfo(path, 1);
 					int pathIndex = paths.indexOf(path);
 					/* Converts the bounds of geohash into a 1024x1024 region */
@@ -1480,7 +1480,7 @@ public class StorageNode implements RequestListener {
 					Bitmap queryBitmap = null;
 					if (geoQuery.getPolygon() != null)
 						queryBitmap = QueryTransform.queryToGridBitmap(geoQuery, blockGrid);
-						
+					logger.log(Level.INFO, "RIKI : QUERY BITMAP:"+path.getPayload()+" "+ queryBitmap);
 					/* The blocks need to be processed part by part */
 					/* Returns a 28 part list for all fragmented records in a single path */
 					NeighborDataQueryProcessor qp = new NeighborDataQueryProcessor(reqFSystem, path, geoQuery, blockGrid, queryBitmap, pathToFragmentsMap.get(path), context, pathIndex, nodeString);

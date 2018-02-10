@@ -89,8 +89,12 @@ public class NeighborDataResponse implements Event {
 			}
 		} else {
 			this.nodeString = in.readString();
+			boolean hasList = in.readBoolean();
 			resultRecordLists = new ArrayList<String>();
-			in.readStringCollection(resultRecordLists);
+			if(hasList) {
+				in.readStringCollection(resultRecordLists);
+			}
+			
 			this.pathIndex = in.readInt();
 			this.pathInfo = in.readString();
 		}
@@ -114,7 +118,12 @@ public class NeighborDataResponse implements Event {
 			
 		} else {
 			out.writeString(nodeString);
-			out.writeStringCollection(resultRecordLists);
+			if(resultRecordLists != null && resultRecordLists.size() > 0) {
+				out.writeBoolean(true);
+				out.writeStringCollection(resultRecordLists);
+			} else {
+				out.writeBoolean(false);
+			}
 			out.writeInt(pathIndex);
 			out.writeString(pathInfo);
 			

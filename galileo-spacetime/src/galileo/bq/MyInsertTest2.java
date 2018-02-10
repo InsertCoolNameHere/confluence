@@ -165,7 +165,7 @@ public class MyInsertTest2 {
 		String args[] = new String[3];
 		args[0] = "phoenix.cs.colostate.edu";
 		args[1] = "5634";
-		args[2] = "/s/chopin/b/grad/sapmitra/Documents/Conflux/fs2_4.csv";
+		args[2] = "/s/chopin/b/grad/sapmitra/Documents/Conflux/fs2_3.csv";
 		
 		
 		if (args.length != 3) {

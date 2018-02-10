@@ -105,17 +105,22 @@ public class OrientationManager {
 	 */
 	public static List<Long> getRecordNumbersFromBlock(int chunk, BorderingProperties bp) {
 		
-		String[] spatials = {"nw","n","ne","e","c","w","sw","s","se"};
+		String[] spatials = {"nw","n","ne","w","c","e","sw","s","se"};
 		String[] temporals = {"down","mid","up"};
 			
 		int spatialNumber = chunk % 9 ;
-		System.out.println(spatials[spatialNumber]);
+		//System.out.println("SPATIAL NUM: "+chunk + " "+spatials[spatialNumber]);
 		List<Long> spatialRecordNums = getSpecificRecords(spatials[spatialNumber], 1, bp);
-		
+		//System.out.println("SPATIAL REC NUM: "+chunk + " "+spatialRecordNums);
 		
 		int temporalNumber = chunk / 9 ;
-		System.out.println(temporals[temporalNumber]);
+		//System.out.println("TEMPORAL NUM: "+chunk + " "+temporals[temporalNumber]);
+		//System.out.println(temporals[temporalNumber]);
 		List<Long> temporalRecordNums = getSpecificRecords(temporals[temporalNumber], 2, bp);
+		System.out.println("SPATIAL NUM: "+chunk + " "+spatials[spatialNumber]+
+				"\nSPATIAL REC NUM: "+chunk + " "+spatialRecordNums+
+				"\nTEMPORAL NUM: "+chunk + " "+temporals[temporalNumber]+
+				"\nTEMPORAL REC NUM: "+chunk + " "+temporalRecordNums);
 			
 		if(spatialRecordNums == null || temporalRecordNums == null || spatialRecordNums.size() <= 0 || temporalRecordNums.size() <= 0 )
 			return null;
@@ -148,7 +153,7 @@ public class OrientationManager {
 			} else if(dir.equals("c")) {
 				long totalRecords = bp.getTotalRecords();
 				
-				List<Long> allEntries = new ArrayList<Long>(ContiguousSet.create(Range.closed(1l, totalRecords), DiscreteDomain.longs()));
+				List<Long> allEntries = new ArrayList<Long>(ContiguousSet.create(Range.closed(0l, totalRecords - 1), DiscreteDomain.longs()));
 				allEntries.removeAll(bp.getNorthEntries());
 				allEntries.removeAll(bp.getSouthEntries());
 				allEntries.removeAll(bp.getEastEntries());
@@ -171,7 +176,7 @@ public class OrientationManager {
 				return bp.getUpTimeEntries();
 			} else if(dir.equals("mid")) {
 				long totalRecords = bp.getTotalRecords();
-				List<Long> allEntries = new ArrayList<Long>(ContiguousSet.create(Range.closed(1l, totalRecords), DiscreteDomain.longs()));
+				List<Long> allEntries = new ArrayList<Long>(ContiguousSet.create(Range.closed(0l, totalRecords - 1), DiscreteDomain.longs()));
 				allEntries.removeAll(bp.getUpTimeEntries());
 				allEntries.removeAll(bp.getDownTimeEntries());
 				return allEntries;
@@ -183,24 +188,12 @@ public class OrientationManager {
 	}
 	
 	public static void main(String arg[]) {
-		
+		System.out.println(OrientationManager.getRequiredChunks("e-full"));
 		List<Integer> chunks = new ArrayList<>();
 		chunks.add(24);
-		
-		System.out.println(OrientationManager.getRequiredChunks("sw-end"));
-		System.out.println(OrientationManager.getRecordNumbersFromBlock(24,null));
-		
-		
-		List<Long> allEntries = new ArrayList<Long>(ContiguousSet.create(Range.closed(1l, 10l), DiscreteDomain.longs()));
+		List<Long> allEntries = new ArrayList<Long>(ContiguousSet.create(Range.closed(0l, 2l), DiscreteDomain.longs()));
 		System.out.println(allEntries);
-		List<Long> aa = new ArrayList<Long>();
-		aa.add(1l);
-		aa.add(7l);
-		
-		allEntries.removeAll(aa);
-		System.out.println(allEntries);
-		
-		
+		//System.out.println(OrientationManager.getRecordNumbersFromBlock(24,null));
 		
 		
 	}

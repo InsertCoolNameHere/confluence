@@ -57,11 +57,11 @@ public class PathFragments {
 		this.chunks = chunks;
 	}
 	public void addChunks(List<Integer> chunkList) {
-		this.chunks.addAll(chunks);
+		this.chunks.addAll(chunkList);
 	}
 	
 	public String toString() {
-		String ret = ignore + " " + spatial + chunks;
+		String ret = ignore + " " +  chunks;
 		return ret;
 	}
 	

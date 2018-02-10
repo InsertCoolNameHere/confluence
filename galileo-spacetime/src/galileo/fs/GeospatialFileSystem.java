@@ -1405,26 +1405,28 @@ public class GeospatialFileSystem extends FileSystem {
 			// For each path that matched the query hyper-polygon and time limit
 			for (Path<Feature, String> path : paths) {
 				//logger.log(Level.SEVERE, "RIKI: INSODE LOOP");
-				logger.info("RIKI: FS2 PATHS FOR FRAGMENTS: "+path.getPayload());
+				//logger.info("RIKI: FS2 PATHS FOR FRAGMENTS: "+path.getPayload());
 				
 				String fs1PathTime = sc.getCentralTime();
 				String fs1PathSpace = sc.getCentralGeohash();
 				
 				/* RETURND TEMPORAL$SPATIAL  STRING*/
 				String ret = getPathInfo(path, 0 );
+				//logger.log(Level.INFO,"RIKI: FS1 PATHINFO: "+fs1PathSpace + fs1PathTime);
+				//logger.log(Level.INFO, "RIKI: FS2 PATHINFO: "+ret);
 				if(ret != null){
 					String[] tokens = ret.split("\\$");
 					String fs2PathTime = tokens[0];
 					String fs2PathSpace = tokens[1];
 					
 					String orientation = GeoHash.getOrientation(fs1PathSpace, fs2PathSpace, fs1PathTime, fs2PathTime, srcTT, this.temporalType);
-					
+					logger.log(Level.INFO, "RIKI: ORIENTATION: "+orientation + path.getPayload());
 					if(orientation.contains("ignore"))
 						continue;
 					
 					// These are the fragments of path required by the particular supercube sc
 					List<Integer> fragments = OrientationManager.getRequiredChunks(orientation);
-					
+					logger.log(Level.INFO, "RIKI: FRAGMENTS FROM ORIENTATION: "+fragments + path.getPayload());
 					if(fragments == null || fragments.size() == 0) 
 						continue;
 					
@@ -1434,7 +1436,7 @@ public class GeospatialFileSystem extends FileSystem {
 					if(pathToFragmentsMap.get(path) == null) {
 						
 						PathFragments pf = new PathFragments();
-						
+						//logger.log(Level.INFO, "RIKI: FRAGMENTS FOUND1: "+fragments);
 						// entire blocks to be read, no fragments
 						if("full-full".equals(orientation)) {
 							// IGNORE MEANS ALL FRAGMENTS ARE REQUIRED TO BE RETURNED
@@ -1446,9 +1448,13 @@ public class GeospatialFileSystem extends FileSystem {
 						}
 						
 						pathToFragmentsMap.put(path, pf);
-						
+						//logger.info("RIKI: INDIVIDUAL: "+pf);
+						/*for(Path<Feature, String> p: pathToFragmentsMap.keySet()) {
+							logger.log(Level.INFO, "RIKI : PATHZ: " +pathToFragmentsMap.get(p).getChunks()+" "+pathToFragmentsMap.get(p).getOrientations());
+						}*/
 					} else {
 						PathFragments pf = pathToFragmentsMap.get(path);
+						//logger.log(Level.INFO, "RIKI: FRAGMENTS FOUND2: "+fragments);
 						pf.addChunks(fragments);
 						pf.setIgnore(false);
 						pathToFragmentsMap.put(path, pf);
@@ -1471,6 +1477,9 @@ public class GeospatialFileSystem extends FileSystem {
 				}
 
 			}
+		}
+		for(Path<Feature, String> p: pathToFragmentsMap.keySet()) {
+			logger.log(Level.INFO, "RIKI : PATHHZZ: " +pathToFragmentsMap.get(p).getChunks()+" "+pathToFragmentsMap.get(p).getOrientations());
 		}
 		
 		int totalBlocks = 0;
@@ -1986,6 +1995,12 @@ public class GeospatialFileSystem extends FileSystem {
 				/* Getting all the records of this particular block */
 				List<String[]> record = getFeaturePaths(blockPath);
 				
+				/*LOGGING*/
+				String rr = "";
+				for(String[] hh : record) {
+					rr += Arrays.toString(hh)+"$$";
+				}
+				logger.log(Level.INFO, "RIKI: READ RECORDS FOR IGNORE IE FULL BLOCK "+rr + " " +blockPaths);
 				if(record != null && record.size() > 0) {
 				
 					if(records.get(27) == null) {
@@ -2010,11 +2025,14 @@ public class GeospatialFileSystem extends FileSystem {
 			int splitLimit = this.featureList.size();
 			
 			BorderingProperties borderingProperties = borderMap.get(blockPath);
+			//logger.log(Level.INFO, "RIKI: BORDERING PROPERTIES FOUND " +borderingProperties +" "+ blockPaths);
+			logger.log(Level.INFO, "RIKI: ABOUT TO READ RECORDS FOR NOT FULL BLOCK " +blockPaths);
+			//logger.log(Level.INFO, "RIKI: FEATURELIST SIZE " +splitLimit);
 			
 			/* Gets the actual records numbers needed in a 28 length list of list representing each fragment*/
 			for(int i : chunks) {
 				List<Long> recordsToRead = OrientationManager.getRecordNumbersFromBlock(i, borderingProperties);
-				
+				//logger.log(Level.INFO, "RIKI: LINE NOS TO READ " + recordsToRead +" "+blockPaths);
 				if(recordsToRead == null || recordsToRead.size() == 0)
 					continue;
 				
@@ -2035,6 +2053,13 @@ public class GeospatialFileSystem extends FileSystem {
 					//records.set(27, record);
 				}
 				
+				
+				/*LOGGING*/
+				String rr = "";
+				for(String[] hh : paths) {
+					rr += Arrays.toString(hh)+"$$";
+				}
+				logger.log(Level.INFO, "RIKI: READ RECORDS FOR NOT FULL BLOCK "+ rr + " " +blockPaths);
 				
 			}
 			
@@ -2219,12 +2244,13 @@ public class GeospatialFileSystem extends FileSystem {
 		List<String> recordFragmentsPerPath = new ArrayList<String>();
 		
 		for(int i=0; i < 28; i++) {
-			
+			recordFragmentsPerPath.add("");
 			featurePaths.add(null);
 			recordFragmentsPerPath.add("");
 			
 		}
-		logger.info("RIKI: PATH FRAGMENTS:"+fragments);
+		//logger.info("RIKI: HERE FOR "+ blocks);
+		//logger.info("RIKI: PATH FRAGMENTS LATER:"+blocks+" "+fragments);
 		// THIS READS THE ACTUAL BLOCKS
 		// RETURNS ALL RECORDS FOR EACH FRAGMENT IN A LIST OF 28
 		boolean skipGridProcessing = false;
@@ -2233,14 +2259,16 @@ public class GeospatialFileSystem extends FileSystem {
 			skipGridProcessing = isGridInsidePolygon(grid, geoQuery);
 			
 			featurePaths = getFeaturePathsFromBlockSet(blocks, fragments);
+			//logger.info("RIKI: SHOULDNT COME HERE"+blocks);
 		} else if (geoQuery.getPolygon() != null) {
 			/* If grid lies completely inside polygon */
 			skipGridProcessing = isGridInsidePolygon(grid, geoQuery);
 			
 			featurePaths = getFeaturePathsFromBlockSet(blocks, fragments);
-			logger.info("RIKI: FOUNDPATHS:"+featurePaths);
+			//logger.info("RIKI: FOUNDPATHS:"+featurePaths + blocks);
 		} else if (geoQuery.getQuery() != null) {
 			featurePaths = getFeaturePathsFromBlockSet(blocks, fragments);
+			//logger.info("RIKI: SHOULDNT COME HERE1"+blocks);
 		} 
 		
 		
@@ -2271,9 +2299,9 @@ public class GeospatialFileSystem extends FileSystem {
 			List<NeighborDataParallelQueryProcessor> queryProcessors = new ArrayList<>();
 			int i=0;
 			for (List<String[]> subset: featurePaths) {
-				if(subset != null) {
-					
-					NeighborDataParallelQueryProcessor pqp = new NeighborDataParallelQueryProcessor(this, subset, geoQuery.getQuery(), grid, queryBitmap, i);
+				if(subset != null && subset.size() > 0) {
+					logger.log(Level.INFO, "RIKI: INDIVIDUAL SUBSETS "+i+" "+subset + " "+ blocks);
+					NeighborDataParallelQueryProcessor pqp = new NeighborDataParallelQueryProcessor(this, subset, geoQuery.getQuery(), grid, queryBitmap, i, blocks);
 					
 					queryProcessors.add(pqp);
 					executor.execute(pqp);
@@ -2288,12 +2316,12 @@ public class GeospatialFileSystem extends FileSystem {
 			
 			fullyEmpty = true;
 			for(NeighborDataParallelQueryProcessor nqp : queryProcessors) {
-				
-				if(nqp.getRecordsStringRepresentation().length() > 0) {
+				logger.log(Level.INFO, "RIKI: DID IT ENTER? " + blocks);
+				if(nqp.getRecordsStringRepresentation() != null && nqp.getRecordsStringRepresentation().length() > 0) {
+					logger.log(Level.INFO, "RIKI: INDIVIDUAL FRAGMENTS "+nqp.getRecordsStringRepresentation() + " "+ blocks);
 					fullyEmpty = false;
 					int index = nqp.getFragNum();
 					recordFragmentsPerPath.add(index, nqp.getRecordsStringRepresentation());
-					logger.log(Level.INFO, "RIKI: INDIVIDUAL FRAGMENTS "+nqp.getRecordsStringRepresentation());
 				}
 				if(fullyEmpty) {
 					return null;
