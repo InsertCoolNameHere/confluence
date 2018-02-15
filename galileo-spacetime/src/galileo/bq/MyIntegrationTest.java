@@ -99,7 +99,7 @@ public class MyIntegrationTest {
 				e.printStackTrace();
 			}
 		}
-		System.out.println("Data successfully inserted into galileo");
+		System.out.println("Data Integration Finished");
 		System.exit(0);
 	}
 	// [END Main]

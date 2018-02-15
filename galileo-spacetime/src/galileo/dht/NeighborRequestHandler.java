@@ -4,6 +4,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -119,16 +120,16 @@ public class NeighborRequestHandler implements MessageListener {
 		this.eventWrapper = new BasicEventWrapper(this.eventMap);
 		this.expectedControlMessages = new AtomicInteger(this.nodes.size());
 		
-		this.supercubeToExpectedPathsMap = new HashMap<Integer, List<String>>();
+		this.supercubeToExpectedPathsMap = Collections.synchronizedMap(new HashMap<Integer, List<String>>());
 		this.nodeToNumberOfDataMessagesMap = new HashMap<String, Integer>();
 		this.supercubeToRequirementsMap = new HashMap<Integer, List<LocalRequirements>>();
 		this.numCores = numCores;
 		this.geoQuery = geoQuery;
 		this.fs1 = fs1;
 		
-		fs1SuperCubeDataMap = new HashMap<Integer, List<String[]>>();
+		fs1SuperCubeDataMap = Collections.synchronizedMap(new HashMap<Integer, List<String[]>>());
 		superCubeLocalFetchCheck = new ArrayList<Integer>();
-		pathIdToFragmentDataMap = new HashMap<String, List<String>>();
+		pathIdToFragmentDataMap = Collections.synchronizedMap(new HashMap<String, List<String>>());
 		cleanupCandidateCubes = new ArrayList<Integer>();
 		resultFiles = new ArrayList<String>();
 		this.eventId = eventId;
@@ -308,14 +309,14 @@ public class NeighborRequestHandler implements MessageListener {
 							
 							if(expectedPaths.contains(pathString)) {
 								// checking if a local fetch on this supercube has finished
-								boolean noLocalFetch = false;
+								boolean localFetchDone = false;
 								
 								synchronized (superCubeLocalFetchCheck) {
-									noLocalFetch = checkForLocalFetch(i);
+									localFetchDone = checkForLocalFetch(i);
 								}
 								
 								synchronized(cleanupCandidateCubes) {
-									if(noLocalFetch) {
+									if(!localFetchDone) {
 										// means control message for this node has not come in yet
 										// This supercube has to be shelved and checked later on using the cleanup service
 										if(!cleanupCandidateCubes.contains(i))
@@ -327,7 +328,7 @@ public class NeighborRequestHandler implements MessageListener {
 									}
 								}
 								
-								if(noLocalFetch)
+								if(localFetchDone)
 									continue;
 								
 								expectedPaths.remove(pathString);
@@ -559,11 +560,25 @@ public class NeighborRequestHandler implements MessageListener {
 								synchronized(pathIdToFragmentDataMap) {
 									
 									Set<String> allPaths = pathIdToFragmentDataMap.keySet();
+									//Iterator<String> iterator0 = expectedPaths.iterator();
+									//while (iterator0.hasNext()) {
+									
+									// THIS IS THE SOURCE OF CONCURRENT MODIFICATION EXCEPTION
+									// ITERATING AND DELETING FROM THE EXPECTEDPATHS IN TEH SAME LOOP
 									for(String ePath: expectedPaths) {
-										
-										if(allPaths.contains(ePath)) {
+										//String ePath = iterator0.next();
+										//Iterator<String> iterator = pathIdToFragmentDataMap.keySet().iterator();
+										if(allPaths != null && allPaths.contains(ePath)) {
 											expectedPaths.remove(ePath);
 										}
+										/*while (iterator.hasNext()) {
+											String key = (String) iterator.next();
+											if(key.equals(ePath)) {
+												expectedPaths.remove(ePath);
+												break;
+											}
+										}*/
+										
 									}
 								}
 								
@@ -586,6 +601,21 @@ public class NeighborRequestHandler implements MessageListener {
 		
 	}
 	
+	
+	public static void main(String arg[]) {
+		
+		List<String> ll = new ArrayList<String>();
+		ll.add("a"); ll.add("a1"); ll.add("a2"); ll.add("b"); ll.add("a3"); ll.add("c"); 
+		
+		for(String l : ll) {
+			if(l.contains("a"))
+				ll.remove(l);
+		}
+		
+		System.out.println(ll);
+		
+		
+	} 
 	
 	class JoiningThread implements Runnable {
 		List<String[]> indvARecords;

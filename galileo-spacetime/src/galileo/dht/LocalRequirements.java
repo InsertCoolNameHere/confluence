@@ -15,7 +15,7 @@ public class LocalRequirements {
 	public LocalRequirements(int pathIndex, String[] fragments2, boolean isReceived, String nodeName) {
 		fragments = new ArrayList<Integer>();
 		for(String str : fragments2) {
-			fragments.add(Integer.valueOf(str));
+			fragments.add(Integer.valueOf(str.trim()));
 			
 		}
 		
