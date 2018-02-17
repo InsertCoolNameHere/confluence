@@ -1,5 +1,6 @@
 package galileo.util;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -50,12 +51,17 @@ public class MDC {
 	
 	
 	public List<String> iterativeMultiDimJoin(List<String[]> indvARecords,/*String aRecords,*/ String bRecords, int[] aPosns, int[] bPosns, double[] epsilons) {
+		System.out.println("BRECORDS: "+bRecords);
+		System.out.println("APOSNS:" + Arrays.asList(aPosns));
+		System.out.println("APOSNS:" + Arrays.asList(bPosns));
+		System.out.println("EPSILONS:" + Arrays.asList(bPosns));
 		/* Do not modify these 2 data */
 		String doublePattern = "-?([0-9]*)\\.?([0-9]*)";
 		String intPattern = "-?([0-9])([0-9]*)";
 		
 		//String[] indvARecords = aRecords.split("\\$\\$");
 		String[] indvBRecords = bRecords.split("\\n");
+		
 
 		List<double[]> splitARecords = new ArrayList<double[]>();
 		List<double[]> splitBRecords = new ArrayList<double[]>();

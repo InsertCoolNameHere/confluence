@@ -1,6 +1,5 @@
 package galileo.bq;
 /* 
- * Copyright (c) 2015, Colorado State University. Written by Duck Keun Yang 2015-08-02
  * 
  * All rights reserved.
  * 

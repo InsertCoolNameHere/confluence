@@ -2364,12 +2364,12 @@ public class GeospatialFileSystem extends FileSystem {
 		} else if (geoQuery.getPolygon() != null) {
 			/* If grid lies completely inside polygon */
 			skipGridProcessing = isGridInsidePolygon(grid, geoQuery);
-			if (!skipGridProcessing)
-				featurePaths = getFeaturePathsLocal(blocks);
+			featurePaths = getFeaturePathsLocal(blocks);
 		} else if (geoQuery.getQuery() != null) {
 			featurePaths = getFeaturePathsLocal(blocks);
 		} 
 		
+		logger.log(Level.INFO, "RIKI: FS1 LOCAL RECORDS FOUND: "+Arrays.asList(featurePaths));
 		int size = featurePaths.size();
 		int partition = java.lang.Math.max(size / numCores, MIN_GRID_POINTS);
 		int parallelism = java.lang.Math.min(size / partition, numCores);
@@ -2379,7 +2379,10 @@ public class GeospatialFileSystem extends FileSystem {
 		// FURTHER FILTERING OF FEATUREPATHS
 		
 		queryBitmap = skipGridProcessing ? null : queryBitmap;
-		
+		if(parallelism <=0 ) {
+			logger.log(Level.INFO, "RIKI: THIS HAPPENED");
+			parallelism = 1;
+		}
 		if (parallelism > 0) {
 			
 			ExecutorService executor = Executors.newFixedThreadPool(parallelism);
@@ -2390,7 +2393,8 @@ public class GeospatialFileSystem extends FileSystem {
 				int from = i * partition;
 				int to = (i + 1 != parallelism) ? (i + 1) * partition : size;
 				List<String[]> subset = new ArrayList<>(featurePaths.subList(from, to));
-				
+				logger.log(Level.INFO, "RIKI: FS1 LOCAL RECORDS FOUND2: "+Arrays.asList(featurePaths));
+				logger.log(Level.INFO, "RIKI: FS1 LOCAL RECORDS FOUND3: "+Arrays.asList(subset));
 				if(subset != null) {
 					
 					LocalParallelQueryProcessor pqp = new LocalParallelQueryProcessor(this, subset, geoQuery.getQuery(), grid, queryBitmap);
@@ -2406,7 +2410,7 @@ public class GeospatialFileSystem extends FileSystem {
 				logger.log(Level.WARNING, "queryFragments: Executor terminated because of the specified timeout=10minutes");
 			
 			for(LocalParallelQueryProcessor nqp : queryProcessors) {
-				
+				logger.log(Level.INFO, "RIKI: LocalParallelQueryProcessor PATHS6"+nqp.getFeaturePaths());
 				if(nqp.getFeaturePaths().size() > 0) {
 					returnPaths.addAll(nqp.getFeaturePaths());
 				}

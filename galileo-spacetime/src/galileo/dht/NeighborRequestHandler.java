@@ -3,6 +3,7 @@ package galileo.dht;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -299,15 +300,17 @@ public class NeighborRequestHandler implements MessageListener {
 					boolean noControl = checkForDataBeforeControlMsg(nodeName);
 					
 					if(noControl)
-						logger.log(Level.INFO, "NO CONTROL MESSAGE HAS COME IN FOR NODE" + nodeName);
+						logger.log(Level.INFO, "RIKI : NO CONTROL MESSAGE HAS COME IN FOR NODE" + nodeName);
 					
 					// We assume the control message from this node has already been received and processed
 					synchronized(supercubeToExpectedPathsMap) {
 						for(int i : supercubeToExpectedPathsMap.keySet()) {
 							
 							List<String> expectedPaths = supercubeToExpectedPathsMap.get(i);
-							
+							logger.log(Level.INFO, "RIKI : EXPECTED PATHS" + expectedPaths);
+							logger.log(Level.INFO, "RIKI : RECEIVED PATH" + pathString);
 							if(expectedPaths.contains(pathString)) {
+								
 								// checking if a local fetch on this supercube has finished
 								boolean localFetchDone = false;
 								
@@ -328,10 +331,10 @@ public class NeighborRequestHandler implements MessageListener {
 									}
 								}
 								
-								if(localFetchDone)
-									continue;
-								
 								expectedPaths.remove(pathString);
+								
+								if(!localFetchDone)
+									continue;
 								
 								// This supercube has everything it needs
 								if(expectedPaths.size() <= 0) {
@@ -525,6 +528,7 @@ public class NeighborRequestHandler implements MessageListener {
 						
 						
 							if (qp.getResultRecordLists() != null && qp.getResultRecordLists().size() > 0) {
+								logger.log(Level.INFO, "RIKI : ENTERED VALUES "+ qp.getResultRecordLists() +" FOR "+qp.getSuperCubeId());
 								fs1SuperCubeDataMap.put(qp.getSuperCubeId(), qp.getResultRecordLists());
 							} else {
 								fs1SuperCubeDataMap.put(qp.getSuperCubeId(), null);
@@ -560,29 +564,36 @@ public class NeighborRequestHandler implements MessageListener {
 								synchronized(pathIdToFragmentDataMap) {
 									
 									Set<String> allPaths = pathIdToFragmentDataMap.keySet();
-									//Iterator<String> iterator0 = expectedPaths.iterator();
-									//while (iterator0.hasNext()) {
 									
 									// THIS IS THE SOURCE OF CONCURRENT MODIFICATION EXCEPTION
 									// ITERATING AND DELETING FROM THE EXPECTEDPATHS IN TEH SAME LOOP
-									for(String ePath: expectedPaths) {
-										//String ePath = iterator0.next();
-										//Iterator<String> iterator = pathIdToFragmentDataMap.keySet().iterator();
-										if(allPaths != null && allPaths.contains(ePath)) {
-											expectedPaths.remove(ePath);
-										}
-										/*while (iterator.hasNext()) {
-											String key = (String) iterator.next();
-											if(key.equals(ePath)) {
+									if(!Collections.disjoint(allPaths, expectedPaths)) {
+										
+										List<String> newExpectedPaths = new ArrayList<String>();
+										boolean updated = false;
+										for(String ePath: expectedPaths) {
+											//String ePath = iterator0.next();
+											//Iterator<String> iterator = pathIdToFragmentDataMap.keySet().iterator();
+											
+											if(allPaths != null && allPaths.contains(ePath)) {
 												expectedPaths.remove(ePath);
-												break;
+												updated = true;
+												continue;
 											}
-										}*/
+											newExpectedPaths.add(ePath);
+											
+										}
+										
+										if(updated) {
+											supercubeToExpectedPathsMap.put(c, newExpectedPaths);
+										}
+										
 										
 									}
+									
 								}
 								
-								if(expectedPaths.isEmpty()) {
+								if(supercubeToExpectedPathsMap.get(c).isEmpty()) {
 									// This cube is ready to be launched
 									int indx = cleanupCandidateCubes.indexOf(c);
 									cleanupCandidateCubes.remove(indx);
@@ -638,6 +649,7 @@ public class NeighborRequestHandler implements MessageListener {
 		public JoiningThread(int i) {
 			
 			synchronized(fs1SuperCubeDataMap) {
+				logger.log(Level.INFO, "RIKI: FS1 RECORDS LOCAL: "+Arrays.asList(fs1SuperCubeDataMap.get(i)));
 				this.indvARecords = fs1SuperCubeDataMap.get(i);
 			}
 			synchronized(supercubeToRequirementsMap) {
@@ -664,6 +676,7 @@ public class NeighborRequestHandler implements MessageListener {
 				}
 				
 				this.bRecords = bRecords;
+				logger.log(Level.INFO, "RIKI: FS2 RECORDS: "+bRecords);
 				this.storagePath = getResultFilePrefix(eventId, fs1.getName(), i);
 			}
 		}
