@@ -12,27 +12,68 @@ public class MDC {
 	
 	public static void main(String arg[]) {
 		List<String[]> aRecords = new ArrayList<>();
-		String[] a1 = {"2","1","3"}; 
+		String[] a1 = {"1486354807", "39.473305", "-94.807891", "1"}; 
 		aRecords.add(a1);
 		
-		String[] a2 = {"1","5","7"}; 
+		String[] a2 = {"1486354867","39.483905","-94.902649","2"}; 
 		aRecords.add(a2);
 		
-		String[] a3 = {"4","3","2"}; 
+		String[] a3 = {"1486362067","39.377833","-94.916381","3"}; 
 		aRecords.add(a3);
 		
-		String[] a4 = {"16","1","12"}; 
+		String[] a4 = {"1486362071","39.540058","-94.904022","4"}; 
 		aRecords.add(a4);
 		
-		String[] a5 = {"7","7","7"}; 
+		String[] a5 = {"1486354817","39.461643","-94.641723","5"}; 
 		aRecords.add(a5);
+		
+		String[] a6 = {"1486354801","39.442556","-94.598165","6"}; 
+		aRecords.add(a6);
+		
+		String[] a7 = {"1486354667","39.431950","-94.757080","7"}; 
+		aRecords.add(a7);
+		
+		String[] a8 = {"1486354217","39.428768","-94.858703","8"}; 
+		aRecords.add(a8);
 		
 		
 		//,"1,5,7","4,3,2","16,1,12","7,7,7"};
-		String bRecords = "12,1,5\n2,1,3\n-1,2,3\n1,5,7\n0,0,0\n9,9,9\n16,1,12\n7,7,7";
+		String bRecords = "1486362069,39.372535,-94.923934,3\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"1486354871,39.44520783,-94.932174,5\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"\n" + 
+				"";
 		int[] aPosns = {0,1,2};
 		int[] bPosns = {0,1,2};
-		double[] epsilons = {0.1,0.1,0.2};
+		double[] epsilons = {100,0.05,0.05};
 		
 		MDC m = new MDC();
 		System.out.println(System.currentTimeMillis());
@@ -52,9 +93,30 @@ public class MDC {
 	
 	public List<String> iterativeMultiDimJoin(List<String[]> indvARecords,/*String aRecords,*/ String bRecords, int[] aPosns, int[] bPosns, double[] epsilons) {
 		System.out.println("BRECORDS: "+bRecords);
-		System.out.println("APOSNS:" + Arrays.asList(aPosns));
-		System.out.println("APOSNS:" + Arrays.asList(bPosns));
-		System.out.println("EPSILONS:" + Arrays.asList(bPosns));
+		System.out.println("ARECORDS: ");
+		for(String[] sa: indvARecords) {
+			System.out.println(Arrays.asList(sa));
+		}
+		
+		System.out.println("APOSNS:");
+		for(int i: aPosns) {
+			System.out.print(i+" ");
+		}
+		
+		System.out.println();
+		
+		System.out.println("BPOSNS:");
+		for(int i: bPosns) {
+			System.out.print(i+" ");
+		}
+		
+		System.out.println();
+		System.out.println("EPSILONS:");
+		for(double i: epsilons) {
+			System.out.print(i+" ");
+		}
+		
+		System.out.println();
 		/* Do not modify these 2 data */
 		String doublePattern = "-?([0-9]*)\\.?([0-9]*)";
 		String intPattern = "-?([0-9])([0-9]*)";
@@ -89,12 +151,13 @@ public class MDC {
 		
 		ind = 0;
 		for(String line: indvBRecords) {
-			String[] frs = line.split(",");
 			
 			if(line.trim().isEmpty()) {
 				ind++;
 				continue;
 			}
+			line = line.replace(", ", ",");
+			String[] frs = line.split(",");
 			if(Pattern.matches(doublePattern, frs[bPosns[1]]) && Pattern.matches(doublePattern, frs[bPosns[2]])
 					&& Pattern.matches(intPattern, frs[bPosns[0]])){
 				

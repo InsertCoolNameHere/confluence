@@ -263,7 +263,7 @@ public class NeighborRequestHandler implements MessageListener {
 						/*Requirements for a single cube came back as 
 						 * pathIndex-0,1,2...\n */
 						String requirementsString = rsp.getRequirementsList().get(index);
-						
+						logger.log(Level.INFO, "RIKI : RETURNED REQUIREMENTS STRING LOOKS LIKE: "+nodeName +" "+requirementsString);
 						handleRequirementsOnControlMessage(requirementsString, superCubeId, nodeName);
 					}
 					
@@ -280,14 +280,16 @@ public class NeighborRequestHandler implements MessageListener {
 					/*LOGGING*/
 					
 					String ret = "";
+					int ind=0;
 					for(String ss : rsp.getResultRecordLists()) {
 						if(ss != null && !ss.isEmpty()) {
-							ret += ss + "$$";
+							ret += ind + "$$";
 						}
+						ind++;
 					}
-					logger.log(Level.INFO, "RIKI : DATA MESSAGE RECEIVED FROM "+nodeName + " " + ret);
 					
 					String pathString = nodeName+"$"+pathIndex;
+					logger.log(Level.INFO, "RIKI : DATA MESSAGE RECEIVED FROM "+pathString + " " + ret);
 					
 					// Taking the fragments in a path to fragments map 
 					synchronized(pathIdToFragmentDataMap) {
@@ -661,8 +663,11 @@ public class NeighborRequestHandler implements MessageListener {
 					String key = lr.getNodeName()+"$"+pi;
 					List<Integer> frags = lr.getFragments();
 					
+					System.out.println("LOCAL REQUIREMENTS FOR SUPERCUBE: "+key+" "+frags);
+					
 					synchronized(pathIdToFragmentDataMap) {
 						List<String> allFrags = pathIdToFragmentDataMap.get(key);
+						System.out.println("EXISTING FRAGMENTS FOR PATH : "+key+" "+allFrags);
 						int cnt = 0;
 						for(int frag: frags) {
 							bRecords += allFrags.get(frag);
