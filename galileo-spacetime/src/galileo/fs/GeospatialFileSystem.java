@@ -1404,8 +1404,7 @@ public class GeospatialFileSystem extends FileSystem {
 		for (SuperCube sc : superCubes) {
 			// For each path that matched the query hyper-polygon and time limit
 			for (Path<Feature, String> path : paths) {
-				//logger.log(Level.SEVERE, "RIKI: INSODE LOOP");
-				//logger.info("RIKI: FS2 PATHS FOR FRAGMENTS: "+path.getPayload());
+				boolean fullPathRequired_NoChunks = false;
 				
 				String fs1PathTime = sc.getCentralTime();
 				String fs1PathSpace = sc.getCentralGeohash();
@@ -1440,7 +1439,9 @@ public class GeospatialFileSystem extends FileSystem {
 						// entire blocks to be read, no fragments
 						if("full-full".equals(orientation)) {
 							// IGNORE MEANS ALL FRAGMENTS ARE REQUIRED TO BE RETURNED
-							pf.setIgnore(true);
+							fullPathRequired_NoChunks = true;
+							if(pf.getChunks() != null && !pf.getChunks().isEmpty())
+								pf.setIgnore(true);
 							pf.addChunks(fragments);
 						} else {
 							pf.setIgnore(false);

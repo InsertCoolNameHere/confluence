@@ -37,7 +37,7 @@ public class MyInsertTest2 {
 	 *            GalileoConnector instance
 	 * @throws Exception
 	 */
-	private static boolean FS_CREATED = true;
+	private static boolean FS_CREATED = false;
 	
 	private static void processFile(String filepath, GalileoConnector gc) throws Exception {
 		

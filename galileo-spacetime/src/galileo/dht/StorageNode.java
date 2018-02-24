@@ -233,6 +233,10 @@ public class StorageNode implements RequestListener {
 		File resultsDir = new File(this.resultsDir);
 		if (!resultsDir.exists())
 			resultsDir.mkdirs();
+		
+		File qresultsDir = new File(this.queryResultsDir);
+		if (!qresultsDir.exists())
+			qresultsDir.mkdirs();
 
 		this.fsMap = new HashMap<>();
 		//logger.log(Level.INFO, "RIKI: NETWORK: "+network);

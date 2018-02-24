@@ -637,6 +637,7 @@ public class NeighborRequestHandler implements MessageListener {
 		int[] bPosns; 
 		double[] epsilons;*/
 		String storagePath;
+		List<Integer> allFragsTo26 = new ArrayList<Integer>();
 		
 		/*public JoiningThread(List<String[]> indvARecords,String bRecords, int[] aPosns, int[] bPosns, double[] epsilons, int cubeId) {
 			// TODO Auto-generated constructor stub
@@ -649,7 +650,10 @@ public class NeighborRequestHandler implements MessageListener {
 			
 		}*/
 		public JoiningThread(int i) {
-			
+			allFragsTo26.add(0);allFragsTo26.add(1);allFragsTo26.add(2);allFragsTo26.add(3);allFragsTo26.add(4);allFragsTo26.add(5);allFragsTo26.add(6);
+			allFragsTo26.add(7);allFragsTo26.add(8);allFragsTo26.add(9);allFragsTo26.add(10);allFragsTo26.add(11);allFragsTo26.add(12);allFragsTo26.add(13);
+			allFragsTo26.add(14);allFragsTo26.add(15);allFragsTo26.add(16);allFragsTo26.add(17);allFragsTo26.add(18);allFragsTo26.add(19);allFragsTo26.add(20);
+			allFragsTo26.add(21);allFragsTo26.add(22);allFragsTo26.add(23);allFragsTo26.add(24);allFragsTo26.add(25);allFragsTo26.add(26);
 			synchronized(fs1SuperCubeDataMap) {
 				logger.log(Level.INFO, "RIKI: FS1 RECORDS LOCAL: "+Arrays.asList(fs1SuperCubeDataMap.get(i)));
 				this.indvARecords = fs1SuperCubeDataMap.get(i);
@@ -661,12 +665,21 @@ public class NeighborRequestHandler implements MessageListener {
 				for(LocalRequirements lr: listReq) {
 					int pi = lr.getPathIndex();
 					String key = lr.getNodeName()+"$"+pi;
+					// This is coming from control message
 					List<Integer> frags = lr.getFragments();
 					
 					System.out.println("LOCAL REQUIREMENTS FOR SUPERCUBE: "+key+" "+frags);
 					
 					synchronized(pathIdToFragmentDataMap) {
 						List<String> allFrags = pathIdToFragmentDataMap.get(key);
+						
+						if(frags.containsAll(allFragsTo26) && allFrags.get(27) != null && !allFrags.get(27).isEmpty()) {
+							frags = new ArrayList<Integer>();
+							frags.add(27);
+							
+						}
+						
+						
 						System.out.println("EXISTING FRAGMENTS FOR PATH : "+key+" "+allFrags);
 						int cnt = 0;
 						for(int frag: frags) {
