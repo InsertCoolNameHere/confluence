@@ -9,6 +9,13 @@ public class MDC {
 	
 	List<Integer> aValidEntries = new ArrayList<Integer>();
 	List<Integer> bValidEntries = new ArrayList<Integer>();
+	private int mode = 7;
+	
+	public MDC(int mode) {
+		this.mode = 0;
+	}
+	
+	public MDC() {this.mode = 7;}
 	
 	public static void main(String arg[]) {
 		List<String[]> aRecords = new ArrayList<>();
@@ -92,8 +99,8 @@ public class MDC {
 	
 	
 	public List<String> iterativeMultiDimJoin(List<String[]> indvARecords,/*String aRecords,*/ String bRecords, int[] aPosns, int[] bPosns, double[] epsilons) {
-		System.out.println("BRECORDS: "+bRecords);
-		System.out.println("ARECORDS: ");
+		/*System.out.println("BRECORDS: "+bRecords);
+		System.out.println("ARECORDS: ");*/
 		for(String[] sa: indvARecords) {
 			System.out.println(Arrays.asList(sa));
 		}

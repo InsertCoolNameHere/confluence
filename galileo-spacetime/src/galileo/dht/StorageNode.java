@@ -87,6 +87,10 @@ import galileo.comm.QueryRequest;
 import galileo.comm.QueryResponse;
 import galileo.comm.StorageEvent;
 import galileo.comm.StorageRequest;
+import galileo.comm.SurveyEvent;
+import galileo.comm.SurveyEventResponse;
+import galileo.comm.SurveyRequest;
+import galileo.comm.SurveyResponse;
 import galileo.comm.TemporalType;
 import galileo.config.SystemConfig;
 import galileo.dataset.Block;
@@ -157,6 +161,7 @@ public class StorageNode implements RequestListener {
 	private List<ClientRequestHandler> requestHandlers;
 	/* My addition */
 	private List<NeighborRequestHandler> rikiHandlers;
+	private List<SurveyRequestHandler> surveyHandlers;
 
 	private ConcurrentHashMap<String, QueryTracker> queryTrackers = new ConcurrentHashMap<>();
 
@@ -190,6 +195,7 @@ public class StorageNode implements RequestListener {
 		this.numCores = Runtime.getRuntime().availableProcessors();
 		this.requestHandlers = new CopyOnWriteArrayList<ClientRequestHandler>();
 		this.rikiHandlers = new CopyOnWriteArrayList<NeighborRequestHandler>();
+		this.surveyHandlers = new CopyOnWriteArrayList<SurveyRequestHandler>();
 	}
 
 	/**
@@ -607,6 +613,70 @@ public class StorageNode implements RequestListener {
 			context.sendReply(new MetadataResponse(response));
 		}
 	}
+	
+	/**
+	 * 
+	 * @author sapmitra
+	 * @param request
+	 * @param context
+	 */
+	public void handleSurveyRequest(SurveyRequest request, EventContext context) {
+		String fsName = request.getFsName();
+		List<NodeInfo> allNodes = network.getAllNodes();
+		SurveyResponse rsp = new SurveyResponse();
+		
+		SurveyEvent se = new SurveyEvent(fsName);
+		
+		try {
+			SurveyRequestHandler reqHandler = new SurveyRequestHandler(new ArrayList<NetworkDestination>(allNodes),
+					context, this);
+			
+			/* Sending out query to all nodes */
+			reqHandler.handleRequest(se, rsp);
+			this.surveyHandlers.add(reqHandler);
+		} catch (IOException ioe) {
+			logger.log(Level.SEVERE,
+					"Failed to initialize a ClientRequestHandler. Sending unfinished response back to client",
+					ioe);
+			try {
+				context.sendReply(rsp);
+			} catch (IOException e) {
+				logger.log(Level.SEVERE, "Failed to send response back to original client", e);
+			}
+		}
+		
+	}
+	
+	/**
+	 * 
+	 * @author sapmitra
+	 * @param request
+	 * @param context
+	 */
+	public void handleSurveyEvent(SurveyEvent request, EventContext context) {
+		
+		GeospatialFileSystem fs = fsMap.get(request.getFsName());
+		String nodeString = hostname + ":" + port;
+		
+
+		List<String> pathInfos = new ArrayList<String>();
+		List<String> blocks = new ArrayList<String>();
+		List<Long> recordCount = new ArrayList<Long>();
+		
+		fs.handleSurveyInNode(nodeString, pathInfos, blocks, recordCount);
+		
+		SurveyEventResponse rsp = new SurveyEventResponse(pathInfos, blocks, recordCount);
+		try {
+			context.sendReply(rsp);
+		} catch (Exception e) {
+			SurveyEventResponse ss = new SurveyEventResponse(e.getMessage());
+			try {
+				context.sendReply(ss);
+			} catch (IOException e1) {
+				logger.log(Level.SEVERE, "Failed to send response to the original client", e);
+			}
+		}
+	}
 
 	/**
 	 * Handles a query request from a client. Query requests result in a number
@@ -916,6 +986,8 @@ public class StorageNode implements RequestListener {
 				this.requestHandlers.remove(requestHandler);
 			} else if (requestHandler instanceof NeighborRequestHandler) {
 				this.rikiHandlers.remove(requestHandler);
+			} else if (requestHandler instanceof SurveyRequestHandler) {
+				this.surveyHandlers.remove(requestHandler);
 			}
 			
 			context.sendReply(response);

@@ -63,6 +63,12 @@ public class GeoavailabilityGrid {
 	private float xDegreesPerPixel;
 	private float yDegreesPerPixel;
 	private String baseHash;
+	
+	public static void main(String arg[]) {
+		
+		GeoavailabilityGrid gg = new GeoavailabilityGrid("9xjqb",6);
+		gg.addPoint(new Coordinates(40.5964f,-105.1007f));
+	}
 
 	public GeoavailabilityGrid(String baseGeohash, int precision) {
 		this.baseRange = GeoHash.decodeHash(baseGeohash);

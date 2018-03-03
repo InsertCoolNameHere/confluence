@@ -118,6 +118,13 @@ public class SerializationOutputStream extends DataOutputStream {
         }
     }
     
+	public void writeLongCollection(Collection<Long> collection) throws IOException {
+		writeInt(collection.size());
+		for (long str : collection) {
+			writeLong(str);
+		}
+	}
+    
     public void writeIntegerCollection(Collection<Integer> collection)
     	    throws IOException {
     	        writeInt(collection.size());

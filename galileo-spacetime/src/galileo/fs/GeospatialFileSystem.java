@@ -1499,7 +1499,13 @@ public class GeospatialFileSystem extends FileSystem {
 		return null;
 	}
 	
-	
+	/**
+	 * 
+	 * @author sapmitra
+	 * @param path
+	 * @param o says whether we want both spatial and temporal info
+	 * @return
+	 */
 	public static String getPathInfo(Path<Feature, String> path, int o) {
 		if (null != path && path.hasPayload()) {
 			
@@ -1549,7 +1555,35 @@ public class GeospatialFileSystem extends FileSystem {
 	}
 	
 	
-	
+	public void handleSurveyInNode(String nodeString, List<String> pathInfos, List<String> blocks, List<Long> recordCount) {
+
+		List<Path<Feature, String>> paths = metadataGraph.getAllPaths();
+		
+		for (Path<Feature, String> path : paths) {
+			// extract geospatial and temporal info of each path
+			String pathInfo = getPathInfo(path, 0);
+			pathInfo = nodeString+"$$"+pathInfo;
+			List<String> blocksInPath = new ArrayList<String>(path.getPayload());
+			for(String block: blocksInPath) {
+				long count = 0l;
+				BorderingProperties bp = borderMap.get(block);
+				if(bp != null) {
+					
+					count=bp.getTotalRecords();
+					if(count>0) {
+						
+						pathInfos.add(pathInfo);
+						blocks.add(block);
+						recordCount.add(count);
+						
+					}
+				}
+				
+				
+			}
+			
+		}
+	}
 	
 	/**
 	 * 

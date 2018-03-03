@@ -104,6 +104,21 @@ public class SerializationInputStream extends DataInputStream {
     	        }
     	    }
     
+    /**
+     * 
+     * @author sapmitra
+     * @param collection
+     * @throws IOException
+     */
+	public void readLongCollection(Collection<Long> collection) throws IOException {
+		int size = readInt();
+		for (int i = 0; i < size; ++i) {
+			long cubeId = readLong();
+			collection.add(cubeId);
+		}
+	}
+    
+    
     public void readStringMap(Map<String, String> map) throws IOException{
     	int size = readInt();
     	for (int i = 0; i < size; ++i) {
