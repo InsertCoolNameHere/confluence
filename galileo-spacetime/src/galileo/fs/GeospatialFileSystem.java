@@ -61,6 +61,7 @@ import galileo.bmp.BitmapException;
 import galileo.bmp.GeoavailabilityGrid;
 import galileo.bmp.GeoavailabilityMap;
 import galileo.bmp.GeoavailabilityQuery;
+import galileo.bmp.SpatialGrid;
 import galileo.comm.TemporalType;
 import galileo.dataset.Block;
 import galileo.dataset.Coordinates;
@@ -161,6 +162,7 @@ public class GeospatialFileSystem extends FileSystem {
 	private static final String TEMPORAL_BORDER_FEATURE = "x__temporalborder__x";
 	
 	private Map<String, BorderingProperties> borderMap;
+	private Map<String, SpatialGrid> spatialGridsMap;
 	
 	private int spatialUncertaintyPrecision;
 	private int temporalUncertaintyPrecision;
@@ -179,6 +181,7 @@ public class GeospatialFileSystem extends FileSystem {
 		
 		//logger.log(Level.INFO, "RIKI: GROUPS: "+networkInfo.getGroups());
 		this.borderMap = new HashMap<String, BorderingProperties>();
+		this.spatialGridsMap = new HashMap<String, SpatialGrid>();
 		/* featurelist is a comma separated list of feature names: type(int) */
 		if (featureList != null) {
 			this.featureList = new ArrayList<>();
@@ -251,6 +254,7 @@ public class GeospatialFileSystem extends FileSystem {
 		super(storageDirectory, name, ignoreIfPresent);
 		
 		this.borderMap = new HashMap<String, BorderingProperties>();
+		this.spatialGridsMap = new HashMap<String, SpatialGrid>();
 		
 		this.spatialUncertaintyPrecision = spatialUncertainty;
 		this.temporalUncertaintyPrecision = temporalUncertainty;
@@ -436,9 +440,18 @@ public class GeospatialFileSystem extends FileSystem {
 				JSONObject bpJSON = borderMap.get(path).getJsonStringRepresentation(path);
 				bMaps.put(bpJSON);
 			}
+			
 			state.put("borderMaps", bMaps);
 		}
-		
+		if(spatialGridsMap.size() > 0) {
+			JSONArray sMaps = new JSONArray();
+			for(String path : spatialGridsMap.keySet()) {
+				JSONObject bpJSON = spatialGridsMap.get(path).getJsonStringRepresentation(path);
+				sMaps.put(bpJSON);
+			}
+			
+			state.put("spatialGridMaps", sMaps);
+		}
 		return state;
 	}
 
@@ -667,6 +680,10 @@ public class GeospatialFileSystem extends FileSystem {
 			 * geohashes and times */
 			BorderingProperties bp = GeoHash.getBorderingGeohashHeuristic(geohash, spatialUncertaintyPrecision, temporalUncertaintyPrecision , meta.getTemporalProperties(), this.temporalType);
 			borderMap.put(blockPath, bp);
+			
+			SpatialGrid sg = new SpatialGrid(geohash, spatialUncertaintyPrecision);
+			spatialGridsMap.put(blockPath, sg);
+			
 			logger.log(Level.INFO, "RIKI: BORDERMAP CREATED "+bp);
 			
 			storeMetadata(meta, blockPath);
@@ -685,7 +702,7 @@ public class GeospatialFileSystem extends FileSystem {
 		}
 		
 		/* RIKI */
-		readBlockData(block.getData(), borderMap.get(blockPath));
+		readBlockData(block.getData(), borderMap.get(blockPath), spatialGridsMap.get(blockPath));
 
 		if (latestTime == null || latestTime.getEnd() < meta.getTemporalProperties().getEnd()) {
 			this.latestTime = meta.getTemporalProperties();
@@ -727,7 +744,7 @@ public class GeospatialFileSystem extends FileSystem {
 	 * @param borderingProperties
 	 */
 	
-	private void readBlockData(byte[] data, BorderingProperties borderingProperties) {
+	private void readBlockData(byte[] data, BorderingProperties borderingProperties, SpatialGrid sg) {
 		// TODO Auto-generated method stub
 		String blockString = new String(data);
 		String[] records = blockString.split("\n");
@@ -740,6 +757,8 @@ public class GeospatialFileSystem extends FileSystem {
 			
 			String geoHash = GeoHash.encode(parseFloat(fields[spatialPosn1]),parseFloat(fields[spatialPosn2]), spatialUncertaintyPrecision);
 			
+			// populating spatial grid
+			sg.addEntry(parseFloat(fields[spatialPosn2]),parseFloat(fields[spatialPosn1]), (int)recordCount);
 			// Getting spatial border records
 			populateGeoHashBorder(geoHash, borderingProperties, recordCount);
 			
