@@ -507,6 +507,19 @@ public class GeospatialFileSystem extends FileSystem {
 				}
 			}
 		}
+		gfs.spatialGridsMap = new HashMap<String, SpatialGrid>();
+		if(state.has("spatialGridMaps")) {
+			JSONArray sMaps = state.getJSONArray("spatialGridMaps");
+			if(sMaps != null && sMaps.length() > 0) {
+				for (int i = 0; i < sMaps.length(); i++) {
+					JSONObject jsonObject = sMaps.getJSONObject(i);
+					String key = jsonObject.getString("blockName");
+					SpatialGrid sg = new SpatialGrid(); 
+					sg.populateObject(jsonObject);
+					gfs.spatialGridsMap.put(key, sg);
+				}
+			}
+		}
 		
 		return gfs;
 	}

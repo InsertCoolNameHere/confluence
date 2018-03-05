@@ -54,8 +54,8 @@ import galileo.dataset.TemporalProperties;
 import galileo.dht.Partitioner;
 import galileo.dht.hash.TemporalHash;
 import galileo.fs.GeospatialFileSystem;
-import math.geom2d.Point2D;
-import math.geom2d.polygon.SimplePolygon2D;
+//import math.geom2d.Point2D;
+//import math.geom2d.polygon.SimplePolygon2D;
 
 /**
  * This class provides an implementation of the GeoHash (http://www.geohash.org)

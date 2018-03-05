@@ -163,7 +163,7 @@ public class SpatialGrid {
 	
 	public static void main(String arg[]) {
 		
-		SpatialGrid sg = new SpatialGrid("9x",3);
+		SpatialGrid sg = new SpatialGrid("9x",6);
 		sg.coordinatesToXY(-110.2006f,41.337f);//9x3
 		sg.getNeighborIndices(1, 2);//9x9
 		
@@ -173,8 +173,9 @@ public class SpatialGrid {
 		
 		JSONObject jsonStringRepresentation = sg.getJsonStringRepresentation("abcd");
 		System.out.println(jsonStringRepresentation);
-		sg.populateObject(jsonStringRepresentation);
-		
+		SpatialGrid sg1 = new SpatialGrid();
+		sg1.populateObject(jsonStringRepresentation);
+		System.out.println("Hello");
 		//System.out.println(sg.indexEntries.get(33));
 		//System.out.println(sg.indexEntries.get(37));
 	}
@@ -208,13 +209,25 @@ public class SpatialGrid {
 	}
 	
 	public void populateObject(JSONObject jsonObj) {
-		this.gridPrecision = jsonObj.getInt("gridPrecision");
 		
+		this.gridPrecision = jsonObj.getInt("gridPrecision");
+		this.baseHash = jsonObj.getString("baseHash");
+		this.width = jsonObj.getInt("width");
+		this.height = jsonObj.getInt("height");
+		this.xDegreesPerPixel = (float)jsonObj.getDouble("xDegreesPerPixel");
+		this.yDegreesPerPixel = (float)jsonObj.getDouble("yDegreesPerPixel");
 		
 		JSONArray indexEntriess = jsonObj.getJSONArray("indexEntries");
+		indexEntries = new ArrayList<List<Integer>>();
+		
 		for (int i = 0; i < indexEntriess.length(); i++){
-			JSONArray each = (JSONArray)indexEntriess.get(i);
+			JSONArray ss = (JSONArray)indexEntriess.get(i);
+			List<Integer> grdEntries = new ArrayList<Integer>();
 			
+			for (int j = 0; j < ss.length(); j++)
+				grdEntries.add(ss.getInt(j));
+			
+			indexEntries.add(grdEntries);
 		}
 			//indexEntries.add(indexEntriess.getInt(0));
 		
