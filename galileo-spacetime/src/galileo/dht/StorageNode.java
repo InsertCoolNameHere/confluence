@@ -629,7 +629,7 @@ public class StorageNode implements RequestListener {
 		
 		try {
 			SurveyRequestHandler reqHandler = new SurveyRequestHandler(new ArrayList<NetworkDestination>(allNodes),
-					context, this);
+					context, request.getNumTrainingPoints(), this);
 			
 			/* Sending out query to all nodes */
 			reqHandler.handleRequest(se, rsp);

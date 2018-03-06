@@ -53,9 +53,10 @@ public class SurveyRequestHandler implements MessageListener {
 	private RequestListener requestListener;
 	private Event response;
 	private long elapsedTime;
+	private int numTrainingPoints;
 
 	public SurveyRequestHandler(Collection<NetworkDestination> nodes, EventContext clientContext,
-			RequestListener listener) throws IOException {
+			int numTrainingPoints, RequestListener listener) throws IOException {
 		this.nodes = nodes;
 		this.clientContext = clientContext;
 		this.requestListener = listener;
@@ -67,6 +68,7 @@ public class SurveyRequestHandler implements MessageListener {
 		this.eventWrapper = new BasicEventWrapper(this.eventMap);
 		this.expectedResponses = new AtomicInteger(this.nodes.size());
 		this.expectedDataTesponses = new AtomicInteger(0);
+		this.numTrainingPoints = numTrainingPoints;
 	}
 
 	public void closeRequest() {
@@ -106,7 +108,7 @@ public class SurveyRequestHandler implements MessageListener {
 	@Override
 	public void onMessage(GalileoMessage message) {
 		
-		logger.log(Level.INFO, "RIKI: Survey RESPONSE RECEIVED");
+		logger.log(Level.INFO, "RIKI: Survey Level 1 RESPONSE RECEIVED");
 		if (null != message)
 			this.responses.add(message);
 		int awaitedResponses = this.expectedResponses.decrementAndGet();
@@ -115,7 +117,11 @@ public class SurveyRequestHandler implements MessageListener {
 		if (awaitedResponses <= 0) {
 			this.elapsedTime = System.currentTimeMillis() - this.elapsedTime;
 			
-			performStartifiedSampling();
+			List<String> pathInfos = new ArrayList<String>();
+			List<String> blocks = new ArrayList<String>();
+			List<Long> recordCounts = new ArrayList<Long>();
+			
+			performStartifiedSampling(pathInfos, blocks, recordCounts);
 		}
 		
 		/* The close will happen when the second set of requests have been replied to */
@@ -131,7 +137,8 @@ public class SurveyRequestHandler implements MessageListener {
 		}
 	}
 
-	private void performStartifiedSampling() {
+	private void performStartifiedSampling(List<String> pathInfos, List<String> blocks,
+			List<Long> recordCounts) {
 		
 		for (GalileoMessage gresponse : this.responses) {
 			Event event;
@@ -141,10 +148,9 @@ public class SurveyRequestHandler implements MessageListener {
 					
 					SurveyEventResponse eventResponse = (SurveyEventResponse) event;
 					
-					for(String path: eventResponse.getResultPaths()) {
-						
-						String newPath = eventResponse.getNodeName()+":"+eventResponse.getNodePort()+"$$"+path;
-					}
+					pathInfos.addAll(eventResponse.getPathInfos());
+					blocks.addAll(eventResponse.getBlocks());
+					recordCounts.addAll(eventResponse.getRecordCounts());
 					
 					
 				}
