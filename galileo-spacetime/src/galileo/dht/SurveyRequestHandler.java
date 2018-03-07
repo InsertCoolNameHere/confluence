@@ -4,25 +4,18 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import galileo.comm.DataIntegrationFinalResponse;
 import galileo.comm.DataIntegrationResponse;
 import galileo.comm.GalileoEventMap;
-import galileo.comm.MetadataResponse;
-import galileo.comm.QueryResponse;
 import galileo.comm.SurveyEventResponse;
-import galileo.comm.SurveyResponse;
+import galileo.comm.TrainingDataEvent;
+import galileo.comm.TrainingDataResponse;
 import galileo.event.BasicEventWrapper;
 import galileo.event.Event;
 import galileo.event.EventContext;
@@ -54,9 +47,12 @@ public class SurveyRequestHandler implements MessageListener {
 	private Event response;
 	private long elapsedTime;
 	private int numTrainingPoints;
+	private AtomicInteger expectedTrainingResponses;
+	private String fsName;
+	private String featureName;
 
 	public SurveyRequestHandler(Collection<NetworkDestination> nodes, EventContext clientContext,
-			int numTrainingPoints, RequestListener listener) throws IOException {
+			int numTrainingPoints, String fsName, String featureName, RequestListener listener) throws IOException {
 		this.nodes = nodes;
 		this.clientContext = clientContext;
 		this.requestListener = listener;
@@ -69,6 +65,9 @@ public class SurveyRequestHandler implements MessageListener {
 		this.expectedResponses = new AtomicInteger(this.nodes.size());
 		this.expectedDataTesponses = new AtomicInteger(0);
 		this.numTrainingPoints = numTrainingPoints;
+		this.expectedTrainingResponses = new AtomicInteger(0);
+		this.fsName = fsName;
+		this.featureName = featureName;
 	}
 
 	public void closeRequest() {
@@ -107,39 +106,57 @@ public class SurveyRequestHandler implements MessageListener {
 
 	@Override
 	public void onMessage(GalileoMessage message) {
-		
-		logger.log(Level.INFO, "RIKI: Survey Level 1 RESPONSE RECEIVED");
-		if (null != message)
-			this.responses.add(message);
-		int awaitedResponses = this.expectedResponses.decrementAndGet();
-		logger.log(Level.INFO, "Awaiting " + awaitedResponses + " more message(s)");
-		
-		if (awaitedResponses <= 0) {
-			this.elapsedTime = System.currentTimeMillis() - this.elapsedTime;
+		try {
 			
-			List<String> pathInfos = new ArrayList<String>();
-			List<String> blocks = new ArrayList<String>();
-			List<Long> recordCounts = new ArrayList<Long>();
+			Event event = this.eventWrapper.unwrap(message);
 			
-			performStartifiedSampling(pathInfos, blocks, recordCounts);
-		}
-		
-		/* The close will happen when the second set of requests have been replied to */
-		// TO BE CHANGED ***************************
-		if (awaitedResponses <= 0) {
-			this.elapsedTime = System.currentTimeMillis() - this.elapsedTime;
-			logger.log(Level.INFO, "Closing the request and sending back the response.");
-			new Thread() {
-				public void run() {
-					SurveyRequestHandler.this.closeRequest();
+			if(event instanceof SurveyEventResponse) {
+				
+				logger.log(Level.INFO, "RIKI: SURVEY LEVEL 1 RESPONSE RECEIVED");
+				if (null != message)
+					this.responses.add(message);
+				int awaitedResponses = this.expectedResponses.decrementAndGet();
+				logger.log(Level.INFO, "Awaiting " + awaitedResponses + " more message(s)");
+				
+				if (awaitedResponses <= 0) {
+					this.elapsedTime = System.currentTimeMillis() - this.elapsedTime;
+					
+					List<String> pathInfos = new ArrayList<String>();
+					List<String> blocks = new ArrayList<String>();
+					List<Long> recordCounts = new ArrayList<Long>();
+					
+					performStartifiedSamplingAndRequest(pathInfos, blocks, recordCounts);
 				}
-			}.start();
+				
+			} else if (event instanceof TrainingDataResponse) {
+				
+				int awaitedResponses = this.expectedTrainingResponses.decrementAndGet();
+				/* The close will happen when the second set of requests have been replied to */
+				// TO BE CHANGED ***************************
+				if (awaitedResponses <= 0) {
+					this.elapsedTime = System.currentTimeMillis() - this.elapsedTime;
+					logger.log(Level.INFO, "Closing the request and sending back the response.");
+					new Thread() {
+						public void run() {
+							SurveyRequestHandler.this.closeRequest();
+						}
+					}.start();
+				}
+			}
+		} catch (IOException | SerializationException e) {
+			logger.log(Level.SEVERE, "An exception occurred while processing the response message. Details follow:"
+					+ e.getMessage(), e);
+		} catch (Exception e) {
+			logger.log(Level.SEVERE,
+					"An unknown exception occurred while processing the response message. Details follow:"
+							+ e.getMessage(), e);
 		}
 	}
 
-	private void performStartifiedSampling(List<String> pathInfos, List<String> blocks,
-			List<Long> recordCounts) {
+	private void performStartifiedSamplingAndRequest(List<String> pathInfos, List<String> blocks, List<Long> recordCounts) {
 		
+		long totalRecordCount = 0;
+		int expectedTrainingMsgs = 0;
 		for (GalileoMessage gresponse : this.responses) {
 			Event event;
 			try {
@@ -152,6 +169,8 @@ public class SurveyRequestHandler implements MessageListener {
 					blocks.addAll(eventResponse.getBlocks());
 					recordCounts.addAll(eventResponse.getRecordCounts());
 					
+					for(long recC : eventResponse.getRecordCounts())
+						totalRecordCount+= recC;
 					
 				}
 			} catch (IOException | SerializationException e) {
@@ -164,8 +183,81 @@ public class SurveyRequestHandler implements MessageListener {
 			}
 		}
 		
+		// BUILDING THE NODEWISE REQUEST
+		Map<NetworkDestination, TrainingRequirements> nodeWiseRequest = new HashMap<NetworkDestination, TrainingRequirements>();
+		
+		// for each block in each path in each node
+		for(int i=0; i < pathInfos.size(); i++) {
+			
+			String pathInfo = pathInfos.get(i);
+			NetworkDestination nd = extractNodeInfo(pathInfo);
+			
+			// The number of training points to be extracted from this block
+			int numPoints = (int)(recordCounts.get(i)/totalRecordCount)*numTrainingPoints;
+			String block = blocks.get(i);
+			
+			if(numPoints > 0) {
+				
+				TrainingRequirements tr;
+				if(nodeWiseRequest.get(nd) == null) {
+					expectedTrainingMsgs++;
+					tr = new TrainingRequirements(new ArrayList<String>(), new ArrayList<Integer>());
+					nodeWiseRequest.put(nd, tr);
+				} else {
+					tr = nodeWiseRequest.get(nd);
+				}
+				
+				tr.addBlockPath(block);
+				tr.addNumPoints(numPoints);
+				
+			}
+			
+			
+		}
+		this.expectedTrainingResponses = new AtomicInteger(expectedTrainingMsgs);
+		
+		// SEND OUT TRAINING DATA REQUEST
+		for(NetworkDestination nd : nodeWiseRequest.keySet()) {
+			
+			TrainingRequirements tr = nodeWiseRequest.get(nd);
+			TrainingDataEvent tde = new TrainingDataEvent(tr, fsName, featureName);
+			GalileoMessage mrequest;
+			
+			try {
+				
+				mrequest = this.eventWrapper.wrap(tde);
+				this.router.sendMessage(nd, mrequest);
+				logger.info("RIKI: TRAINING DATA REQUEST SENT TO " + nd.toString());
+				
+			} catch (IOException e) {
+				logger.severe("ERROR OCCURED WHILE REQUESTING FOR TRAINING DATA: "+e.toString());
+			}
+			
+		}
+		
+	}
+	
+	private NetworkDestination extractNodeInfo(String pathInfo) {
+		String nodePort = pathInfo.split("\\$\\$")[0];
+		String[] tokens = nodePort.split(":");
+		String nodeName = tokens[0];
+		int port = Integer.valueOf(tokens[1]);
+		
+		for(NetworkDestination n : nodes) {
+			
+			if(n.getHostname().equals(nodeName) && n.getPort() == port) {
+				return n;
+			}
+		}
+		return null;
+		
 	}
 
+	public static void main(String arg[]) {
+		String s = "hello:world".split(":")[0];
+		System.out.println(s);
+		
+	}
 	/**
 	 * Handles the client request on behalf of the node that received the
 	 * request

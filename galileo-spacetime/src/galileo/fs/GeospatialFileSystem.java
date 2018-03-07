@@ -1896,6 +1896,21 @@ public class GeospatialFileSystem extends FileSystem {
 			paths.add(line.split(",", splitLimit));
 		return paths;
 	}
+	
+	private List<String[]> getFeaturePathsWithSpecificIndex(String blockPath, int latInd, int lonInd, int temporalInd, int featureInd) throws IOException {
+		byte[] blockBytes = Files.readAllBytes(Paths.get(blockPath));
+		String blockData = new String(blockBytes, "UTF-8");
+		List<String[]> paths = new ArrayList<String[]>();
+		String[] lines = blockData.split("\\r?\\n");
+		int splitLimit = this.featureList.size();
+		for (String line : lines) {
+			String[] tokens = line.split(",", splitLimit);
+			String[] choppedFeatures = {tokens[latInd],tokens[lonInd],tokens[temporalInd],tokens[featureInd]};
+			
+			paths.add(choppedFeatures);
+		}
+		return paths;
+	}
 
 	private boolean isGridInsidePolygon(GeoavailabilityGrid grid, GeoavailabilityQuery geoQuery) {
 		Polygon polygon = new Polygon();
@@ -2542,4 +2557,51 @@ public class GeospatialFileSystem extends FileSystem {
 	public void setSpatialPosn2(int spatialPosn2) {
 		this.spatialPosn2 = spatialPosn2;
 	}
+
+	public String findTrainingPoints(List<String> blockPaths, List<Integer> numPoints, String featureName) throws IOException {
+		int latOrder = -1, lonOrder = -1, index = 0, temporalOrder = -1,featurePosn = -1;
+		for (Pair<String, FeatureType> columnPair : GeospatialFileSystem.this.featureList) {
+			if (columnPair.a.equalsIgnoreCase(GeospatialFileSystem.this.spatialHint.getLatitudeHint()))
+				latOrder = index++;
+			else if (columnPair.a
+					.equalsIgnoreCase(GeospatialFileSystem.this.spatialHint.getLongitudeHint()))
+				lonOrder = index++;
+			else if (columnPair.a
+					.equalsIgnoreCase(GeospatialFileSystem.this.temporalHint))
+				temporalOrder = index++;
+			else if (columnPair.a
+					.equalsIgnoreCase(featureName))
+				featurePosn = index++;
+			else
+				index++;
+		}
+		
+		for(String blockPath: blockPaths) {
+			List<String[]> featurePaths = getFeaturePathsWithSpecificIndex(blockPath,latOrder,lonOrder,temporalOrder,featurePosn);
+			
+			
+		}
+		return null;
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 }

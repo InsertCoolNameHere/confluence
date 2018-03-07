@@ -92,6 +92,8 @@ import galileo.comm.SurveyEventResponse;
 import galileo.comm.SurveyRequest;
 import galileo.comm.SurveyResponse;
 import galileo.comm.TemporalType;
+import galileo.comm.TrainingDataEvent;
+import galileo.comm.TrainingDataResponse;
 import galileo.config.SystemConfig;
 import galileo.dataset.Block;
 import galileo.dataset.Coordinates;
@@ -629,7 +631,7 @@ public class StorageNode implements RequestListener {
 		
 		try {
 			SurveyRequestHandler reqHandler = new SurveyRequestHandler(new ArrayList<NetworkDestination>(allNodes),
-					context, request.getNumTrainingPoints(), this);
+					context, request.getNumTrainingPoints(), fsName, request.getFeatureName(), this);
 			
 			/* Sending out query to all nodes */
 			reqHandler.handleRequest(se, rsp);
@@ -667,6 +669,38 @@ public class StorageNode implements RequestListener {
 		
 		SurveyEventResponse rsp = new SurveyEventResponse(pathInfos, blocks, recordCount);
 		try {
+			context.sendReply(rsp);
+		} catch (Exception e) {
+			SurveyEventResponse ss = new SurveyEventResponse(e.getMessage());
+			try {
+				context.sendReply(ss);
+			} catch (IOException e1) {
+				logger.log(Level.SEVERE, "Failed to send response to the original client", e);
+			}
+		}
+	}
+	
+	
+	/**
+	 * 
+	 * @author sapmitra
+	 * @param request
+	 * @param context
+	 */
+	public void handleTrainingDataEvent(TrainingDataEvent request, EventContext context) {
+		
+		List<String> blockPaths = request.getBlockPath();
+		List<Integer> numPoints = request.getNumPoints();
+		
+		GeospatialFileSystem fs = fsMap.get(request.getFsName());
+		try {
+			// A string representation of each training point separated by \n
+			String dataPoints = fs.findTrainingPoints(blockPaths, numPoints, request.getFeatureName());
+			
+			String nodeString = hostname + ":" + port;
+			String featureNames = "";
+			TrainingDataResponse rsp = new TrainingDataResponse(dataPoints, featureNames, nodeString);
+			
 			context.sendReply(rsp);
 		} catch (Exception e) {
 			SurveyEventResponse ss = new SurveyEventResponse(e.getMessage());
