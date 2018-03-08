@@ -611,29 +611,6 @@ public class GeospatialFileSystem extends FileSystem {
 		return geohash;
 	}
 	
-	public static void main(String arg[]) throws FileSystemException, IOException, SerializationException, PartitionException, HashException, HashTopologyException, ParseException {
-		Coordinates c1 = new Coordinates(39.711308f, -94.14132f);
-		Coordinates c2 = new Coordinates(39.135788f, -94.06672f);
-		Coordinates c3 = new Coordinates(39.101475f, -95.56087f);
-		Coordinates c4 = new Coordinates(39.861824f, -95.36784f);
-		
-		List<Coordinates> cl = new ArrayList<Coordinates>();
-		cl.add(c1);
-		cl.add(c2);
-		cl.add(c3);
-		cl.add(c4);
-		
-		GeoavailabilityQuery geoQuery = new GeoavailabilityQuery(null,cl);
-		GeoavailabilityGrid blockGrid = new GeoavailabilityGrid("9zh8", GeoHash.MAX_PRECISION * 2 / 3);
-		//queryBitmap = QueryTransform.queryToGridBitmap(geoQuery, blockGrid);
-
-		//boolean b = isGridInsidePolygonTest(blockGrid, geoQuery);
-		//System.out.println(b);
-
-	}
-	
-	
-	
 	
 	/**
 	 * Creates a new block if one does not exist based on the name of the
@@ -2576,21 +2553,87 @@ public class GeospatialFileSystem extends FileSystem {
 				index++;
 		}
 		
+		int count = 0;
 		for(String blockPath: blockPaths) {
+			
+			SpatialGrid spatialGrid = spatialGridsMap.get(blockPath);
+			int numPtsNeeded = numPoints.get(count);
+			int totalBlockRecords = (int)borderMap.get(blockPath).getTotalRecords();
+			
+			// These are the actual line numbers that will be center points for prediction
+			List<Integer> recordsToRead = findRandomRecordIndices(totalBlockRecords, numPtsNeeded);
+			
+			// No need to get all points.
+			// First figure out what we need.
 			List<String[]> featurePaths = getFeaturePathsWithSpecificIndex(blockPath,latOrder,lonOrder,temporalOrder,featurePosn);
 			
-			
+			count++;
 		}
 		return null;
 	}
 	
+	/**
+	 * 
+	 * @param recordsToRead the random n records which are centerpoints
+	 * @param spatialGrid
+	 */
+	private void generateNeighbors(List<Integer> recordsToRead, SpatialGrid spatialGrid) {
+		List<List<Integer>> indexEntries = spatialGrid.getIndexEntries();
+		int countIndex = 0;
+		
+		for(List<Integer> indices : indexEntries) {
+			List<Integer> recList = new ArrayList<>(recordsToRead);
+			recList.retainAll(indices);
+			
+			
+		}
+		
+	}
 	
+	public static List<Integer> findRandomRecordIndices(int range, int num) {
+		
+		List<Integer> list = new ArrayList<Integer>();
+		for (int i = 1; i < range; i++) {
+			list.add(new Integer(i));
+		}
+		Collections.shuffle(list);
+		for (int i = 0; i < num; i++) {
+			//System.out.println(list.get(i));
+		}
+		List<Integer> listN = list.subList(0, num);
+		Collections.sort(listN);
+		return listN;
+	}
 	
-	
-	
-	
-	
-	
+	public static void main(String arg[]) throws FileSystemException, IOException, SerializationException, PartitionException, HashException, HashTopologyException, ParseException {
+		Coordinates c1 = new Coordinates(39.711308f, -94.14132f);
+		Coordinates c2 = new Coordinates(39.135788f, -94.06672f);
+		Coordinates c3 = new Coordinates(39.101475f, -95.56087f);
+		Coordinates c4 = new Coordinates(39.861824f, -95.36784f);
+		
+		List<Coordinates> cl = new ArrayList<Coordinates>();
+		cl.add(c1);
+		cl.add(c2);
+		cl.add(c3);
+		cl.add(c4);
+		
+		GeoavailabilityQuery geoQuery = new GeoavailabilityQuery(null,cl);
+		GeoavailabilityGrid blockGrid = new GeoavailabilityGrid("9zh8", GeoHash.MAX_PRECISION * 2 / 3);
+		//queryBitmap = QueryTransform.queryToGridBitmap(geoQuery, blockGrid);
+
+		//boolean b = isGridInsidePolygonTest(blockGrid, geoQuery);
+		//System.out.println(b);
+		System.out.println(GeospatialFileSystem.findRandomRecordIndices(10,3));
+		
+		List<Coordinates> clNew = new ArrayList<Coordinates>(cl);
+		clNew.remove(0);
+		System.out.println("HERE GOES.....");
+		System.out.println(clNew);
+		System.out.println(cl);
+		System.out.println(clNew.size());
+		System.out.println(cl.size());
+		
+	}
 	
 	
 	

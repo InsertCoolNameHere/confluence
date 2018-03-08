@@ -682,7 +682,7 @@ public class StorageNode implements RequestListener {
 	
 	
 	/**
-	 * 
+	 * Generates and Returns training data from a particular node
 	 * @author sapmitra
 	 * @param request
 	 * @param context
@@ -699,7 +699,7 @@ public class StorageNode implements RequestListener {
 			
 			String nodeString = hostname + ":" + port;
 			String featureNames = "";
-			TrainingDataResponse rsp = new TrainingDataResponse(dataPoints, featureNames, nodeString);
+			TrainingDataResponse rsp = new TrainingDataResponse(dataPoints, nodeString);
 			
 			context.sendReply(rsp);
 		} catch (Exception e) {

@@ -15,13 +15,11 @@ import galileo.util.SuperCube;
 public class TrainingDataResponse implements Event {
 	
 	private String dataPoints;
-	private String featureNames;
 	private String nodeString;
 	
-	public TrainingDataResponse(String dataPoints, String featureNames, String nodeString) {
+	public TrainingDataResponse(String dataPoints, String nodeString) {
 
 		this.dataPoints = dataPoints;
-		this.featureNames = featureNames;
 		this.nodeString = nodeString;
 	}
 
@@ -30,7 +28,6 @@ public class TrainingDataResponse implements Event {
 	@Deserialize
 	public TrainingDataResponse(SerializationInputStream in) throws IOException, SerializationException {
 		this.dataPoints = in.readString();
-		this.featureNames = in.readString();
 		this.nodeString = in.readString();
 			
 			
@@ -40,7 +37,6 @@ public class TrainingDataResponse implements Event {
 	@Override
 	public void serialize(SerializationOutputStream out) throws IOException {
 		out.writeString(dataPoints);
-		out.writeString(featureNames);
 		out.writeString(nodeString);
 			
 	}
@@ -67,14 +63,4 @@ public class TrainingDataResponse implements Event {
 	}
 
 
-
-	public String getFeatureNames() {
-		return featureNames;
-	}
-
-
-
-	public void setFeatureNames(String featureNames) {
-		this.featureNames = featureNames;
-	}
 }
