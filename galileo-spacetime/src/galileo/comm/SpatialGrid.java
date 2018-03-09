@@ -1,4 +1,4 @@
-package galileo.bmp;
+package galileo.comm;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -136,12 +136,24 @@ public class SpatialGrid {
 	/**
 	 * Converts a bitmap index to X, Y coordinates in the grid.
 	 */
-	/*public Point<Integer> indexToXY(int index) {
+	public Point<Integer> indexToXY(int index) {
 		int x = index % this.width;
 		int y = index / this.width;
 		return new Point<>(x, y);
-	}*/
+	}
 	
+	/**
+	 * finds all neighboring indices of a given index, including itself
+	 * 
+	 * @author sapmitra
+	 * @param index
+	 * @return
+	 */
+	public List<Integer> getNeighborIndices(int index) {
+		Point<Integer> p = indexToXY(index);
+		return getNeighborIndices(p.X(),p.Y());
+		
+	}
 	
 	public List<Integer> getNeighborIndices(int x, int y) {
 		List<Integer> neighbors = new ArrayList<Integer>();
@@ -178,6 +190,10 @@ public class SpatialGrid {
 		System.out.println("Hello");
 		//System.out.println(sg.indexEntries.get(33));
 		//System.out.println(sg.indexEntries.get(37));
+		
+		System.out.println(sg.XYtoIndex(13, 2));
+		System.out.println(sg.indexToXY(77));
+		
 	}
 	public List<List<Integer>> getIndexEntries() {
 		return indexEntries;

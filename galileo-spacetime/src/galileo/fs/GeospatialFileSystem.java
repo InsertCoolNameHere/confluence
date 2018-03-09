@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -61,7 +62,7 @@ import galileo.bmp.BitmapException;
 import galileo.bmp.GeoavailabilityGrid;
 import galileo.bmp.GeoavailabilityMap;
 import galileo.bmp.GeoavailabilityQuery;
-import galileo.bmp.SpatialGrid;
+import galileo.comm.SpatialGrid;
 import galileo.comm.TemporalType;
 import galileo.dataset.Block;
 import galileo.dataset.Coordinates;
@@ -162,7 +163,7 @@ public class GeospatialFileSystem extends FileSystem {
 	private static final String TEMPORAL_BORDER_FEATURE = "x__temporalborder__x";
 	
 	private Map<String, BorderingProperties> borderMap;
-	private Map<String, SpatialGrid> spatialGridsMap;
+	//private Map<String, SpatialGrid> spatialGridsMap;
 	
 	private int spatialUncertaintyPrecision;
 	private int temporalUncertaintyPrecision;
@@ -181,7 +182,7 @@ public class GeospatialFileSystem extends FileSystem {
 		
 		//logger.log(Level.INFO, "RIKI: GROUPS: "+networkInfo.getGroups());
 		this.borderMap = new HashMap<String, BorderingProperties>();
-		this.spatialGridsMap = new HashMap<String, SpatialGrid>();
+		//this.spatialGridsMap = new HashMap<String, SpatialGrid>();
 		/* featurelist is a comma separated list of feature names: type(int) */
 		if (featureList != null) {
 			this.featureList = new ArrayList<>();
@@ -254,7 +255,7 @@ public class GeospatialFileSystem extends FileSystem {
 		super(storageDirectory, name, ignoreIfPresent);
 		
 		this.borderMap = new HashMap<String, BorderingProperties>();
-		this.spatialGridsMap = new HashMap<String, SpatialGrid>();
+		//this.spatialGridsMap = new HashMap<String, SpatialGrid>();
 		
 		this.spatialUncertaintyPrecision = spatialUncertainty;
 		this.temporalUncertaintyPrecision = temporalUncertainty;
@@ -443,7 +444,7 @@ public class GeospatialFileSystem extends FileSystem {
 			
 			state.put("borderMaps", bMaps);
 		}
-		if(spatialGridsMap.size() > 0) {
+		/*if(spatialGridsMap.size() > 0) {
 			JSONArray sMaps = new JSONArray();
 			for(String path : spatialGridsMap.keySet()) {
 				JSONObject bpJSON = spatialGridsMap.get(path).getJsonStringRepresentation(path);
@@ -451,7 +452,7 @@ public class GeospatialFileSystem extends FileSystem {
 			}
 			
 			state.put("spatialGridMaps", sMaps);
-		}
+		}*/
 		return state;
 	}
 
@@ -507,7 +508,7 @@ public class GeospatialFileSystem extends FileSystem {
 				}
 			}
 		}
-		gfs.spatialGridsMap = new HashMap<String, SpatialGrid>();
+		/*gfs.spatialGridsMap = new HashMap<String, SpatialGrid>();
 		if(state.has("spatialGridMaps")) {
 			JSONArray sMaps = state.getJSONArray("spatialGridMaps");
 			if(sMaps != null && sMaps.length() > 0) {
@@ -519,7 +520,7 @@ public class GeospatialFileSystem extends FileSystem {
 					gfs.spatialGridsMap.put(key, sg);
 				}
 			}
-		}
+		}*/
 		
 		return gfs;
 	}
@@ -671,8 +672,8 @@ public class GeospatialFileSystem extends FileSystem {
 			BorderingProperties bp = GeoHash.getBorderingGeohashHeuristic(geohash, spatialUncertaintyPrecision, temporalUncertaintyPrecision , meta.getTemporalProperties(), this.temporalType);
 			borderMap.put(blockPath, bp);
 			
-			SpatialGrid sg = new SpatialGrid(geohash, spatialUncertaintyPrecision);
-			spatialGridsMap.put(blockPath, sg);
+			//SpatialGrid sg = new SpatialGrid(geohash, spatialUncertaintyPrecision);
+			//spatialGridsMap.put(blockPath, sg);
 			
 			logger.log(Level.INFO, "RIKI: BORDERMAP CREATED "+bp);
 			
@@ -692,7 +693,8 @@ public class GeospatialFileSystem extends FileSystem {
 		}
 		
 		/* RIKI */
-		readBlockData(block.getData(), borderMap.get(blockPath), spatialGridsMap.get(blockPath));
+		readBlockData(block.getData(), borderMap.get(blockPath));
+		//readBlockData(block.getData(), borderMap.get(blockPath), spatialGridsMap.get(blockPath));
 
 		if (latestTime == null || latestTime.getEnd() < meta.getTemporalProperties().getEnd()) {
 			this.latestTime = meta.getTemporalProperties();
@@ -734,7 +736,7 @@ public class GeospatialFileSystem extends FileSystem {
 	 * @param borderingProperties
 	 */
 	
-	private void readBlockData(byte[] data, BorderingProperties borderingProperties, SpatialGrid sg) {
+	private void readBlockData(byte[] data, BorderingProperties borderingProperties/*, SpatialGrid sg*/) {
 		// TODO Auto-generated method stub
 		String blockString = new String(data);
 		String[] records = blockString.split("\n");
@@ -748,16 +750,20 @@ public class GeospatialFileSystem extends FileSystem {
 			String geoHash = GeoHash.encode(parseFloat(fields[spatialPosn1]),parseFloat(fields[spatialPosn2]), spatialUncertaintyPrecision);
 			
 			// populating spatial grid
-			sg.addEntry(parseFloat(fields[spatialPosn2]),parseFloat(fields[spatialPosn1]), (int)recordCount);
+			//sg.addEntry(parseFloat(fields[spatialPosn2]),parseFloat(fields[spatialPosn1]), (int)recordCount);
 			// Getting spatial border records
-			populateGeoHashBorder(geoHash, borderingProperties, recordCount);
+			boolean fringe = populateGeoHashBorder(geoHash, borderingProperties, recordCount);
 			
 			// calculating temporal border records
 			if(timestamp<=borderingProperties.getDown2() && timestamp >= borderingProperties.getDown1()) {
 				borderingProperties.addDownTimeEntries(recordCount);
+				if(!fringe)
+					borderingProperties.addFringeEntries((int)recordCount);
 				logger.info("RIKI: ENTERED DOWN TIME ENTRY");
 			} else if(timestamp<=borderingProperties.getUp1() && timestamp >= borderingProperties.getUp2()) {
 				borderingProperties.addUpTimeEntries(recordCount);
+				if(!fringe)
+					borderingProperties.addFringeEntries((int)recordCount);
 				logger.info("RIKI: ENTERED UP TIME ENTRY");
 			}
 			recordCount++;
@@ -770,37 +776,46 @@ public class GeospatialFileSystem extends FileSystem {
 	/* Populating border Indices */
 	/* North and nw are disjoint */
 	
-	private void populateGeoHashBorder(String geoHash, BorderingProperties borderingProperties, long recordCount) {
-		
+	private boolean populateGeoHashBorder(String geoHash, BorderingProperties borderingProperties, long recordCount) {
+		boolean fringe = true;
 		if(borderingProperties.getNe().equals(geoHash)) {
 			borderingProperties.addNEEntries(recordCount);
+			borderingProperties.addFringeEntries((int)recordCount);
 			logger.info("RIKI: ENTERED A NE ENTRY "+geoHash +" "+this.name);
 		} else if(borderingProperties.getSe().equals(geoHash)) {
 			borderingProperties.addSEEntries(recordCount);
+			borderingProperties.addFringeEntries((int)recordCount);
 			logger.info("RIKI: ENTERED A SE ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getNw().equals(geoHash)) {
 			borderingProperties.addNWEntries(recordCount);
+			borderingProperties.addFringeEntries((int)recordCount);
 			logger.info("RIKI: ENTERED A NW ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getSw().equals(geoHash)) {
 			borderingProperties.addSWEntries(recordCount);
+			borderingProperties.addFringeEntries((int)recordCount);
 			logger.info("RIKI: ENTERED A SW ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getN().contains(geoHash)) {
 			borderingProperties.addNorthEntries(recordCount);
+			borderingProperties.addFringeEntries((int)recordCount);
 			logger.info("RIKI: ENTERED A N ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getE().contains(geoHash)) {
 			borderingProperties.addEastEntries(recordCount);
+			borderingProperties.addFringeEntries((int)recordCount);
 			logger.info("RIKI: ENTERED A E ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getW().contains(geoHash)) {
 			borderingProperties.addWestEntries(recordCount);
+			borderingProperties.addFringeEntries((int)recordCount);
 			logger.info("RIKI: ENTERED A W ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getS().contains(geoHash)) {
 			borderingProperties.addSouthEntries(recordCount);
+			borderingProperties.addFringeEntries((int)recordCount);
 			logger.info("RIKI: ENTERED A S ENTRY "+geoHash+" "+this.name);
 		} else {
+			fringe = false;
 			logger.info("RIKI: ENTERED A CENTRAL ENTRY "+geoHash+" "+this.name);
 		}
 		
-		
+		return fringe;
 	}
 
 	public Block retrieveBlock(String blockPath) throws IOException, SerializationException {
@@ -1874,19 +1889,22 @@ public class GeospatialFileSystem extends FileSystem {
 		return paths;
 	}
 	
-	private List<String[]> getFeaturePathsWithSpecificIndex(String blockPath, int latInd, int lonInd, int temporalInd, int featureInd) throws IOException {
+	private void getFeaturePathsWithSpecificIndex(String blockPath, int latInd, int lonInd, int temporalInd, int featureInd,
+			List<Integer> recNums, List<String[]> featurePathsA, List<String[]> featurePathsB) throws IOException {
+		
 		byte[] blockBytes = Files.readAllBytes(Paths.get(blockPath));
 		String blockData = new String(blockBytes, "UTF-8");
-		List<String[]> paths = new ArrayList<String[]>();
 		String[] lines = blockData.split("\\r?\\n");
 		int splitLimit = this.featureList.size();
+		int lineNum = 0;
 		for (String line : lines) {
 			String[] tokens = line.split(",", splitLimit);
 			String[] choppedFeatures = {tokens[latInd],tokens[lonInd],tokens[temporalInd],tokens[featureInd]};
-			
-			paths.add(choppedFeatures);
+			if(recNums.contains(lineNum))
+				featurePathsA.add(choppedFeatures);
+			else
+				featurePathsB.add(choppedFeatures);
 		}
-		return paths;
 	}
 
 	private boolean isGridInsidePolygon(GeoavailabilityGrid grid, GeoavailabilityQuery geoQuery) {
@@ -2535,7 +2553,25 @@ public class GeospatialFileSystem extends FileSystem {
 		this.spatialPosn2 = spatialPosn2;
 	}
 
-	public String findTrainingPoints(List<String> blockPaths, List<Integer> numPoints, String featureName) throws IOException {
+	/**
+	 * 
+	 * @author sapmitra
+	 * @param blockPaths the block in question
+	 * @param numPoints how many points needed from this block
+	 * @param featureName
+	 * @param f time
+	 * @param e lon
+	 * @param d lat
+	 * @return
+	 * @throws IOException
+	 */
+	public String findTrainingPoints(List<String> blockPaths, List<Integer> numPoints, List<String> pathInfos, String featureName, double latEps,
+			double lonEps, double timeEps) throws IOException {
+		
+		// So that we know what to feed in separate join operations
+		Map<String, List<String[]>> pathToAsMap = new HashMap<String, List<String[]>>();
+		Map<String, List<String[]>> pathToBsMap = new HashMap<String, List<String[]>>();
+		
 		int latOrder = -1, lonOrder = -1, index = 0, temporalOrder = -1,featurePosn = -1;
 		for (Pair<String, FeatureType> columnPair : GeospatialFileSystem.this.featureList) {
 			if (columnPair.a.equalsIgnoreCase(GeospatialFileSystem.this.spatialHint.getLatitudeHint()))
@@ -2556,19 +2592,51 @@ public class GeospatialFileSystem extends FileSystem {
 		int count = 0;
 		for(String blockPath: blockPaths) {
 			
-			SpatialGrid spatialGrid = spatialGridsMap.get(blockPath);
+			//SpatialGrid spatialGrid = spatialGridsMap.get(blockPath);
 			int numPtsNeeded = numPoints.get(count);
 			int totalBlockRecords = (int)borderMap.get(blockPath).getTotalRecords();
+			String pathInfo = pathInfos.get(count);
 			
 			// These are the actual line numbers that will be center points for prediction
-			List<Integer> recordsToRead = findRandomRecordIndices(totalBlockRecords, numPtsNeeded);
+			List<Integer> recordsToRead = findRandomRecordIndices(totalBlockRecords, numPtsNeeded, borderMap.get(blockPath));
 			
-			// No need to get all points.
-			// First figure out what we need.
-			List<String[]> featurePaths = getFeaturePathsWithSpecificIndex(blockPath,latOrder,lonOrder,temporalOrder,featurePosn);
+			// Generating a map of records to read, both central and neighbors
+			//generateNeighbors(recordsToRead, spatialGrid);
+			// lat, long, timestamp, predfeature
+			List<String[]> featurePathsA = new ArrayList<String[]>();
+			List<String[]> featurePathsB = new ArrayList<String[]>();
+			
+			getFeaturePathsWithSpecificIndex(blockPath,latOrder,lonOrder,temporalOrder,featurePosn, recordsToRead,
+					featurePathsA, featurePathsB);
+			
+			if(featurePathsA.size() > 0) {
+				List<String[]> currentEntries;
+				
+				if(pathToAsMap.get(pathInfo) == null) {
+					currentEntries = new ArrayList<String[]>();
+					pathToAsMap.put(pathInfo, currentEntries);
+				} else {
+					currentEntries = pathToAsMap.get(pathInfo);
+				}
+				currentEntries.addAll(featurePathsA);
+			}
+			
+			if(featurePathsB.size() > 0) {
+				List<String[]> currentEntries;
+				
+				if(pathToBsMap.get(pathInfo) == null) {
+					currentEntries = new ArrayList<String[]>();
+					pathToBsMap.put(pathInfo, currentEntries);
+				} else {
+					currentEntries = pathToBsMap.get(pathInfo);
+				}
+				currentEntries.addAll(featurePathsB);
+			}
 			
 			count++;
 		}
+		
+		
 		return null;
 	}
 	
@@ -2578,30 +2646,73 @@ public class GeospatialFileSystem extends FileSystem {
 	 * @param spatialGrid
 	 */
 	private void generateNeighbors(List<Integer> recordsToRead, SpatialGrid spatialGrid) {
+		// indexEntries are the record numbers that fall in each of the index, arranged in a 1024 size array 
 		List<List<Integer>> indexEntries = spatialGrid.getIndexEntries();
-		int countIndex = 0;
 		
-		for(List<Integer> indices : indexEntries) {
-			List<Integer> recList = new ArrayList<>(recordsToRead);
-			recList.retainAll(indices);
+		// Think of this as maps of A entries
+		Map<Integer, List<Integer>> indexToCenterPointMap = new HashMap<Integer, List<Integer>>();
+		
+		int currentIndex = 0;
+		
+		List<Integer> neighborIndicesToFetch = new ArrayList<Integer>();
+		
+		for(List<Integer> recordNumForIndex : indexEntries) {
 			
+			List<Integer> recList = new ArrayList<>(recordsToRead);
+			
+			// These are the central records that fall within this particular index
+			recList.retainAll(recordNumForIndex);
+			
+			// if some central records fall in this index bucket, find the neighboring indices
+			if(!recList.isEmpty()) {
+				indexToCenterPointMap.put(currentIndex, recList);
+				for(int rec : recList) {
+					List<Integer> ns = spatialGrid.getNeighborIndices(rec);
+					if(ns != null && !ns.isEmpty()) {
+						neighborIndicesToFetch.addAll(ns);
+					}
+				}
+			}
+			
+			currentIndex++;
 			
 		}
+		
+		Set<Integer> uniques = new TreeSet<Integer>(neighborIndicesToFetch);
+		
+		List<Integer> uniqueNeighborIndices = new ArrayList<Integer>(uniques);
+		
+		// These are record numbers needed for neighboring datapoints
+		// Think of this as map of B entries
+		// MAP FROM REQUIRED GRID INDEX TO ACTUAL RECORD POINTS
+		Map<Integer, List<Integer>> neighborIndicesToRecMap = new HashMap<Integer, List<Integer>>();
+		
+		for(int i : uniqueNeighborIndices) {
+			List<Integer> recEntries = new ArrayList<Integer> (indexEntries.get(i));
+			neighborIndicesToRecMap.put(i, recEntries);
+		}
+		
 		
 	}
 	
-	public static List<Integer> findRandomRecordIndices(int range, int num) {
-		
+	public static List<Integer> findRandomRecordIndices(int range, int num, BorderingProperties bp) {
+		List<Integer> fringeEntries = bp.getFringeEntries();
 		List<Integer> list = new ArrayList<Integer>();
 		for (int i = 1; i < range; i++) {
-			list.add(new Integer(i));
+			if(!fringeEntries.contains(i))
+				list.add(new Integer(i));
 		}
 		Collections.shuffle(list);
-		for (int i = 0; i < num; i++) {
-			//System.out.println(list.get(i));
-		}
-		List<Integer> listN = list.subList(0, num);
+		
+		List<Integer> listN;
+		if(num < list.size())
+			listN = list.subList(0, num);
+		else
+			listN = list;
+		
 		Collections.sort(listN);
+		
+		
 		return listN;
 	}
 	
@@ -2623,7 +2734,7 @@ public class GeospatialFileSystem extends FileSystem {
 
 		//boolean b = isGridInsidePolygonTest(blockGrid, geoQuery);
 		//System.out.println(b);
-		System.out.println(GeospatialFileSystem.findRandomRecordIndices(10,3));
+		//System.out.println(GeospatialFileSystem.findRandomRecordIndices(10,3));
 		
 		List<Coordinates> clNew = new ArrayList<Coordinates>(cl);
 		clNew.remove(0);

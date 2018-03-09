@@ -265,6 +265,143 @@ public class MDC {
 	}
 	
 	
+	/**
+	 * Specially designed for self join
+	 * Include functionality for adding range for latitude, longitude and time, for normalization 
+	 * 
+	 * @author sapmitra
+	 * @param indvARecords
+	 * @param indvBRecords
+	 * @param epsilons
+	 * @return
+	 */
+	public List<String> iterativeMultiDimSelfJoin(List<String[]> indvARecords, List<String[]> indvBRecords, double[] epsilons) {
+		
+		/* Do not modify these 2 data */
+		String doublePattern = "-?([0-9]*)\\.?([0-9]*)";
+		String intPattern = "-?([0-9])([0-9]*)";
+		
+		List<double[]> splitARecords = new ArrayList<double[]>();
+		List<double[]> splitBRecords = new ArrayList<double[]>();
+		
+		int ind = 0;
+		
+		for(String[] frs: indvARecords) {
+			
+			if(Pattern.matches(doublePattern, frs[0]) && Pattern.matches(doublePattern, frs[1])
+					&& Pattern.matches(intPattern, frs[2])){
+				double[] tempArr = new double[3];
+				tempArr[0] = Double.valueOf(frs[0]);
+				tempArr[1] = Double.valueOf(frs[1]);
+				tempArr[2] = Double.valueOf(frs[2]);
+				splitARecords.add(tempArr);
+				aValidEntries.add(ind);
+			}
+			
+			ind++;
+		}
+		
+		ind = 0;
+		for(String[] frs: indvBRecords) {
+			
+			if(Pattern.matches(doublePattern, frs[0]) && Pattern.matches(doublePattern, frs[1])
+					&& Pattern.matches(intPattern, frs[2])){
+				double[] tempArr = new double[3];
+				tempArr[0] = Double.valueOf(frs[0]);
+				tempArr[1] = Double.valueOf(frs[1]);
+				tempArr[2] = Double.valueOf(frs[2]);
+				splitBRecords.add(tempArr);
+				bValidEntries.add(ind);
+			}
+			
+			ind++;
+		}
+		
+		
+		/* Iterative 1D join */
+		List<String> pairs = new ArrayList<String>();
+		
+		for(int i=0 ; i < 3 ; i++) {
+			
+			//System.out.println("DIMENSION: "+(i+1)+"\n==============\n");
+			/* At all times splitEntries and valid entries should correspond */
+			
+			List<Integer> validAs = new ArrayList<Integer>(aValidEntries);
+			List<Integer> validBs = new ArrayList<Integer>(bValidEntries);
+			
+			int aPosn = i;
+			int bPosn = i;
+			
+			
+			List<Double> setA = new ArrayList<Double>();
+			List<Double> setB = new ArrayList<Double>();
+			
+			for(double[] frs: splitARecords) {
+				
+				setA.add(frs[aPosn]);
+				
+			}
+			for(double[] frs: splitBRecords) {
+				
+				setB.add(frs[bPosn]);
+				
+			}
+			
+			ListIndexComparator comparator = new ListIndexComparator(setA, validAs);
+			Collections.sort(validAs, comparator);
+			Collections.sort(setA);
+			
+			ListIndexComparator comparator1 = new ListIndexComparator(setB, validBs);
+			Collections.sort(validBs, comparator1);
+			Collections.sort(setB);
+			
+			
+			List<String> tmpPairs = oneDJoin(setA, validAs, setB, validBs, epsilons[i], splitARecords, splitBRecords);
+			
+			if(i == 0)
+				pairs = tmpPairs;
+			else
+				pairs.retainAll(tmpPairs);
+			
+			/* At this point validAs and validBs actually contain invalid entries */
+			List<double[]> removalsA = new ArrayList<double[]>();
+			for(int in : validAs) {
+				int indx = aValidEntries.indexOf(in);
+				removalsA.add(splitARecords.get(indx));
+			}
+			splitARecords.removeAll(removalsA);
+			
+			List<double[]> removalsB = new ArrayList<double[]>();
+			for(int in : validBs) {
+				int indx = bValidEntries.indexOf(in);
+				//splitBRecords.remove(indx);
+				removalsB.add(splitBRecords.get(indx));
+			}
+			splitBRecords.removeAll(removalsB);
+			
+			aValidEntries.removeAll(validAs);
+			bValidEntries.removeAll(validBs);
+			
+		}
+		
+		List<String> retJoinRecords = new ArrayList<String> ();
+		for(String line : pairs) {
+			
+			String[] pr = line.split(",");
+			int i1 = Integer.valueOf(pr[0]);
+			int i2 = Integer.valueOf(pr[1]);
+			
+			String ret1 = java.util.Arrays.toString(indvARecords.get(i1));
+			String ret2 = java.util.Arrays.toString(indvBRecords.get(i2));
+			
+			retJoinRecords.add(ret1+"$$"+ret2);
+			
+		}
+		
+		return retJoinRecords;
+	}
+	
+	
 	
 	/* setA and setB are ordered according to the dimension in question */
 	public List<String> oneDJoin(List<Double> setA, List<Integer> aInd, List<Double> setB, List<Integer> bInd, 
@@ -290,11 +427,19 @@ public class MDC {
 		
 		double end = aEnd;
 		
-		if(aStart > bStart)
-			start = bStart;
+		if(aStart > bStart) {
+			if(aStart - epsilon > bStart)
+				start = aStart - epsilon;
+			else
+				start = bStart;
+		}
 		
-		if(aEnd < bEnd)
-			end = bEnd;
+		if(aEnd < bEnd) {
+			if(aEnd + epsilon < bEnd)
+				end = aEnd + epsilon;
+			else
+				end = bEnd;
+		}
 		
 		double current = start;
 		

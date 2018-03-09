@@ -27,6 +27,7 @@ public class BorderingProperties {
 	
 	private List<Long> upTimeEntries;
 	private List<Long> downTimeEntries;
+	private List<Integer> fringeEntries;
 	
 	private List<Long> northEntries;
 	private List<Long> southEntries;
@@ -75,6 +76,7 @@ public class BorderingProperties {
 		
 		bmap.put("upTimeEntries",upTimeEntries);
 		bmap.put("downTimeEntries",downTimeEntries);
+		bmap.put("fringeEntries",fringeEntries);
 		
 		
 		return bmap;
@@ -150,6 +152,10 @@ public class BorderingProperties {
 		for (int i = 0; i < downTimeEntriess.length(); i++)
 			downTimeEntries.add(downTimeEntriess.getLong(i));
 		
+		JSONArray fringeEntriess = jsonObj.getJSONArray("fringeEntries");
+		for (int i = 0; i < fringeEntriess.length(); i++)
+			fringeEntries.add(fringeEntriess.getInt(i));
+		
 	}
 	
 	public BorderingProperties() {
@@ -172,6 +178,7 @@ public class BorderingProperties {
 		
 		upTimeEntries = new ArrayList<Long>();
 		downTimeEntries = new ArrayList<Long>();
+		fringeEntries = new ArrayList<Integer>();
 	}
 	
 	public synchronized void updateRecordCount(long n) {
@@ -418,7 +425,17 @@ public class BorderingProperties {
 	public void setTotalRecords(long totalRecords) {
 		this.totalRecords = totalRecords;
 	}
+
+	public List<Integer> getFringeEntries() {
+		return fringeEntries;
+	}
+
+	public void setFringeEntries(List<Integer> fringeEntries) {
+		this.fringeEntries = fringeEntries;
+	}
 	
-	
+	public void addFringeEntries(int n) {
+		this.fringeEntries.add(n);
+	}
  
 }

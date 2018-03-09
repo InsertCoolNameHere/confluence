@@ -631,7 +631,8 @@ public class StorageNode implements RequestListener {
 		
 		try {
 			SurveyRequestHandler reqHandler = new SurveyRequestHandler(new ArrayList<NetworkDestination>(allNodes),
-					context, request.getNumTrainingPoints(), fsName, request.getFeatureName(), this);
+					context, request.getNumTrainingPoints(), fsName, request.getFeatureName(),request.getLatEps(), request.getLonEps()
+					, request.getTimeEps(), this);
 			
 			/* Sending out query to all nodes */
 			reqHandler.handleRequest(se, rsp);
@@ -691,12 +692,14 @@ public class StorageNode implements RequestListener {
 		
 		List<String> blockPaths = request.getBlockPath();
 		List<Integer> numPoints = request.getNumPoints();
+		List<String> pathInfos = request.getPathInfo();
 		
 		GeospatialFileSystem fs = fsMap.get(request.getFsName());
 		try {
 			// A string representation of each training point separated by \n
-			String dataPoints = fs.findTrainingPoints(blockPaths, numPoints, request.getFeatureName());
 			
+			String dataPoints = fs.findTrainingPoints(blockPaths, numPoints, pathInfos, request.getFeatureName(),
+					request.getLatEps(), request.getLonEps(), request.getTimeEps());
 			String nodeString = hostname + ":" + port;
 			String featureNames = "";
 			TrainingDataResponse rsp = new TrainingDataResponse(dataPoints, nodeString);

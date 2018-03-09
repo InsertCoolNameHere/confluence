@@ -39,7 +39,6 @@ public class SurveyRequestHandler implements MessageListener {
 	private BasicEventWrapper eventWrapper;
 	private ClientMessageRouter router;
 	private AtomicInteger expectedResponses;
-	private AtomicInteger expectedDataTesponses;
 	private Collection<NetworkDestination> nodes;
 	private EventContext clientContext;
 	private List<GalileoMessage> responses;
@@ -50,9 +49,10 @@ public class SurveyRequestHandler implements MessageListener {
 	private AtomicInteger expectedTrainingResponses;
 	private String fsName;
 	private String featureName;
+	private double latEps,lonEps,timeEps;
 
 	public SurveyRequestHandler(Collection<NetworkDestination> nodes, EventContext clientContext,
-			int numTrainingPoints, String fsName, String featureName, RequestListener listener) throws IOException {
+			int numTrainingPoints, String fsName, String featureName, double d, double e, double f, RequestListener listener) throws IOException {
 		this.nodes = nodes;
 		this.clientContext = clientContext;
 		this.requestListener = listener;
@@ -63,11 +63,13 @@ public class SurveyRequestHandler implements MessageListener {
 		this.eventMap = new GalileoEventMap();
 		this.eventWrapper = new BasicEventWrapper(this.eventMap);
 		this.expectedResponses = new AtomicInteger(this.nodes.size());
-		this.expectedDataTesponses = new AtomicInteger(0);
 		this.numTrainingPoints = numTrainingPoints;
 		this.expectedTrainingResponses = new AtomicInteger(0);
 		this.fsName = fsName;
 		this.featureName = featureName;
+		this.latEps = d;
+		this.lonEps = e;
+		this.timeEps = f;
 	}
 
 	public void closeRequest() {
@@ -201,12 +203,12 @@ public class SurveyRequestHandler implements MessageListener {
 				TrainingRequirements tr;
 				if(nodeWiseRequest.get(nd) == null) {
 					expectedTrainingMsgs++;
-					tr = new TrainingRequirements(new ArrayList<String>(), new ArrayList<Integer>());
+					tr = new TrainingRequirements(new ArrayList<String>(), new ArrayList<Integer>(), new ArrayList<String>());
 					nodeWiseRequest.put(nd, tr);
 				} else {
 					tr = nodeWiseRequest.get(nd);
 				}
-				
+				tr.addPathInfo(pathInfo);
 				tr.addBlockPath(block);
 				tr.addNumPoints(numPoints);
 				
@@ -220,7 +222,7 @@ public class SurveyRequestHandler implements MessageListener {
 		for(NetworkDestination nd : nodeWiseRequest.keySet()) {
 			
 			TrainingRequirements tr = nodeWiseRequest.get(nd);
-			TrainingDataEvent tde = new TrainingDataEvent(tr, fsName, featureName);
+			TrainingDataEvent tde = new TrainingDataEvent(tr, fsName, featureName, latEps, lonEps, timeEps);
 			GalileoMessage mrequest;
 			
 			try {

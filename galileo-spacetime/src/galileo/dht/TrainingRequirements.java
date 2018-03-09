@@ -11,11 +11,13 @@ import galileo.serialization.SerializationOutputStream;
 public class TrainingRequirements implements ByteSerializable{
 	
 	private List<String> blockPath;
+	private List<String> pathInfo;
 	private List<Integer> numPoints;
 	
-	public TrainingRequirements(List<String> blockPath, List<Integer> numPoints) {
+	public TrainingRequirements(List<String> blockPath, List<Integer> numPoints, List<String> pathInfo) {
 		this.blockPath = blockPath;
 		this.numPoints = numPoints;
+		this.pathInfo = pathInfo;
 	}
 
 	
@@ -24,6 +26,7 @@ public class TrainingRequirements implements ByteSerializable{
 	public void serialize(SerializationOutputStream out) throws IOException {
 		out.writeStringCollection(blockPath);
 		out.writeIntegerCollection(numPoints);
+		out.writeStringCollection(pathInfo);
 		
 	}
 	
@@ -31,8 +34,7 @@ public class TrainingRequirements implements ByteSerializable{
 	public TrainingRequirements(SerializationInputStream in) throws IOException, SerializationException {
 		in.readStringCollection(this.blockPath);
 		in.readIntegerCollection(this.numPoints);
-		
-		
+		in.readStringCollection(this.pathInfo);
 		
 	}
 
@@ -66,6 +68,21 @@ public class TrainingRequirements implements ByteSerializable{
 	
 	public void addNumPoints(int numPoint) {
 		this.numPoints.add(numPoint);
+	}
+
+
+
+	public List<String> getPathInfo() {
+		return pathInfo;
+	}
+
+	public void addPathInfo(String pathInfo) {
+		this.pathInfo.add(pathInfo);
+	}
+
+
+	public void setPathInfo(List<String> pathInfo) {
+		this.pathInfo = pathInfo;
 	}
 	
 	

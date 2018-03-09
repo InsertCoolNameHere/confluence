@@ -15,13 +15,19 @@ public class TrainingDataEvent implements Event{
 	private List<Integer> numPoints;
 	private String fsName;
 	private String featureName;
+	private List<String> pathInfo;
+	private double latEps,lonEps,timeEps;
 	
-	public TrainingDataEvent(TrainingRequirements tr, String fsName, String featureName) {
+	public TrainingDataEvent(TrainingRequirements tr, String fsName, String featureName, double latEps, double lonEps, double timeEps) {
 		
 		this.blockPath = tr.getBlockPath();
 		this.numPoints = tr.getNumPoints();
+		this.pathInfo = tr.getPathInfo();
 		this.fsName = fsName;
 		this.featureName = featureName;
+		this.latEps = latEps;
+		this.lonEps = lonEps;
+		this.timeEps = timeEps;
 	}
 	
 	@Override
@@ -31,6 +37,10 @@ public class TrainingDataEvent implements Event{
 		out.writeIntegerCollection(numPoints);
 		out.writeString(fsName);
 		out.writeString(featureName);
+		out.writeStringCollection(pathInfo);
+		out.writeDouble(latEps);
+		out.writeDouble(lonEps);
+		out.writeDouble(timeEps);
 		
 	}
 	
@@ -41,6 +51,10 @@ public class TrainingDataEvent implements Event{
 		in.readIntegerCollection(this.numPoints);
 		this.fsName = in.readString();
 		this.featureName = in.readString();
+		in.readStringCollection(this.pathInfo);
+		latEps = in.readDouble();
+		lonEps = in.readDouble();
+		timeEps = in.readDouble();
 		
 	}
 
@@ -74,6 +88,38 @@ public class TrainingDataEvent implements Event{
 
 	public void setFeatureName(String featureName) {
 		this.featureName = featureName;
+	}
+
+	public List<String> getPathInfo() {
+		return pathInfo;
+	}
+
+	public void setPathInfo(List<String> pathInfo) {
+		this.pathInfo = pathInfo;
+	}
+
+	public double getLatEps() {
+		return latEps;
+	}
+
+	public void setLatEps(double latEps) {
+		this.latEps = latEps;
+	}
+
+	public double getLonEps() {
+		return lonEps;
+	}
+
+	public void setLonEps(double lonEps) {
+		this.lonEps = lonEps;
+	}
+
+	public double getTimeEps() {
+		return timeEps;
+	}
+
+	public void setTimeEps(double timeEps) {
+		this.timeEps = timeEps;
 	}
 
 }
