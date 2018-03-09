@@ -62,6 +62,7 @@ import galileo.bmp.BitmapException;
 import galileo.bmp.GeoavailabilityGrid;
 import galileo.bmp.GeoavailabilityMap;
 import galileo.bmp.GeoavailabilityQuery;
+import galileo.bmp.QueryTransform;
 import galileo.comm.SpatialGrid;
 import galileo.comm.TemporalType;
 import galileo.dataset.Block;
@@ -82,8 +83,10 @@ import galileo.dht.NetworkInfo;
 import galileo.dht.NodeInfo;
 import galileo.dht.PartitionException;
 import galileo.dht.Partitioner;
+import galileo.dht.SelfJoinThread;
 import galileo.dht.StorageNode;
 import galileo.dht.TemporalHierarchyPartitioner;
+import galileo.dht.StorageNode.QueryProcessor;
 import galileo.dht.hash.HashException;
 import galileo.dht.hash.HashTopologyException;
 import galileo.dht.hash.TemporalHash;
@@ -2634,6 +2637,33 @@ public class GeospatialFileSystem extends FileSystem {
 			}
 			
 			count++;
+		}
+		
+		ExecutorService executor = Executors.newFixedThreadPool(java.lang.Math.min(pathToAsMap.keySet().size(), 2 * numCores));
+		List<SelfJoinThread> joinProcessors = new ArrayList<SelfJoinThread>();
+		
+		for (String blockKey : pathToAsMap.keySet()) {
+			
+			if(pathToAsMap.get(blockKey) != null && pathToAsMap.get(blockKey).size() > 0 &&
+					pathToBsMap.get(blockKey) != null && pathToBsMap.get(blockKey).size() > 0) {
+				
+				SelfJoinThread sjt = new SelfJoinThread(pathToAsMap.get(blockKey), pathToBsMap.get(blockKey), latEps, lonEps, timeEps);
+				
+				joinProcessors.add(sjt);
+				executor.execute(sjt);
+			}
+			
+		}
+		executor.shutdown();
+		boolean status = executor.awaitTermination(10, TimeUnit.MINUTES);
+		if (!status)
+			logger.log(Level.WARNING, "Executor terminated because of the specified timeout=10minutes");
+		for (SelfJoinThread sjt : joinProcessors) {
+			if (sjt.getFileSize() > 0) {
+				hostFileSize += sjt.getFileSize();
+				for (String resultPath : sjt.getResultPaths())
+					filePaths.put(resultPath);
+			}
 		}
 		
 		

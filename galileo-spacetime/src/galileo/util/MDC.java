@@ -273,9 +273,10 @@ public class MDC {
 	 * @param indvARecords
 	 * @param indvBRecords
 	 * @param epsilons
+	 * @param betas 
 	 * @return
 	 */
-	public List<String> iterativeMultiDimSelfJoin(List<String[]> indvARecords, List<String[]> indvBRecords, double[] epsilons) {
+	public List<String> iterativeMultiDimSelfJoin(List<String[]> indvARecords, List<String[]> indvBRecords, double[] epsilons, List<Integer> betas) {
 		
 		/* Do not modify these 2 data */
 		String doublePattern = "-?([0-9]*)\\.?([0-9]*)";
@@ -385,6 +386,7 @@ public class MDC {
 		}
 		
 		List<String> retJoinRecords = new ArrayList<String> ();
+		
 		for(String line : pairs) {
 			
 			String[] pr = line.split(",");
