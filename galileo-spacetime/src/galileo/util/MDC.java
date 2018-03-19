@@ -1,9 +1,13 @@
 package galileo.util;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
+
+import galileo.comm.TemporalType;
+import galileo.dataset.SpatialRange;
 
 public class MDC {
 	
@@ -17,7 +21,7 @@ public class MDC {
 	
 	public MDC() {this.mode = 7;}
 	
-	public static void main(String arg[]) {
+	public static void main1(String arg[]) {
 		List<String[]> aRecords = new ArrayList<>();
 		String[] a1 = {"1486354807", "39.473305", "-94.807891", "1"}; 
 		aRecords.add(a1);
@@ -88,6 +92,24 @@ public class MDC {
 		System.out.println(System.currentTimeMillis());
 	}
 	
+	
+	public static void main(String arg[]) {
+		List<Integer> aRecordIndices = new ArrayList<Integer>();
+		List<List<Integer>> bRecordIndices = new ArrayList<List<Integer>>();
+		MDC m = new MDC();
+		List<String> pairs = new ArrayList<String>();
+		pairs.add("1,2");
+		pairs.add("1,3");
+		pairs.add("1,4");
+		pairs.add("2,2");
+		pairs.add("2,4");
+		pairs.add("3,2");
+		pairs.add("3,11");
+		
+		m.generateNeighborSphere(pairs, aRecordIndices, bRecordIndices);
+		System.out.println(aRecordIndices);
+		System.out.println(bRecordIndices);
+	}
 	/*public static void main(String arg[]) {
 		String[] ss = new String[3];
 		ss[0] = "hi";
@@ -267,6 +289,7 @@ public class MDC {
 	
 	/**
 	 * Specially designed for self join
+	 * Used to generate training data
 	 * Include functionality for adding range for latitude, longitude and time, for normalization 
 	 * 
 	 * @author sapmitra
@@ -274,9 +297,18 @@ public class MDC {
 	 * @param indvBRecords
 	 * @param epsilons
 	 * @param betas 
+	 * @param pathInfo nodestring$$time$space
+	 * @param temporalType 
 	 * @return
 	 */
-	public List<String> iterativeMultiDimSelfJoin(List<String[]> indvARecords, List<String[]> indvBRecords, double[] epsilons, List<Integer> betas) {
+	public List<String> iterativeMultiDimSelfJoin(List<String[]> indvARecords, List<String[]> indvBRecords, 
+			double[] epsilons, double[] betas, String pathInfo, TemporalType temporalType) {
+		
+		List<Double> mins = new ArrayList<Double>();
+		List<Double> spans = new ArrayList<Double>();
+		
+		// This deals with values for standardization
+		getStandardizationParameters(pathInfo,temporalType, mins, spans);
 		
 		/* Do not modify these 2 data */
 		String doublePattern = "-?([0-9]*)\\.?([0-9]*)";
@@ -387,20 +419,126 @@ public class MDC {
 		
 		List<String> retJoinRecords = new ArrayList<String> ();
 		
+		// all A Points
+		List<Integer> aRecordIndices = new ArrayList<Integer>();
+		// all B points list for each A point
+		List<List<Integer>> bRecordIndices = new ArrayList<List<Integer>>();
+		
+		// create the one to many mapping between A and B entries
+		generateNeighborSphere(pairs, aRecordIndices, bRecordIndices);
+		
+		// for each entry in aRecords and corresponding neighbors in bRecords, now
+		// apply IDW with different betas and generate training points
+		int count = 0;
+		for(int aIndex: aRecordIndices) {
+			List<Integer> bIndices = bRecordIndices.get(count);
+			
+			String[] aRec = indvARecords.get(aIndex);
+			
+			List<String[]> bRecs = new ArrayList<String[]>();
+			for(int ib : bIndices) {
+				String[] entry = indvBRecords.get(ib);
+				bRecs.add(entry);
+			}
+			
+			// min and span needs to be passed here
+			
+			if(bRecs.size() > 0) {
+				String tp = IDW.getOneTrainingPoint(aRec, bRecs, betas, mins.get(0), spans.get(0),
+						mins.get(1), spans.get(1),mins.get(2), spans.get(2));
+				retJoinRecords.add(tp);
+			}
+			
+			//retJoinRecords.add(ret1+"$$"+ret2);
+			
+			count++;
+		}
+		
+		return retJoinRecords;
+	}
+
+	/**
+	 * @param pathInfo
+	 * @param temporalType
+	 * @param mins
+	 * @param spans
+	 */
+	private void getStandardizationParameters(String pathInfo, TemporalType temporalType, List<Double> mins,
+			List<Double> spans) {
+		String realPathInfo = pathInfo.split("\\$\\$")[1];
+		String[] tokens = realPathInfo.split("\\$");
+		String space = tokens[1];
+		String time = tokens[0];
+		
+		String[] timeTokens = time.split("-");
+		
+		SpatialRange decodeHash = GeoHash.decodeHash(space);
+		
+		mins.add((double)decodeHash.getLowerBoundForLatitude());
+		spans.add((double)decodeHash.getUpperBoundForLatitude() - (double)decodeHash.getLowerBoundForLatitude());
+		
+		mins.add((double)decodeHash.getLowerBoundForLongitude());
+		spans.add((double)decodeHash.getUpperBoundForLongitude() - (double)decodeHash.getLowerBoundForLongitude());
+		
+		try {
+			double startTimeStamp = (double)GeoHash.getStartTimeStamp(timeTokens[0], timeTokens[1], timeTokens[2], timeTokens[3], temporalType);
+			double span = 3600*1000;
+			switch (temporalType) {
+				case HOUR_OF_DAY:
+					span = 3600*1000;
+					break;
+				case DAY_OF_MONTH:
+					span = 24*3600*1000;
+					break;
+				case MONTH:
+					span = 30*24*3600*1000;
+					break;
+				case YEAR:
+					span = 365*30*24*3600*1000;
+					break;
+			}
+			mins.add(startTimeStamp);
+			spans.add(span);
+			
+		} catch (ParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * @param pairs
+	 * @param aRecordIndices
+	 * @param bRecordIndices
+	 */
+	private void generateNeighborSphere(List<String> pairs, List<Integer> aRecordIndices,
+			List<List<Integer>> bRecordIndices) {
 		for(String line : pairs) {
 			
 			String[] pr = line.split(",");
 			int i1 = Integer.valueOf(pr[0]);
 			int i2 = Integer.valueOf(pr[1]);
 			
-			String ret1 = java.util.Arrays.toString(indvARecords.get(i1));
-			String ret2 = java.util.Arrays.toString(indvBRecords.get(i2));
+			//String ret1 = java.util.Arrays.toString(indvARecords.get(i1));
+			//String ret2 = java.util.Arrays.toString(indvBRecords.get(i2));
 			
-			retJoinRecords.add(ret1+"$$"+ret2);
+			//retJoinRecords.add(ret1+"$$"+ret2);
+			
+			int index = -1;
+			List<Integer> neighborIndices;
+			
+			if(aRecordIndices.contains(i1)) {
+				index = aRecordIndices.indexOf(i1);
+				neighborIndices = bRecordIndices.get(index);
+			} else {
+				index = aRecordIndices.size();
+				aRecordIndices.add(i1);
+				neighborIndices = new ArrayList<Integer>();
+				bRecordIndices.add(neighborIndices);
+			}
+			neighborIndices.add(i2);
 			
 		}
-		
-		return retJoinRecords;
 	}
 	
 	

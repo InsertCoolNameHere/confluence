@@ -623,7 +623,11 @@ public class StorageNode implements RequestListener {
 	 * @param context
 	 */
 	public void handleSurveyRequest(SurveyRequest request, EventContext context) {
+		
 		String fsName = request.getFsName();
+		String trainingResultsDir = this.rootDir + "/.tresults";
+		
+		
 		List<NodeInfo> allNodes = network.getAllNodes();
 		SurveyResponse rsp = new SurveyResponse();
 		
@@ -632,7 +636,7 @@ public class StorageNode implements RequestListener {
 		try {
 			SurveyRequestHandler reqHandler = new SurveyRequestHandler(new ArrayList<NetworkDestination>(allNodes),
 					context, request.getNumTrainingPoints(), fsName, request.getFeatureName(),request.getLatEps(), request.getLonEps()
-					, request.getTimeEps(), this);
+					, request.getTimeEps(),trainingResultsDir, this);
 			
 			/* Sending out query to all nodes */
 			reqHandler.handleRequest(se, rsp);

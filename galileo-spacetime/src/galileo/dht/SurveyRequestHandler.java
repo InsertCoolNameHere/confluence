@@ -1,5 +1,6 @@
 package galileo.dht;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -47,12 +48,14 @@ public class SurveyRequestHandler implements MessageListener {
 	private long elapsedTime;
 	private int numTrainingPoints;
 	private AtomicInteger expectedTrainingResponses;
+	private String allTrainingData;
 	private String fsName;
 	private String featureName;
 	private double latEps,lonEps,timeEps;
+	private String storagePath;
 
 	public SurveyRequestHandler(Collection<NetworkDestination> nodes, EventContext clientContext,
-			int numTrainingPoints, String fsName, String featureName, double d, double e, double f, RequestListener listener) throws IOException {
+			int numTrainingPoints, String fsName, String featureName, double d, double e, double f, String trainingResultsDir, RequestListener listener) throws IOException {
 		this.nodes = nodes;
 		this.clientContext = clientContext;
 		this.requestListener = listener;
@@ -70,6 +73,10 @@ public class SurveyRequestHandler implements MessageListener {
 		this.latEps = d;
 		this.lonEps = e;
 		this.timeEps = f;
+		this.allTrainingData = "";
+		String eventId = String.valueOf(System.currentTimeMillis());
+		this.storagePath = trainingResultsDir + "/trainingData" + eventId;
+		
 	}
 
 	public void closeRequest() {
@@ -133,9 +140,28 @@ public class SurveyRequestHandler implements MessageListener {
 			} else if (event instanceof TrainingDataResponse) {
 				
 				int awaitedResponses = this.expectedTrainingResponses.decrementAndGet();
+				TrainingDataResponse rsp = (TrainingDataResponse)event;
+				if(rsp.getDataPoints() != null && rsp.getDataPoints().length() > 0)
+					allTrainingData+= rsp.getDataPoints();
+				
 				/* The close will happen when the second set of requests have been replied to */
 				// TO BE CHANGED ***************************
 				if (awaitedResponses <= 0) {
+					
+					FileOutputStream fos = null;
+					try {
+						fos = new FileOutputStream(this.storagePath+".blk");
+						fos.write(allTrainingData.getBytes("UTF-8"));
+						fos.close();
+						
+					} catch (IOException e) {
+						logger.log(Level.SEVERE, "Something went wrong while storing training data to the filesystem.", e);
+						this.storagePath = null;
+					}
+					
+					
+					
+					
 					this.elapsedTime = System.currentTimeMillis() - this.elapsedTime;
 					logger.log(Level.INFO, "Closing the request and sending back the response.");
 					new Thread() {

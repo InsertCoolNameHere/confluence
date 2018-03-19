@@ -86,7 +86,6 @@ import galileo.dht.Partitioner;
 import galileo.dht.SelfJoinThread;
 import galileo.dht.StorageNode;
 import galileo.dht.TemporalHierarchyPartitioner;
-import galileo.dht.StorageNode.QueryProcessor;
 import galileo.dht.hash.HashException;
 import galileo.dht.hash.HashTopologyException;
 import galileo.dht.hash.TemporalHash;
@@ -172,6 +171,7 @@ public class GeospatialFileSystem extends FileSystem {
 	private int temporalUncertaintyPrecision;
 	
 	private boolean isRasterized;
+	private double[] DEFAULT_BETAS = {2d,2,5d,3d,4d,5d};
 	
 
 	public GeospatialFileSystem(StorageNode sn, String storageDirectory, String name, int precision, int nodesPerGroup,
@@ -2565,12 +2565,14 @@ public class GeospatialFileSystem extends FileSystem {
 	 * @param f time
 	 * @param e lon
 	 * @param d lat
+	 * @param pathInfos nodeString$$time$space
 	 * @return
 	 * @throws IOException
+	 * @throws InterruptedException 
 	 */
 	public String findTrainingPoints(List<String> blockPaths, List<Integer> numPoints, List<String> pathInfos, String featureName, double latEps,
-			double lonEps, double timeEps) throws IOException {
-		
+			double lonEps, double timeEps) throws IOException, InterruptedException {
+		String trainigData = "";
 		// So that we know what to feed in separate join operations
 		Map<String, List<String[]>> pathToAsMap = new HashMap<String, List<String[]>>();
 		Map<String, List<String[]>> pathToBsMap = new HashMap<String, List<String[]>>();
@@ -2605,13 +2607,17 @@ public class GeospatialFileSystem extends FileSystem {
 			
 			// Generating a map of records to read, both central and neighbors
 			//generateNeighbors(recordsToRead, spatialGrid);
+			
+			// Only 4 fields in these datapoints
 			// lat, long, timestamp, predfeature
 			List<String[]> featurePathsA = new ArrayList<String[]>();
 			List<String[]> featurePathsB = new ArrayList<String[]>();
 			
+			// Reading in the actual records
 			getFeaturePathsWithSpecificIndex(blockPath,latOrder,lonOrder,temporalOrder,featurePosn, recordsToRead,
 					featurePathsA, featurePathsB);
 			
+			// Grouping block points to path level
 			if(featurePathsA.size() > 0) {
 				List<String[]> currentEntries;
 				
@@ -2642,32 +2648,33 @@ public class GeospatialFileSystem extends FileSystem {
 		ExecutorService executor = Executors.newFixedThreadPool(java.lang.Math.min(pathToAsMap.keySet().size(), 2 * numCores));
 		List<SelfJoinThread> joinProcessors = new ArrayList<SelfJoinThread>();
 		
-		for (String blockKey : pathToAsMap.keySet()) {
+		for (String pathInfo : pathToAsMap.keySet()) {
 			
-			if(pathToAsMap.get(blockKey) != null && pathToAsMap.get(blockKey).size() > 0 &&
-					pathToBsMap.get(blockKey) != null && pathToBsMap.get(blockKey).size() > 0) {
+			if(pathToAsMap.get(pathInfo) != null && pathToAsMap.get(pathInfo).size() > 0 &&
+					pathToBsMap.get(pathInfo) != null && pathToBsMap.get(pathInfo).size() > 0) {
 				
-				SelfJoinThread sjt = new SelfJoinThread(pathToAsMap.get(blockKey), pathToBsMap.get(blockKey), latEps, lonEps, timeEps);
+				SelfJoinThread sjt = new SelfJoinThread(pathToAsMap.get(pathInfo), pathToBsMap.get(pathInfo),
+						latEps, lonEps, timeEps,pathInfo, DEFAULT_BETAS, temporalType);
 				
 				joinProcessors.add(sjt);
 				executor.execute(sjt);
 			}
 			
 		}
+		
 		executor.shutdown();
 		boolean status = executor.awaitTermination(10, TimeUnit.MINUTES);
 		if (!status)
 			logger.log(Level.WARNING, "Executor terminated because of the specified timeout=10minutes");
+		
 		for (SelfJoinThread sjt : joinProcessors) {
-			if (sjt.getFileSize() > 0) {
-				hostFileSize += sjt.getFileSize();
-				for (String resultPath : sjt.getResultPaths())
-					filePaths.put(resultPath);
+			if(sjt.getTrainingPoints().length() > 0){
+				trainigData+=sjt.getTrainingPoints();
 			}
 		}
 		
 		
-		return null;
+		return trainigData;
 	}
 	
 	/**
