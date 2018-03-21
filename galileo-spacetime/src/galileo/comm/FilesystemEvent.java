@@ -170,10 +170,10 @@ public class FilesystemEvent implements Event{
 			this.featureList = getFeatureList(in.readString());
 		if(in.readBoolean())
 			this.spatialHint = new SpatialHint(in);
-		
 		this.spatialUncertaintyPrecision = in.readInt();
 		this.temporalUncertaintyPrecision = in.readInt();
 		this.isRasterized = in.readBoolean();
+		this.temporalHint = in.readString();
 	}
 
 	@Override
@@ -192,7 +192,7 @@ public class FilesystemEvent implements Event{
 		out.writeInt(this.spatialUncertaintyPrecision);
 		out.writeInt(this.temporalUncertaintyPrecision);
 		out.writeBoolean(this.isRasterized);
-			
+		out.writeString(this.temporalHint);
 	}
 
 	public boolean isRasterized() {

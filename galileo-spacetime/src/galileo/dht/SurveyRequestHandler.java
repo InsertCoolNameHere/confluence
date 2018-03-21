@@ -15,6 +15,7 @@ import galileo.comm.DataIntegrationFinalResponse;
 import galileo.comm.DataIntegrationResponse;
 import galileo.comm.GalileoEventMap;
 import galileo.comm.SurveyEventResponse;
+import galileo.comm.SurveyResponse;
 import galileo.comm.TrainingDataEvent;
 import galileo.comm.TrainingDataResponse;
 import galileo.event.BasicEventWrapper;
@@ -53,9 +54,10 @@ public class SurveyRequestHandler implements MessageListener {
 	private String featureName;
 	private double latEps,lonEps,timeEps;
 	private String storagePath;
+	private String currentNode;
 
 	public SurveyRequestHandler(Collection<NetworkDestination> nodes, EventContext clientContext,
-			int numTrainingPoints, String fsName, String featureName, double d, double e, double f, String trainingResultsDir, RequestListener listener) throws IOException {
+			int numTrainingPoints, String fsName, String featureName, double d, double e, double f, String trainingResultsDir, String nodeString, RequestListener listener) throws IOException {
 		this.nodes = nodes;
 		this.clientContext = clientContext;
 		this.requestListener = listener;
@@ -76,6 +78,7 @@ public class SurveyRequestHandler implements MessageListener {
 		this.allTrainingData = "";
 		String eventId = String.valueOf(System.currentTimeMillis());
 		this.storagePath = trainingResultsDir + "/trainingData" + eventId;
+		this.currentNode = nodeString;
 		
 	}
 
@@ -83,33 +86,21 @@ public class SurveyRequestHandler implements MessageListener {
 		silentClose(); // closing the router to make sure that no new responses
 						// are added.
 		
-		for (GalileoMessage gresponse : this.responses) {
-			Event event;
-			try {
-				event = this.eventWrapper.unwrap(gresponse);
-				if(event instanceof DataIntegrationResponse && this.response instanceof DataIntegrationFinalResponse) {
-					
-					DataIntegrationFinalResponse actualResponse = (DataIntegrationFinalResponse) this.response;
-					
-					DataIntegrationResponse eventResponse = (DataIntegrationResponse) event;
-					
-					for(String path: eventResponse.getResultPaths()) {
-						
-						String newPath = eventResponse.getNodeName()+":"+eventResponse.getNodePort()+"$$"+path;
-						actualResponse.addResultPath(newPath);
-					}
-					
-					
-				}
-			} catch (IOException | SerializationException e) {
-				logger.log(Level.SEVERE, "An exception occurred while processing the response message. Details follow:"
-						+ e.getMessage(), e);
-			} catch (Exception e) {
-				logger.log(Level.SEVERE,
-						"An unknown exception occurred while processing the response message. Details follow:"
-								+ e.getMessage(), e);
+		try {
+			if(this.response instanceof SurveyResponse) {
+				
+				SurveyResponse actualResponse = (SurveyResponse) this.response;
+				
+				actualResponse.setOutputPath(this.storagePath+".blk");
+				actualResponse.setNodeString(currentNode);
 			}
+				
+		} catch (Exception e) {
+			logger.log(Level.SEVERE,
+					"An unknown exception occurred while processing the response message. Details follow:"
+							+ e.getMessage(), e);
 		}
+		
 		this.requestListener.onRequestCompleted(this.response, clientContext, this);
 	}
 
@@ -138,14 +129,14 @@ public class SurveyRequestHandler implements MessageListener {
 				}
 				
 			} else if (event instanceof TrainingDataResponse) {
-				
+				logger.log(Level.INFO, "RIKI: TRAINING DATA RESPONSE RECEIVED");
 				int awaitedResponses = this.expectedTrainingResponses.decrementAndGet();
 				TrainingDataResponse rsp = (TrainingDataResponse)event;
 				if(rsp.getDataPoints() != null && rsp.getDataPoints().length() > 0)
 					allTrainingData+= rsp.getDataPoints();
 				
 				/* The close will happen when the second set of requests have been replied to */
-				// TO BE CHANGED ***************************
+				
 				if (awaitedResponses <= 0) {
 					
 					FileOutputStream fos = null;
@@ -159,11 +150,8 @@ public class SurveyRequestHandler implements MessageListener {
 						this.storagePath = null;
 					}
 					
-					
-					
-					
 					this.elapsedTime = System.currentTimeMillis() - this.elapsedTime;
-					logger.log(Level.INFO, "Closing the request and sending back the response.");
+					logger.log(Level.INFO, "Closing the survey request and sending back the response.");
 					new Thread() {
 						public void run() {
 							SurveyRequestHandler.this.closeRequest();
@@ -185,6 +173,7 @@ public class SurveyRequestHandler implements MessageListener {
 		
 		long totalRecordCount = 0;
 		int expectedTrainingMsgs = 0;
+		
 		for (GalileoMessage gresponse : this.responses) {
 			Event event;
 			try {
@@ -193,12 +182,14 @@ public class SurveyRequestHandler implements MessageListener {
 					
 					SurveyEventResponse eventResponse = (SurveyEventResponse) event;
 					
-					pathInfos.addAll(eventResponse.getPathInfos());
-					blocks.addAll(eventResponse.getBlocks());
-					recordCounts.addAll(eventResponse.getRecordCounts());
-					
-					for(long recC : eventResponse.getRecordCounts())
-						totalRecordCount+= recC;
+					if(eventResponse.getPathInfos() != null && eventResponse.getPathInfos().size() > 0) {
+						pathInfos.addAll(eventResponse.getPathInfos());
+						blocks.addAll(eventResponse.getBlocks());
+						recordCounts.addAll(eventResponse.getRecordCounts());
+						
+						for(long recC : eventResponse.getRecordCounts())
+							totalRecordCount+= recC;
+					}
 					
 				}
 			} catch (IOException | SerializationException e) {
@@ -221,11 +212,14 @@ public class SurveyRequestHandler implements MessageListener {
 			NetworkDestination nd = extractNodeInfo(pathInfo);
 			
 			// The number of training points to be extracted from this block
-			int numPoints = (int)(recordCounts.get(i)/totalRecordCount)*numTrainingPoints;
+			double fraction = (double)recordCounts.get(i)/(double)totalRecordCount;
+			
+			int numPoints = (int)(Math.ceil(fraction*numTrainingPoints));
+			
 			String block = blocks.get(i);
 			
 			if(numPoints > 0) {
-				
+				logger.info("NUMPOINTS "+ block+" "+numPoints);
 				TrainingRequirements tr;
 				if(nodeWiseRequest.get(nd) == null) {
 					expectedTrainingMsgs++;
@@ -284,6 +278,8 @@ public class SurveyRequestHandler implements MessageListener {
 	public static void main(String arg[]) {
 		String s = "hello:world".split(":")[0];
 		System.out.println(s);
+		List<String> sa = new ArrayList<String>();
+		sa.addAll(null);
 		
 	}
 	/**

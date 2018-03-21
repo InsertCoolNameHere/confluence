@@ -7,6 +7,7 @@ import galileo.comm.DataIntegrationRequest;
 import galileo.comm.FilesystemAction;
 import galileo.comm.FilesystemRequest;
 import galileo.comm.StorageRequest;
+import galileo.comm.SurveyRequest;
 import galileo.comm.TemporalType;
 import galileo.dataset.Block;
 import galileo.dataset.SpatialHint;
@@ -48,12 +49,13 @@ abstract class GalileoConnectorInterface {
 		if(mode == 1) {
 			
 			spUnc = 5;
-			tempUnc = 4*60*60;
+			// 1hr
+			tempUnc = 60*60*1000;
 			
 		} else if(mode == 2) {
 			
 			spUnc = 5;
-			tempUnc = 4*60*60;
+			tempUnc = 60*60*1000;
 			
 		}
 		FilesystemRequest fsRequest = new FilesystemRequest(name, FilesystemAction.CREATE, featureList, sh, spUnc, tempUnc,  false, temporalHint);
@@ -67,6 +69,10 @@ abstract class GalileoConnectorInterface {
 	
 	public void integrate(DataIntegrationRequest dr) throws IOException {
 		publisher.publish(server, dr);
+	}
+	
+	public void survey(SurveyRequest sr) throws IOException {
+		publisher.publish(server, sr);
 	}
 	
 	public void disconnect() {

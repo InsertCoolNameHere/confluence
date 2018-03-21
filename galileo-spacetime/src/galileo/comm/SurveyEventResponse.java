@@ -3,6 +3,7 @@ package galileo.comm;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 import galileo.event.Event;
 import galileo.serialization.SerializationException;
@@ -17,7 +18,7 @@ public class SurveyEventResponse implements Event{
 	private List<String> blocks;
 	private List<Long> recordCounts;
 	private String errorMsg;
-	
+	//private static final Logger logger = Logger.getLogger("galileo");
 
 	public SurveyEventResponse(List<String> pathInfos, List<String> blocks, List<Long> recordCounts) {
 		this.pathInfos = pathInfos;
@@ -34,6 +35,10 @@ public class SurveyEventResponse implements Event{
 		
 		boolean hasData = in.readBoolean();
 		if(hasData) {
+			pathInfos = new ArrayList<String>();
+			recordCounts = new ArrayList<Long>();
+			blocks = new ArrayList<String>();
+			
 			in.readStringCollection(pathInfos);
 			in.readStringCollection(blocks);
 			in.readLongCollection(recordCounts);
@@ -50,11 +55,13 @@ public class SurveyEventResponse implements Event{
 	public void serialize(SerializationOutputStream out) throws IOException {
 		
 		boolean hasData = false;
+		
 		if(pathInfos != null && pathInfos.size() > 0 && blocks != null && blocks.size() > 0
 				&& recordCounts != null && recordCounts.size() > 0) {
 			hasData = true;
 		}
 		out.writeBoolean(hasData);
+		
 		if(hasData) {
 			
 			out.writeStringCollection(pathInfos);
@@ -65,7 +72,7 @@ public class SurveyEventResponse implements Event{
 		
 		boolean hasError = false;
 		
-		if(!errorMsg.isEmpty()) {
+		if(errorMsg != null && !errorMsg.isEmpty()) {
 			hasError = true;
 		}
 		

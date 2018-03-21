@@ -1,6 +1,7 @@
 package galileo.comm;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import galileo.event.Event;
@@ -35,6 +36,7 @@ public class DataIntegrationResponse implements Event{
 	@Deserialize
 	public DataIntegrationResponse(SerializationInputStream in) throws IOException, SerializationException {
 		eventId = in.readString();
+		resultPaths = new ArrayList<String>();
 		in.readStringCollection(resultPaths);
 		nodeName = in.readString();
 		nodePort = in.readString();

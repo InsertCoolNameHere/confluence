@@ -22,6 +22,7 @@ public class SelfJoinThread implements Runnable {
 		this.betas = dEFAULT_BETAS;
 		this.pathInfo = pathInfo;
 		this.temporalType = temporalType;
+		this.trainingPoints = "";
 		
 	}
 
@@ -31,9 +32,11 @@ public class SelfJoinThread implements Runnable {
 		MDC m = new MDC();
 		List<String> tps = m.iterativeMultiDimSelfJoin(indvARecords, indvBRecords, epsilons, betas, pathInfo, temporalType);
 		// TODO Auto-generated method stub
-		for(String tp : tps)
-			if(tp.length() > 0)
-				this.trainingPoints += (tp+"\n");
+		if(tps.size() > 0) {
+			for(String tp : tps)
+				if(tp.length() > 0)
+					this.trainingPoints += (tp+"\n");
+		}
 		
 	}
 

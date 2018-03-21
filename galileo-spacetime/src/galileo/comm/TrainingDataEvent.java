@@ -1,6 +1,7 @@
 package galileo.comm;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import galileo.dht.TrainingRequirements;
@@ -46,6 +47,9 @@ public class TrainingDataEvent implements Event{
 	
 	@Deserialize
 	public TrainingDataEvent(SerializationInputStream in) throws IOException, SerializationException {
+		blockPath = new ArrayList<String>();
+		numPoints = new ArrayList<Integer>();
+		pathInfo = new ArrayList<String>();
 		
 		in.readStringCollection(this.blockPath);
 		in.readIntegerCollection(this.numPoints);

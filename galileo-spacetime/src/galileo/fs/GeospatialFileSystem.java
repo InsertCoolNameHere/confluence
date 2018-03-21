@@ -291,6 +291,7 @@ public class GeospatialFileSystem extends FileSystem {
 		}
 		this.spatialHint = sHint;
 		this.temporalHint = temporalHint;
+		logger.info("RIKI: TEMPORAL HINT: "+this.temporalHint);
 		if (this.featureList != null && this.spatialHint == null)
 			throw new IllegalArgumentException("Spatial hint is needed when feature list is provided");
 		this.storageRoot = storageDirectory;
@@ -421,6 +422,7 @@ public class GeospatialFileSystem extends FileSystem {
 			spHint.put("lngHint", this.spatialHint.getLongitudeHint());
 		}
 		state.put("spatialHint", spHint == null ? JSONObject.NULL : spHint);
+		state.put("temporalHint", this.temporalHint);
 		state.put("temporalType", this.temporalType.getType());
 		state.put("temporalString", this.temporalType.name());
 		state.put("earliestTime", this.earliestTime != null ? this.earliestTime.getStart() : JSONObject.NULL);
@@ -493,7 +495,7 @@ public class GeospatialFileSystem extends FileSystem {
 		
 		gfs.spatialUncertaintyPrecision = state.getInt("spatialUncertaintyPrecision");
 		gfs.temporalUncertaintyPrecision = state.getInt("temporalUncertaintyPrecision");
-		//gfs.temporalHint = state.getString("temporalHint");
+		gfs.temporalHint = state.getString("temporalHint");
 		gfs.temporalPosn = state.getInt("temporalPosn");
 		gfs.spatialPosn1 = state.getInt("spatialPosn1");
 		gfs.spatialPosn2 = state.getInt("spatialPosn2");
@@ -1893,7 +1895,7 @@ public class GeospatialFileSystem extends FileSystem {
 	}
 	
 	private void getFeaturePathsWithSpecificIndex(String blockPath, int latInd, int lonInd, int temporalInd, int featureInd,
-			List<Integer> recNums, List<String[]> featurePathsA, List<String[]> featurePathsB) throws IOException {
+			List<Integer> recordsToRead, List<String[]> featurePathsA, List<String[]> featurePathsB) throws IOException {
 		
 		byte[] blockBytes = Files.readAllBytes(Paths.get(blockPath));
 		String blockData = new String(blockBytes, "UTF-8");
@@ -1903,10 +1905,11 @@ public class GeospatialFileSystem extends FileSystem {
 		for (String line : lines) {
 			String[] tokens = line.split(",", splitLimit);
 			String[] choppedFeatures = {tokens[latInd],tokens[lonInd],tokens[temporalInd],tokens[featureInd]};
-			if(recNums.contains(lineNum))
+			if(recordsToRead.contains(lineNum))
 				featurePathsA.add(choppedFeatures);
 			else
 				featurePathsB.add(choppedFeatures);
+			lineNum++;
 		}
 	}
 
@@ -2577,23 +2580,14 @@ public class GeospatialFileSystem extends FileSystem {
 		Map<String, List<String[]>> pathToAsMap = new HashMap<String, List<String[]>>();
 		Map<String, List<String[]>> pathToBsMap = new HashMap<String, List<String[]>>();
 		
-		int latOrder = -1, lonOrder = -1, index = 0, temporalOrder = -1,featurePosn = -1;
+		int latOrder = spatialPosn1, lonOrder = spatialPosn2, index = 0, temporalOrder = temporalPosn, featurePosn = -1;
 		for (Pair<String, FeatureType> columnPair : GeospatialFileSystem.this.featureList) {
-			if (columnPair.a.equalsIgnoreCase(GeospatialFileSystem.this.spatialHint.getLatitudeHint()))
-				latOrder = index++;
-			else if (columnPair.a
-					.equalsIgnoreCase(GeospatialFileSystem.this.spatialHint.getLongitudeHint()))
-				lonOrder = index++;
-			else if (columnPair.a
-					.equalsIgnoreCase(GeospatialFileSystem.this.temporalHint))
-				temporalOrder = index++;
-			else if (columnPair.a
+			if (columnPair.a
 					.equalsIgnoreCase(featureName))
 				featurePosn = index++;
 			else
 				index++;
 		}
-		
 		int count = 0;
 		for(String blockPath: blockPaths) {
 			
@@ -2669,6 +2663,7 @@ public class GeospatialFileSystem extends FileSystem {
 		
 		for (SelfJoinThread sjt : joinProcessors) {
 			if(sjt.getTrainingPoints().length() > 0){
+				//logger.info("RIKI: INDIVIDUAL: "+sjt.getTrainingPoints());
 				trainigData+=sjt.getTrainingPoints();
 			}
 		}
@@ -2737,7 +2732,7 @@ public class GeospatialFileSystem extends FileSystem {
 		List<Integer> list = new ArrayList<Integer>();
 		for (int i = 1; i < range; i++) {
 			if(!fringeEntries.contains(i))
-				list.add(new Integer(i));
+				list.add(i);
 		}
 		Collections.shuffle(list);
 		

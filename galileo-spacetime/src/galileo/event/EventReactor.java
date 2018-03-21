@@ -186,6 +186,10 @@ public class EventReactor implements MessageListener {
         try {
             Event event = eventWrapper.unwrap(message);
             Method method = classToMethod.get(event.getClass());
+            
+            //logger.info("EVENT CLASS "+event.getClass());
+            //logger.info("RIKI KEYS: "+ classToMethod.keySet());
+            //logger.info("MAPPING: "+classToMethod.get(event.getClass()));
             EventContext context = new EventContext(message, eventWrapper);
             method.invoke(handlerObject, event, context);
         } catch (InvocationTargetException e) {

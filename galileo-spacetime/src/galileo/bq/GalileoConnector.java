@@ -34,6 +34,7 @@ import java.util.TimeZone;
 import galileo.dataset.Block;
 import galileo.dataset.Metadata;
 import galileo.dataset.SpatialProperties;
+import galileo.dataset.SpatialRange;
 import galileo.dataset.TemporalProperties;
 import galileo.dataset.feature.Feature;
 import galileo.dataset.feature.FeatureSet;
@@ -196,7 +197,6 @@ public class GalileoConnector extends GalileoConnectorInterface {
 		
 		FeatureSet features = getFeatures(values, mode);
 		
-			
 		Metadata metadata = new Metadata();
 		metadata.setName(GeoHash.encode(parseFloat(values[24]), parseFloat(values[25]), 7));
 		metadata.setTemporalProperties(temporalProperties);
@@ -208,6 +208,39 @@ public class GalileoConnector extends GalileoConnectorInterface {
 		return new Block(fsName, metadata, data.getBytes("UTF-8"));
 	}
 
+	public static Block createBlockWind(String edfRecord, String data, String fsName) throws UnsupportedEncodingException {
+		String[] values = edfRecord.split(",");
+		TemporalProperties temporalProperties = new TemporalProperties(reformatDatetime(values[2]));
+		SpatialProperties spatialProperties = new SpatialProperties(parseFloat(values[0]), parseFloat(values[1]));
+		
+		FeatureSet features = getFeaturesWind(values);
+		
+		Metadata metadata = new Metadata();
+		metadata.setName(GeoHash.encode(parseFloat(values[0]), parseFloat(values[1]), 4));
+		metadata.setTemporalProperties(temporalProperties);
+		metadata.setSpatialProperties(spatialProperties);
+		metadata.setAttributes(features);
+		
+		return new Block(fsName, metadata, data.getBytes("UTF-8"));
+	}
+	
+	/**
+	 * @param values
+	 * @return
+	 */
+	private static FeatureSet getFeaturesWind(String[] values) {
+		
+		FeatureSet features = new FeatureSet();
+		
+		features.put(new Feature("gps_abs_lat", values[0]));		
+		features.put(new Feature("gps_abs_lon", values[1]));
+		features.put(new Feature("epoch_time", values[2]));
+		features.put(new Feature("wind_speed", values[3]));
+		features.put(new Feature("wind_dir", values[4]));
+		
+		return features;
+	}
+	
 	/**
 	 * @param values
 	 * @return

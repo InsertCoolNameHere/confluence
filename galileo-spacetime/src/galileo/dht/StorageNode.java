@@ -252,7 +252,7 @@ public class StorageNode implements RequestListener {
 		try (BufferedReader br = new BufferedReader(new FileReader(fsFile))) {
 			String jsonSource = br.readLine();
 			//logger.log(Level.INFO, "RIKI: JSON: "+jsonSource);
-			if (jsonSource != null && jsonSource.length() > 0) {
+			if (jsonSource != null && jsonSource.length() > 2) {
 				JSONObject fsJSON = new JSONObject(jsonSource);
 				for (String fsName : JSONObject.getNames(fsJSON)) {
 					try {
@@ -384,7 +384,7 @@ public class StorageNode implements RequestListener {
 				Metadata metadata = file.getMetadata();
 				Partitioner<Metadata> partitioner = gfs.getPartitioner();
 				NodeInfo node = partitioner.locateData(metadata);
-				logger.log(Level.INFO, "Storage destination: {0}", node);
+				logger.log(Level.INFO, "RIKI: DATA " + file.getMetadata().getName() +" SENT TO DESTINATION: "+node);
 				StorageEvent store = new StorageEvent(file);
 				sendEvent(node, store);
 			} else {
@@ -622,11 +622,12 @@ public class StorageNode implements RequestListener {
 	 * @param request
 	 * @param context
 	 */
+	@EventHandler
 	public void handleSurveyRequest(SurveyRequest request, EventContext context) {
 		
 		String fsName = request.getFsName();
-		String trainingResultsDir = this.rootDir + "/.tresults";
-		
+		String trainingResultsDir = queryResultsDir;
+		String nodeString = hostname + "-" + port;
 		
 		List<NodeInfo> allNodes = network.getAllNodes();
 		SurveyResponse rsp = new SurveyResponse();
@@ -636,7 +637,7 @@ public class StorageNode implements RequestListener {
 		try {
 			SurveyRequestHandler reqHandler = new SurveyRequestHandler(new ArrayList<NetworkDestination>(allNodes),
 					context, request.getNumTrainingPoints(), fsName, request.getFeatureName(),request.getLatEps(), request.getLonEps()
-					, request.getTimeEps(),trainingResultsDir, this);
+					, request.getTimeEps(),trainingResultsDir, nodeString, this);
 			
 			/* Sending out query to all nodes */
 			reqHandler.handleRequest(se, rsp);
@@ -660,6 +661,7 @@ public class StorageNode implements RequestListener {
 	 * @param request
 	 * @param context
 	 */
+	@EventHandler
 	public void handleSurveyEvent(SurveyEvent request, EventContext context) {
 		
 		GeospatialFileSystem fs = fsMap.get(request.getFsName());
@@ -692,6 +694,7 @@ public class StorageNode implements RequestListener {
 	 * @param request
 	 * @param context
 	 */
+	@EventHandler
 	public void handleTrainingDataEvent(TrainingDataEvent request, EventContext context) {
 		
 		List<String> blockPaths = request.getBlockPath();
@@ -707,15 +710,11 @@ public class StorageNode implements RequestListener {
 			String nodeString = hostname + ":" + port;
 			String featureNames = "";
 			TrainingDataResponse rsp = new TrainingDataResponse(dataPoints, nodeString);
-			
 			context.sendReply(rsp);
 		} catch (Exception e) {
-			SurveyEventResponse ss = new SurveyEventResponse(e.getMessage());
-			try {
-				context.sendReply(ss);
-			} catch (IOException e1) {
-				logger.log(Level.SEVERE, "Failed to send response to the original client", e);
-			}
+			
+			logger.log(Level.SEVERE, "Failed to send response to the original client", e);
+			
 		}
 	}
 
@@ -1230,6 +1229,7 @@ public class StorageNode implements RequestListener {
 	 */
 	@EventHandler
 	public void handleDataIntegration(DataIntegrationEvent event, EventContext context) {
+		
 		logger.log(Level.INFO, "RIKI: RECEIVED A FS1 DATAINTEGRATIONEVENT");
 		// fs1 is the primary filesystem
 		String fsName1 = event.getFsname1();

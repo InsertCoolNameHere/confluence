@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 import galileo.comm.TemporalType;
@@ -13,6 +14,7 @@ public class MDC {
 	
 	List<Integer> aValidEntries = new ArrayList<Integer>();
 	List<Integer> bValidEntries = new ArrayList<Integer>();
+	private static final Logger logger = Logger.getLogger("galileo");
 	private int mode = 7;
 	
 	public MDC(int mode) {
@@ -438,6 +440,11 @@ public class MDC {
 			List<String[]> bRecs = new ArrayList<String[]>();
 			for(int ib : bIndices) {
 				String[] entry = indvBRecords.get(ib);
+				
+				// ignore entry with same space and time, if any
+				if(entry[0] == aRec[0] && entry[1] == aRec[1] && entry[2] == aRec[2])
+					continue;
+				
 				bRecs.add(entry);
 			}
 			
@@ -446,8 +453,9 @@ public class MDC {
 			if(bRecs.size() > 0) {
 				String tp = IDW.getOneTrainingPoint(aRec, bRecs, betas, mins.get(0), spans.get(0),
 						mins.get(1), spans.get(1),mins.get(2), spans.get(2));
+				
 				retJoinRecords.add(tp);
-			}
+			} 
 			
 			//retJoinRecords.add(ret1+"$$"+ret2);
 			

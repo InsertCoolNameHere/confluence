@@ -4,44 +4,43 @@ import java.io.IOException;
 import java.util.List;
 
 import galileo.event.Event;
+import galileo.serialization.SerializationException;
+import galileo.serialization.SerializationInputStream;
 import galileo.serialization.SerializationOutputStream;
+import galileo.serialization.ByteSerializable.Deserialize;
 
 public class SurveyResponse implements Event{
 	
-	// metadata info for each path
-	private List<String> pathInfos;
-	// nodename:port$$pathstring
-	private List<String> pathStrings;
-	private List<Integer> counts;
+	private String outputPath;
+	private String nodeString;
+	public SurveyResponse() {}
 
 	@Override
 	public void serialize(SerializationOutputStream out) throws IOException {
-		// TODO Auto-generated method stub
+		out.writeString(outputPath);
+		out.writeString(nodeString);
 		
 	}
-
-	public List<String> getPathInfos() {
-		return pathInfos;
+	@Deserialize
+	public SurveyResponse(SerializationInputStream in) throws IOException, SerializationException {
+		outputPath = in.readString();
+		nodeString = in.readString();
 	}
 
-	public void setPathInfos(List<String> pathInfos) {
-		this.pathInfos = pathInfos;
+	public String getOutputPath() {
+		return outputPath;
 	}
 
-	public List<String> getPathStrings() {
-		return pathStrings;
+	public void setOutputPath(String outputPath) {
+		this.outputPath = outputPath;
 	}
 
-	public void setPathStrings(List<String> pathStrings) {
-		this.pathStrings = pathStrings;
+	public String getNodeString() {
+		return nodeString;
 	}
 
-	public List<Integer> getCounts() {
-		return counts;
-	}
-
-	public void setCounts(List<Integer> counts) {
-		this.counts = counts;
+	public void setNodeString(String nodeString) {
+		this.nodeString = nodeString;
 	}
 
 }
