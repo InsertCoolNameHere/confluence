@@ -37,7 +37,7 @@ public class WindInsert {
 	 *            GalileoConnector instance
 	 * @throws Exception
 	 */
-	private static boolean FS_CREATED = false;
+	private static boolean FS_CREATED = true;
 	
 	private static void processFile(File[] files, GalileoConnector gc) throws Exception {
 		
@@ -202,7 +202,7 @@ public class WindInsert {
 		String args[] = new String[3];
 		args[0] = "lattice-71.cs.colostate.edu";
 		args[1] = "5634";
-		args[2] = "/s/green/a/tmp/sapmitra/windTrial";
+		args[2] = "/s/green/a/tmp/sapmitra/windTrial1";
 		
 		if (args.length != 3) {
 			System.out.println(
