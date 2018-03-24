@@ -27,7 +27,7 @@ public class SurveyTest {
 		
 		// CREATING FS1
 		
-		SurveyRequest sr = new SurveyRequest("windfs", 200, "wind_speed", 0.1d, 0.1d, 4*60*60*1000);
+		SurveyRequest sr = new SurveyRequest("windfs", 2000, "wind_speed", 0.1d, 0.1d, 4*60*60*1000);
 		
 		try {
 			gc.survey(sr);
