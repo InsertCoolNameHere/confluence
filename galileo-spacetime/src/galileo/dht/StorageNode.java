@@ -1174,6 +1174,7 @@ public class StorageNode implements RequestListener {
 		
 		dintEvent.setTimeRelaxation(request.getTimeRelaxation());
 		dintEvent.setSpaceRelaxation(request.getSpaceRelaxation());
+		dintEvent.setInterpolatingFeature(request.getInterpolatingFeature());
 		dintEvent.setFsname1(request.getFsname1());
 		dintEvent.setFsname2(request.getFsname2());
 		dintEvent.setPrimaryFS(request.getPrimaryFS());
@@ -1231,6 +1232,8 @@ public class StorageNode implements RequestListener {
 	public void handleDataIntegration(DataIntegrationEvent event, EventContext context) {
 		
 		logger.log(Level.INFO, "RIKI: RECEIVED A FS1 DATAINTEGRATIONEVENT");
+		String interpolatingFeature = event.getInterpolatingFeature();
+		
 		// fs1 is the primary filesystem
 		String fsName1 = event.getFsname1();
 		GeospatialFileSystem fs1 = fsMap.get(fsName1);
@@ -1239,6 +1242,7 @@ public class StorageNode implements RequestListener {
 		// fs2 is the secondary filesystem
 		String fsName2 = event.getFsname2();
 		GeospatialFileSystem fs2 = fsMap.get(fsName2);
+		int interpolatingFeaturePosn = fs2.getFeaturePosition(interpolatingFeature);
 		
 		/* Getting positions */
 		int[] aPosns  = {fs1.getTemporalPosn(), fs1.getSpatialPosn1(), fs1.getSpatialPosn2()};
@@ -1428,7 +1432,7 @@ public class StorageNode implements RequestListener {
 				Set<NodeInfo> setNodes = new TreeSet<NodeInfo>(destinations);
 				destinations = new ArrayList<NodeInfo>(setNodes);
 				
-				logger.log(Level.INFO, "RIKI :FS2 REQUESTS BEING SENT OUT TO :"+ destinations);
+				logger.log(Level.INFO, "RIKI : FS2 REQUESTS BEING SENT OUT TO :"+ destinations);
 
 				List<NeighborDataEvent> individualRequests = new ArrayList<NeighborDataEvent>();
 				//List<NeighborDataEvent> internalEvents = new ArrayList<NeighborDataEvent>();
@@ -1460,8 +1464,9 @@ public class StorageNode implements RequestListener {
 				GeoavailabilityQuery geoQuery = new GeoavailabilityQuery(event.getFeatureQuery(),
 						event.getPolygon());
 				
+				/* ALSO HANDLES ACTUAL JOIN */
 				NeighborRequestHandler rikiHandler = new NeighborRequestHandler(null, individualRequests, new ArrayList<NetworkDestination>(destinations), context, this,
-						allCubes, superCubeNumNodesMap, numCores, geoQuery, fs1, eventId, queryResultsDir, aPosns, bPosns, epsilons, hostname, String.valueOf(port));
+						allCubes, superCubeNumNodesMap, numCores, geoQuery, fs1, eventId, queryResultsDir, aPosns, bPosns, epsilons, hostname, String.valueOf(port), interpolatingFeaturePosn);
 				rikiHandler.handleRequest(response);
 				logger.log(Level.INFO, "RIKI :FS2 REQUESTS FINISHED SENDING :"+ destinations);
 
@@ -1754,7 +1759,7 @@ public class StorageNode implements RequestListener {
 			List<Coordinates> bounds = GeoHash.getSuperGeohashes(space, fs1.getSpatialUncertaintyPrecision());
 			
 			s = new SuperCube();
-			s.setCentralTime(day+"-"+month+"-"+year+"-"+hour);
+			s.setCentralTime(year+"-"+month+"-"+day+"-"+hour);
 			s.setCentralGeohash(space);
 			s.setPolygon(bounds);
 

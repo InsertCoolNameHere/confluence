@@ -20,6 +20,7 @@ public class DataIntegrationEvent implements Event{
 	private int spaceRelaxation;
 	private String fsname1;
 	private String fsname2;
+	private String interpolatingFeature;
 	private int primaryFS;
 	private Query featureQuery;
 	private double latRelax;
@@ -68,6 +69,7 @@ public class DataIntegrationEvent implements Event{
 		spaceRelaxation = in.readInt();
 		fsname1 = in.readString();
 		fsname2 = in.readString();
+		interpolatingFeature = in.readString();
 		primaryFS = in.readInt();
 		latRelax = in.readDouble();
 		longRelax = in.readDouble();
@@ -94,6 +96,7 @@ public class DataIntegrationEvent implements Event{
 		out.writeInt(spaceRelaxation);
 		out.writeString(fsname1);
 		out.writeString(fsname2);
+		out.writeString(interpolatingFeature);
 		out.writeInt(primaryFS);
 		out.writeDouble(latRelax);
 		out.writeDouble(longRelax);
@@ -188,6 +191,14 @@ public class DataIntegrationEvent implements Event{
 
 	public void setId(String id) {
 		this.id = id;
+	}
+
+	public String getInterpolatingFeature() {
+		return interpolatingFeature;
+	}
+
+	public void setInterpolatingFeature(String interpolatingFeature) {
+		this.interpolatingFeature = interpolatingFeature;
 	}
 
 }

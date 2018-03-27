@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
@@ -90,7 +91,7 @@ public class MDC {
 		
 		MDC m = new MDC();
 		System.out.println(System.currentTimeMillis());
-		System.out.println(m.iterativeMultiDimJoin(aRecords, bRecords, aPosns, bPosns, epsilons));
+		System.out.println(m.iterativeMultiDimJoin(aRecords, bRecords, aPosns, bPosns, epsilons,3));
 		System.out.println(System.currentTimeMillis());
 	}
 	
@@ -122,12 +123,15 @@ public class MDC {
 	}*/
 	
 	
-	public List<String> iterativeMultiDimJoin(List<String[]> indvARecords,/*String aRecords,*/ String bRecords, int[] aPosns, int[] bPosns, double[] epsilons) {
+	public List<String> iterativeMultiDimJoin(List<String[]> indvARecords,/*String aRecords,*/ String bRecords, int[] aPosns, int[] bPosns, double[] epsilons, int interpolatingFeature) {
+		
 		/*System.out.println("BRECORDS: "+bRecords);
 		System.out.println("ARECORDS: ");*/
-		for(String[] sa: indvARecords) {
+		/*for(String[] sa: indvARecords) {
 			System.out.println(Arrays.asList(sa));
-		}
+		}*/
+		
+		
 		
 		System.out.println("APOSNS:");
 		for(int i: aPosns) {
@@ -218,12 +222,18 @@ public class MDC {
 			int aPosn = aPosns[i];
 			int bPosn = bPosns[i];
 			
+			/* If no match has been found and setA/ setB has become empty now */
+			if(splitARecords.isEmpty() || splitBRecords.isEmpty()) {
+				logger.info("GOING OUT FOR A RECORDS");
+				pairs = new ArrayList<String>();
+				break;
+			}
 			
 			List<Double> setA = new ArrayList<Double>();
 			List<Double> setB = new ArrayList<Double>();
 			
 			for(double[] frs: splitARecords) {
-				
+				System.out.println("SPLIT A RECORDS: "+Arrays.asList(frs)+" "+frs.length);
 				setA.add(frs[aPosn]);
 				
 			}
@@ -232,6 +242,7 @@ public class MDC {
 				setB.add(frs[bPosn]);
 				
 			}
+			
 			
 			ListIndexComparator comparator = new ListIndexComparator(setA, validAs);
 			Collections.sort(validAs, comparator);
@@ -271,20 +282,63 @@ public class MDC {
 		}
 		
 		List<String> retJoinRecords = new ArrayList<String> ();
-		for(String line : pairs) {
+		
+		// all A Points
+		List<Integer> aRecordIndices = new ArrayList<Integer>();
+		// all B points list for each A point
+		List<List<Integer>> bRecordIndices = new ArrayList<List<Integer>>();
+		
+		// create the one to many mapping between A and B entries
+		generateNeighborSphere(pairs, aRecordIndices, bRecordIndices);
+		
+		// for each entry in aRecords and corresponding neighbors in bRecords, now
+		// apply IDW with different betas
+		int count = 0;
+		for(int aIndex: aRecordIndices) {
+			List<Integer> bIndices = bRecordIndices.get(count);
 			
-			String[] pr = line.split(",");
-			int i1 = Integer.valueOf(pr[0]);
-			int i2 = Integer.valueOf(pr[1]);
+			String[] aRec = indvARecords.get(aIndex);
 			
-			String ret1 = java.util.Arrays.toString(indvARecords.get(i1));
-			String ret2 = indvBRecords[i2];
+			List<String[]> bRecs = new ArrayList<String[]>();
 			
-			retJoinRecords.add(ret1+"$$"+ret2);
+			int fullMatch = -1;
+			for(int ib : bIndices) {
+				String[] entry = indvBRecords[ib].split(",");
+				
+				// entry with same space and time, 100% accuracy, no IDW needed
+				
+				if(entry[bPosns[0]] == aRec[aPosns[0]] && entry[bPosns[1]] == aRec[aPosns[1]] && entry[bPosns[2]] == aRec[aPosns[2]]) {
+					fullMatch = ib;
+					
+				}
+				
+				bRecs.add(entry);
+			}
 			
+			// min and span needs to be passed here
+			if(fullMatch >= 0) {
+				
+				String bString="";
+				for(String[] brec: bRecs) {
+					bString+=Arrays.asList(brec)+"**";
+				}
+				String record = Arrays.asList(aRec)+"<SEP>"+bString+"<PRED>"+bRecs.get(fullMatch)[interpolatingFeature];
+				retJoinRecords.add(record);
+				
+			} else {
+				double[] betas = {2d};
+				if(bRecs.size() > 0) {
+					String rec = IDW.calculateIDW(aRec, bRecs, betas, interpolatingFeature, aPosns, bPosns);
+					
+					retJoinRecords.add(rec);
+				} 
+			}
+			
+			//retJoinRecords.add(ret1+"$$"+ret2);
+			
+			count++;
 		}
 		
-		//System.out.println("FINAL ANSWER: "+ pairs);
 		return retJoinRecords;
 	}
 	
@@ -554,7 +608,7 @@ public class MDC {
 	/* setA and setB are ordered according to the dimension in question */
 	public List<String> oneDJoin(List<Double> setA, List<Integer> aInd, List<Double> setB, List<Integer> bInd, 
 			double epsilon, List<double[]> splitAs, List<double[]> splitBs) {
-		//System.out.println("HERE");
+		System.out.println("RIKI HERE");
 		List<String> pairs = new ArrayList<String>();
 		
 		List<Integer> aValids = new ArrayList<Integer>();

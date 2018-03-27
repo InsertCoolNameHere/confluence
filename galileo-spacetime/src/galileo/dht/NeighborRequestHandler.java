@@ -99,12 +99,13 @@ public class NeighborRequestHandler implements MessageListener {
 	private double[] epsilons;
 	private String hostName;
 	private String port;
+	private int interpolatingFeature;
 	
 
 	public NeighborRequestHandler(List<NeighborDataEvent> internalEvents, List<NeighborDataEvent> individualRequests, Collection<NetworkDestination> destinations, EventContext clientContext,
 			RequestListener listener, List<SuperCube> allCubes, Map<Integer, Integer> superCubeNumNodesMap, 
 			int numCores, GeoavailabilityQuery geoQuery, GeospatialFileSystem fs1, String eventId, String queryResultsDir, 
-			int[] aPosns, int[] bPosns, double[] epsilons, String hostName, String port) throws IOException {
+			int[] aPosns, int[] bPosns, double[] epsilons, String hostName, String port, int interpolatingFeature2) throws IOException {
 		
 		this.nodes = destinations;
 		this.clientContext = clientContext;
@@ -145,6 +146,8 @@ public class NeighborRequestHandler implements MessageListener {
 		this.hostName = hostName;
 		this.port = port;
 		
+		
+		this.interpolatingFeature = interpolatingFeature2;
 	}
 
 	public void closeRequest() {
@@ -650,10 +653,12 @@ public class NeighborRequestHandler implements MessageListener {
 			
 		}*/
 		public JoiningThread(int i) {
+			
 			allFragsTo26.add(0);allFragsTo26.add(1);allFragsTo26.add(2);allFragsTo26.add(3);allFragsTo26.add(4);allFragsTo26.add(5);allFragsTo26.add(6);
 			allFragsTo26.add(7);allFragsTo26.add(8);allFragsTo26.add(9);allFragsTo26.add(10);allFragsTo26.add(11);allFragsTo26.add(12);allFragsTo26.add(13);
 			allFragsTo26.add(14);allFragsTo26.add(15);allFragsTo26.add(16);allFragsTo26.add(17);allFragsTo26.add(18);allFragsTo26.add(19);allFragsTo26.add(20);
 			allFragsTo26.add(21);allFragsTo26.add(22);allFragsTo26.add(23);allFragsTo26.add(24);allFragsTo26.add(25);allFragsTo26.add(26);
+			
 			synchronized(fs1SuperCubeDataMap) {
 				logger.log(Level.INFO, "RIKI: FS1 RECORDS LOCAL: "+Arrays.asList(fs1SuperCubeDataMap.get(i)));
 				this.indvARecords = fs1SuperCubeDataMap.get(i);
@@ -680,7 +685,7 @@ public class NeighborRequestHandler implements MessageListener {
 						}
 						
 						
-						System.out.println("EXISTING FRAGMENTS FOR PATH : "+key+" "+allFrags);
+						//System.out.println("EXISTING FRAGMENTS FOR PATH : "+key+" "+allFrags);
 						int cnt = 0;
 						for(int frag: frags) {
 							bRecords += allFrags.get(frag);
@@ -694,7 +699,14 @@ public class NeighborRequestHandler implements MessageListener {
 				}
 				
 				this.bRecords = bRecords;
-				logger.log(Level.INFO, "RIKI: FS2 RECORDS: "+bRecords);
+				
+				String aas = "";
+				for(String[] aa : indvARecords) {
+					aas+= Arrays.asList(aa)+"\n";
+				}
+				//logger.log(Level.INFO, "RIKI: FS2 RECORDS: "+bRecords);
+				logger.log(Level.INFO, "RIKI: AFS1 RECORDS: "+aas);
+				
 				this.storagePath = getResultFilePrefix(eventId, fs1.getName(), i);
 			}
 		}
@@ -702,7 +714,7 @@ public class NeighborRequestHandler implements MessageListener {
 		public void run() {
 			
 			MDC m = new MDC();
-			List<String> joinRes = m.iterativeMultiDimJoin(indvARecords, bRecords, aPosns, bPosns, epsilons);
+			List<String> joinRes = m.iterativeMultiDimJoin(indvARecords, bRecords, aPosns, bPosns, epsilons, interpolatingFeature);
 			// TODO Auto-generated method stub
 			
 			
@@ -713,7 +725,6 @@ public class NeighborRequestHandler implements MessageListener {
 					for (String res : joinRes) {
 						
 						fos.write(res.getBytes("UTF-8"));
-						
 						
 						fos.write("\n".getBytes("UTF-8"));
 					}
@@ -735,7 +746,7 @@ public class NeighborRequestHandler implements MessageListener {
 			
 			if(cubesLeft <= 0) {
 				// LAUNCH CLOSE REQUEST
-				logger.log(Level.INFO, "All Joins finished and saved");
+				logger.log(Level.INFO, "All Joins on this node finished and saved");
 				new Thread() {
 					public void run() {
 						NeighborRequestHandler.this.closeRequest();

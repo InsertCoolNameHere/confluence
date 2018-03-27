@@ -188,7 +188,7 @@ public class NeighborDataParallelQueryProcessor implements Runnable{
 					}
 				}
 				
-				logger.info("RIKI: THIS SCENARIO "+ recordsStringRepresentation + " "+blocks);
+				//logger.info("RIKI: THIS SCENARIO "+ recordsStringRepresentation + " "+blocks);
 			}
 
 			/*if (featurePaths.size() > 0) {

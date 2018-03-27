@@ -1,5 +1,6 @@
 package galileo.util;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -83,6 +84,58 @@ public class IDW {
 		String trainingPt = aLatO+","+aLongO+","+aTimeO+","+bestBeta+","+bestError;
 		
 		return trainingPt;
+		
+	}
+	
+	public static String calculateIDW(String[] aRec, List<String[]> bRecs, double[] betas, int interpolatingFeature, int[] aPosns, int[] bPosns) {
+		
+		double[] bDists = new double[bRecs.size()];
+		
+		double aLat = Double.valueOf(aRec[aPosns[0]]);
+		double aLong = Double.valueOf(aRec[aPosns[1]]);
+		double aTime = Double.valueOf(aRec[aPosns[2]]);
+		
+		// Calculating Euclidean distances
+		int count = 0;
+		for(String[] bRec : bRecs) {
+			double bLat = Double.valueOf(bRec[bPosns[0]]);
+			double bLong = Double.valueOf(bRec[bPosns[1]]);
+			double bTime = Double.valueOf(bRec[bPosns[2]]);
+			
+			double euclideanDist = java.lang.Math.pow((aLat-bLat), 2)
+					+java.lang.Math.pow((aLong-bLong), 2) + java.lang.Math.pow((aTime-bTime), 2);
+			
+			bDists[count] = euclideanDist;
+			count++;
+		}
+		
+		double prediction = 0;
+		for(double beta : betas) {
+			// For each beta
+			
+			int cnt = 0;
+			double sumWeights = 0;
+			
+			for(String[] bRec : bRecs) {
+				
+				double dist = bDists[cnt];
+				double bParameterVal = Double.valueOf(bRec[interpolatingFeature]);
+				// Inverse distance
+				double weight = 1 / java.lang.Math.pow(dist, beta);;
+				sumWeights += weight;
+				prediction += bParameterVal*weight;
+			}
+			
+			prediction = prediction/sumWeights;
+		}
+		
+		String bString="";
+		for(String[] brec: bRecs) {
+			bString+=Arrays.asList(brec)+"**";
+		}
+		String record = Arrays.asList(aRec)+"<SEP>"+bString+"<PRED>"+prediction;
+		
+		return record;
 		
 	}
 	

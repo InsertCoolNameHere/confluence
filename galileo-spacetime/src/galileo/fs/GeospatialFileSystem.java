@@ -1324,7 +1324,7 @@ public class GeospatialFileSystem extends FileSystem {
 		/* Both space and time in query */
 		
 		if (superPolygon != null && superPolygon.size() > 0 && temporalExpressionList != null && temporalExpressionList.size() > 0) {
-			logger.log(Level.SEVERE, "RIKI: ENTERED HERE");
+			logger.log(Level.INFO, "RIKI: ENTERED HERE");
 			SpatialProperties sp = new SpatialProperties(new SpatialRange(superPolygon));
 			
 			List<Coordinates> geometry = sp.getSpatialRange().hasPolygon() ? sp.getSpatialRange().getPolygon() : sp.getSpatialRange().getBounds();
@@ -1426,7 +1426,7 @@ public class GeospatialFileSystem extends FileSystem {
 		
 		Map<Path<Feature, String>, PathFragments> pathToFragmentsMap = new HashMap<Path<Feature, String>, PathFragments>();
 		Map<SuperCube,List<Requirements>> supercubeRequirementsMap = new HashMap<SuperCube,List<Requirements>>();
-		//logger.log(Level.SEVERE, "RIKI: ABOUT TO ENTER LOOP" + superCubes);
+		logger.log(Level.SEVERE, "RIKI: ABOUT TO ENTER LOOP " + superCubes +" "+paths);
 		
 		// For each supercube
 		// CALCULATE THE FRAGMENTS THAT ARE NEEDED
@@ -1439,14 +1439,14 @@ public class GeospatialFileSystem extends FileSystem {
 				String fs1PathSpace = sc.getCentralGeohash();
 				
 				/* RETURND TEMPORAL$SPATIAL  STRING*/
-				String ret = getPathInfo(path, 0 );
+				String ret = getPathInfoYMD(path, 0 );
 				//logger.log(Level.INFO,"RIKI: FS1 PATHINFO: "+fs1PathSpace + fs1PathTime);
 				//logger.log(Level.INFO, "RIKI: FS2 PATHINFO: "+ret);
 				if(ret != null){
 					String[] tokens = ret.split("\\$");
 					String fs2PathTime = tokens[0];
 					String fs2PathSpace = tokens[1];
-					
+					logger.log(Level.INFO, "RIKI: BEFORE ORIENTATION: "+fs1PathTime+" "+fs2PathTime);
 					String orientation = GeoHash.getOrientation(fs1PathSpace, fs2PathSpace, fs1PathTime, fs2PathTime, srcTT, this.temporalType);
 					logger.log(Level.INFO, "RIKI: ORIENTATION: "+orientation + path.getPayload());
 					if(orientation.contains("ignore"))
@@ -1570,6 +1570,61 @@ public class GeospatialFileSystem extends FileSystem {
 					break;
 			}
 			String temporal = day+"-"+month+"-"+year+"-"+hour;
+			
+			if(o == 1)
+				return space;
+			
+			return temporal+"$"+space;
+			
+			
+			
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * FOR SOME REASON, THE OTHER ONE I MADE RETURNS IN DMY FORMAT
+	 * @author sapmitra
+	 * @param path
+	 * @param o says whether we want both spatial and temporal info
+	 * @return
+	 */
+	public static String getPathInfoYMD(Path<Feature, String> path, int o) {
+		if (null != path && path.hasPayload()) {
+			
+			List<Feature> labels = path.getLabels();
+			String space = "";
+			String year = "xxxx", month = "xx", day = "xx", hour = "xx";
+			int allset = 0;
+			for (Feature label : labels) {
+				switch (label.getName().toLowerCase()) {
+				case TEMPORAL_YEAR_FEATURE:
+					year = label.getString();
+					allset++;
+					break;
+				case TEMPORAL_MONTH_FEATURE:
+					month = label.getString();
+					allset++;
+					break;
+				case TEMPORAL_DAY_FEATURE:
+					day = label.getString();
+					allset++;
+					break;
+				case TEMPORAL_HOUR_FEATURE:
+					hour = label.getString();
+					allset++;
+					break;
+				case SPATIAL_FEATURE:
+					space = label.getString();
+					allset++;
+
+					break;
+				}
+				if (allset == 5)
+					break;
+			}
+			String temporal = year+"-"+month+"-"+day+"-"+hour;
 			
 			if(o == 1)
 				return space;
@@ -2142,7 +2197,7 @@ public class GeospatialFileSystem extends FileSystem {
 				for(String[] hh : paths) {
 					rr += Arrays.toString(hh)+"$$";
 				}
-				logger.log(Level.INFO, "RIKI: READ RECORDS FOR NOT FULL BLOCK "+ rr + " " +blockPaths);
+				//logger.log(Level.INFO, "RIKI: READ RECORDS FOR NOT FULL BLOCK "+ rr + " " +blockPaths);
 				
 			}
 			
@@ -2401,7 +2456,7 @@ public class GeospatialFileSystem extends FileSystem {
 			for(NeighborDataParallelQueryProcessor nqp : queryProcessors) {
 				logger.log(Level.INFO, "RIKI: DID IT ENTER? " + blocks);
 				if(nqp.getRecordsStringRepresentation() != null && nqp.getRecordsStringRepresentation().length() > 0) {
-					logger.log(Level.INFO, "RIKI: INDIVIDUAL FRAGMENTS "+nqp.getRecordsStringRepresentation() + " "+ blocks);
+					//logger.log(Level.INFO, "RIKI: INDIVIDUAL FRAGMENTS "+nqp.getRecordsStringRepresentation() + " "+ blocks);
 					fullyEmpty = false;
 					int index = nqp.getFragNum();
 					recordFragmentsPerPath.add(index, nqp.getRecordsStringRepresentation());
@@ -2581,6 +2636,7 @@ public class GeospatialFileSystem extends FileSystem {
 		Map<String, List<String[]>> pathToBsMap = new HashMap<String, List<String[]>>();
 		
 		int latOrder = spatialPosn1, lonOrder = spatialPosn2, index = 0, temporalOrder = temporalPosn, featurePosn = -1;
+		
 		for (Pair<String, FeatureType> columnPair : GeospatialFileSystem.this.featureList) {
 			if (columnPair.a
 					.equalsIgnoreCase(featureName))
@@ -2776,6 +2832,20 @@ public class GeospatialFileSystem extends FileSystem {
 		System.out.println(clNew.size());
 		System.out.println(cl.size());
 		
+	}
+	
+	public int getFeaturePosition(String featureName) {
+		int featurePosn = -1;
+		int index = 0;
+		for (Pair<String, FeatureType> columnPair : GeospatialFileSystem.this.featureList) {
+			if (columnPair.a
+					.equalsIgnoreCase(featureName))
+				featurePosn = index++;
+			else
+				index++;
+		}
+		
+		return featurePosn;
 	}
 	
 	

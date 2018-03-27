@@ -43,6 +43,7 @@ abstract class GalileoConnectorInterface {
 		FileSystemRequest fsr = new FileSystemRequest(name, FileSystemAction.CREATE, pr);
 		publisher.publish(server, fsr);
 	}*/
+	
 	public void createFS(String name, SpatialHint sh,List<Pair<String, FeatureType>> featureList, String temporalHint, int mode) throws IOException {
 		int spUnc = 0;
 		int tempUnc = 0;
@@ -57,6 +58,13 @@ abstract class GalileoConnectorInterface {
 			spUnc = 5;
 			tempUnc = 60*60*1000;
 			
+		} else if (mode == 3) {
+			// For Sensor FS
+			spUnc = 5;
+			
+			// 5 mins
+			tempUnc = 5*60*1000;
+			// geohash precision for storage is preset to 4
 		}
 		FilesystemRequest fsRequest = new FilesystemRequest(name, FilesystemAction.CREATE, featureList, sh, spUnc, tempUnc,  false, temporalHint);
 		

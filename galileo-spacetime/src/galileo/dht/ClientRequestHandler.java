@@ -109,15 +109,17 @@ public class ClientRequestHandler implements MessageListener {
 			try {
 				event = this.eventWrapper.unwrap(gresponse);
 				if(event instanceof DataIntegrationResponse && this.response instanceof DataIntegrationFinalResponse) {
-					
+					logger.info("RIKI: DATA INTEGRATION RESPONSE RECEIVED....");
 					DataIntegrationFinalResponse actualResponse = (DataIntegrationFinalResponse) this.response;
 					
 					DataIntegrationResponse eventResponse = (DataIntegrationResponse) event;
 					
-					for(String path: eventResponse.getResultPaths()) {
-						
-						String newPath = eventResponse.getNodeName()+":"+eventResponse.getNodePort()+"$$"+path;
-						actualResponse.addResultPath(newPath);
+					if(eventResponse.getResultPaths() != null && eventResponse.getResultPaths().size() > 0) {
+						for(String path: eventResponse.getResultPaths()) {
+							logger.info("RIKI: DATA INTEGRATION RESPONSE :"+eventResponse.getResultPaths());
+							String newPath = eventResponse.getNodeName()+":"+eventResponse.getNodePort()+"$$"+path;
+							actualResponse.addResultPath(newPath);
+						}
 					}
 					
 					
@@ -311,7 +313,8 @@ public class ClientRequestHandler implements MessageListener {
 
 	@Override
 	public void onMessage(GalileoMessage message) {
-		logger.log(Level.INFO, "RIKI: RESPONSE RECEIVED");
+		
+		logger.log(Level.INFO, "RIKI: DATA INTEGRATION RESPONSE RECEIVED");
 		if (null != message)
 			this.responses.add(message);
 		int awaitedResponses = this.expectedResponses.decrementAndGet();

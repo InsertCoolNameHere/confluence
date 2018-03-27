@@ -98,7 +98,7 @@ public class GalileoConnector extends GalileoConnectorInterface {
 		features.put(new Feature("frac_days_since_jan1", parseFloat(values[4])));
 		features.put(new Feature("frac_hrs_since_jan1", parseFloat(values[5])));
 		features.put(new Feature("julian_days", parseFloat(values[6])));
-		features.put(new Feature("epoch_time", reformatDatetime(values[7])));
+		features.put(new Feature("non_epoch_time", reformatDatetime(values[7])));
 		features.put(new Feature("alarm_status", parseFloat(values[8])));
 		features.put(new Feature("inst_status", parseFloat(values[9])));
 		features.put(new Feature("cavity_pressure", parseFloat(values[10])));
@@ -131,6 +131,10 @@ public class GalileoConnector extends GalileoConnectorInterface {
 		features.put(new Feature("postal_code", values[37]));
 		features.put(new Feature("locality", values[38]));
 		features.put(new Feature("s2_30_int", parseLong(values[39])));
+		features.put(new Feature("wind_speed", parseFloat(values[40])));
+		features.put(new Feature("wind_dir", values[39]));
+		features.put(new Feature("epoch_time", reformatDatetime(values[7])));
+		
 			
 		Metadata metadata = new Metadata();
 		metadata.setName(GeoHash.encode(parseFloat(values[24]), parseFloat(values[25]), 7));
@@ -140,7 +144,7 @@ public class GalileoConnector extends GalileoConnectorInterface {
 		//metadata.setSpatialHint(new SpatialHint("gps_abs_lat", "gps_abs_lon"));
 		metadata.setAttributes(features);
 		
-		return new Block("airview", metadata, data.getBytes("UTF-8"));
+		return new Block("sensorfsnew", metadata, data.getBytes("UTF-8"));
 	}
 	
 	
