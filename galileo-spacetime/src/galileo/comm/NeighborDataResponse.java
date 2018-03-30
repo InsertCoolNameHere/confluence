@@ -61,6 +61,32 @@ public class NeighborDataResponse implements Event {
 		this.isActualData = false;
 		
 	}
+	
+	/**
+	 * THIS IS FOR WHEN NOTHING IS BEING RETURNED FROM THE NEIGHBOR,
+	 * BUT WE STILL NEED TO RETURN THE SUPERCUBES TO DECREMENT THE COUNT ON THE SENDER SIDE
+	 * 
+	 * @param supercubes
+	 * @param totalPaths
+	 * @param nodeString
+	 */
+	public NeighborDataResponse(List<SuperCube> supercubes, int totalPaths, String nodeString) {
+		
+		// There is one Requirement String for each supercube
+		supercubeIDList = new ArrayList<Integer>();
+		requirementsList = new ArrayList<String>();
+		this.nodeString = nodeString;
+		
+		for(SuperCube sc : supercubes) {
+			supercubeIDList.add((int)sc.getId());
+		}
+		
+		this.totalPaths = totalPaths;
+		this.isActualData = false;
+		
+	}
+	
+	
 
 	/* DATA MESSAGE */
 	public NeighborDataResponse(List<String> resultRecordLists, int pathIndex, String pathInfo, String nodeString) {

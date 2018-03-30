@@ -92,7 +92,7 @@ public class NeighborRequestHandler implements MessageListener {
 	private int numCores;
 	private List<Integer> superCubeLocalFetchCheck;
 	private List<String> resultFiles;
-	private ExecutorService executor;
+	private ExecutorService joinExecutors;
 	private int cubesLeft;
 	private int[] aPosns;
 	private int[] bPosns;
@@ -136,8 +136,8 @@ public class NeighborRequestHandler implements MessageListener {
 		resultFiles = new ArrayList<String>();
 		this.eventId = eventId;
 		this.queryResultsDir = queryResultsDir;
-		this.executor = Executors.newFixedThreadPool(Math.min(allCubes.size(), 2 * numCores));
-		
+		this.joinExecutors = Executors.newFixedThreadPool(Math.min(allCubes.size(), 2 * numCores));
+		logger.info("RIKI: THREADS NUM: "+allCubes.size()+" "+numCores);
 		this.superCubeNumNodesMap = superCubeNumNodesMap;
 		this.aPosns = aPosns;
 		this.bPosns =  bPosns;
@@ -151,16 +151,6 @@ public class NeighborRequestHandler implements MessageListener {
 	}
 
 	public void closeRequest() {
-		executor.shutdown();
-		boolean status;
-		try {
-			status = executor.awaitTermination(2, TimeUnit.MINUTES);
-			if (!status)
-				logger.log(Level.WARNING, "Executor terminated because of the specified timeout=10minutes");
-		} catch (InterruptedException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
 		
 		silentClose(); // closing the router to make sure that no new responses
 						// are added.
@@ -250,24 +240,27 @@ public class NeighborRequestHandler implements MessageListener {
 							nodeToNumberOfDataMessagesMap.put(nodeName, rsp.getTotalPaths());
 						}
 					}
-					
-					/* The # of supercubes returns =  number of requirements string */
-					for(int superCubeId: rsp.getSupercubeIDList()) {
-						int index = rsp.getSupercubeIDList().indexOf(superCubeId);
-						
-						/* This supercube is expecting response from one less nodes */
-						synchronized(superCubeNumNodesMap) {
-							int expectedNodes = superCubeNumNodesMap.get(superCubeId) - 1;
+					if(rsp.getSupercubeIDList() != null && rsp.getSupercubeIDList().size() > 0) {
+						/* The # of supercubes returns =  number of requirements string */
+						for(int superCubeId: rsp.getSupercubeIDList()) {
+							int index = rsp.getSupercubeIDList().indexOf(superCubeId);
 							
-							/* One less node to expect control message from */
-							superCubeNumNodesMap.put(superCubeId, expectedNodes);
+							/* This supercube is expecting response from one less nodes */
+							synchronized(superCubeNumNodesMap) {
+								int expectedNodes = superCubeNumNodesMap.get(superCubeId) - 1;
+								
+								/* One less node to expect control message from */
+								superCubeNumNodesMap.put(superCubeId, expectedNodes);
+							}
+							
+							/*Requirements for a single cube came back as 
+							 * pathIndex-0,1,2...\n */
+							if(rsp.getRequirementsList() != null && rsp.getRequirementsList().size() > 0) {
+								String requirementsString = rsp.getRequirementsList().get(index);
+								logger.log(Level.INFO, "RIKI : RETURNED REQUIREMENTS STRING LOOKS LIKE: "+nodeName +" "+requirementsString);
+								handleRequirementsOnControlMessage(requirementsString, superCubeId, nodeName);
+							}
 						}
-						
-						/*Requirements for a single cube came back as 
-						 * pathIndex-0,1,2...\n */
-						String requirementsString = rsp.getRequirementsList().get(index);
-						logger.log(Level.INFO, "RIKI : RETURNED REQUIREMENTS STRING LOOKS LIKE: "+nodeName +" "+requirementsString);
-						handleRequirementsOnControlMessage(requirementsString, superCubeId, nodeName);
 					}
 					
 					/* Update supercube requirements */
@@ -277,6 +270,8 @@ public class NeighborRequestHandler implements MessageListener {
 					/* DATA MESSAGE INCOMING */
 					
 					List<String> fragmentedRecords = rsp.getResultRecordLists();
+					
+					
 					String nodeName = rsp.getNodeString();
 					int pathIndex = rsp.getPathIndex();
 					
@@ -345,20 +340,17 @@ public class NeighborRequestHandler implements MessageListener {
 								if(expectedPaths.size() <= 0) {
 									
 									/* LAUNCH THIS SUPERCUBE INTO A NEW THREAD*/
-									logger.log(Level.INFO, "READY TO LAUNCH " + i);
+									logger.log(Level.INFO, "RIKI: READY TO LAUNCH " + i);
 									
 									//JoiningThread jt = new JoiningThread(fs1SuperCubeDataMap.get(i), bRecords, aPosns, bPosns, epsilons, cubeId);
 									JoiningThread jt = new JoiningThread(i);
-									executor.execute(jt);
+									joinExecutors.execute(jt);
 									
 									// executor shutdown could be done in closeRequest()
 								}
 							}
 						}
 					}
-					
-					// after this, launch a thread that checks for any supercube that is ready and launches it.
-					// cleanup thread
 					
 					
 				}
@@ -533,7 +525,7 @@ public class NeighborRequestHandler implements MessageListener {
 						
 						
 							if (qp.getResultRecordLists() != null && qp.getResultRecordLists().size() > 0) {
-								logger.log(Level.INFO, "RIKI : ENTERED VALUES "+ qp.getResultRecordLists() +" FOR "+qp.getSuperCubeId());
+								//logger.log(Level.INFO, "RIKI : ENTERED VALUES "+ qp.getResultRecordLists() +" FOR "+qp.getSuperCubeId());
 								fs1SuperCubeDataMap.put(qp.getSuperCubeId(), qp.getResultRecordLists());
 							} else {
 								fs1SuperCubeDataMap.put(qp.getSuperCubeId(), null);
@@ -603,8 +595,24 @@ public class NeighborRequestHandler implements MessageListener {
 									int indx = cleanupCandidateCubes.indexOf(c);
 									cleanupCandidateCubes.remove(indx);
 									JoiningThread jt = new JoiningThread(c);
-									executor.execute(jt);
+									joinExecutors.execute(jt);
 									//cubesLeft--;
+									
+									if(cubesLeft == 1) {
+										logger.info("RIKI: ETA HOYCHE");
+										joinExecutors.shutdown();
+										boolean status;
+										try {
+											status = joinExecutors.awaitTermination(2, TimeUnit.MINUTES);
+											if (!status)
+												logger.log(Level.WARNING, "Executor terminated because of the specified timeout=2minutes");
+										} catch (InterruptedException e1) {
+											// TODO Auto-generated catch block
+											e1.printStackTrace();
+										}
+									}
+									
+									
 								}
 							}
 						}
@@ -636,6 +644,7 @@ public class NeighborRequestHandler implements MessageListener {
 	class JoiningThread implements Runnable {
 		List<String[]> indvARecords;
 		String bRecords;
+		int cubeId;
 		/*int[] aPosns; 
 		int[] bPosns; 
 		double[] epsilons;*/
@@ -660,7 +669,7 @@ public class NeighborRequestHandler implements MessageListener {
 			allFragsTo26.add(21);allFragsTo26.add(22);allFragsTo26.add(23);allFragsTo26.add(24);allFragsTo26.add(25);allFragsTo26.add(26);
 			
 			synchronized(fs1SuperCubeDataMap) {
-				logger.log(Level.INFO, "RIKI: FS1 RECORDS LOCAL: "+Arrays.asList(fs1SuperCubeDataMap.get(i)));
+				//logger.log(Level.INFO, "RIKI: FS1 RECORDS LOCAL: "+Arrays.asList(fs1SuperCubeDataMap.get(i)));
 				this.indvARecords = fs1SuperCubeDataMap.get(i);
 			}
 			synchronized(supercubeToRequirementsMap) {
@@ -697,26 +706,26 @@ public class NeighborRequestHandler implements MessageListener {
 					}
 					
 				}
-				
+				this.cubeId = i;
 				this.bRecords = bRecords;
 				
-				String aas = "";
+				/*String aas = "";
 				for(String[] aa : indvARecords) {
 					aas+= Arrays.asList(aa)+"\n";
-				}
-				//logger.log(Level.INFO, "RIKI: FS2 RECORDS: "+bRecords);
-				logger.log(Level.INFO, "RIKI: AFS1 RECORDS: "+aas);
+				}*/
+				logger.log(Level.INFO, "RIKI: FS2 RECORDS: "+bRecords.length());
+				logger.log(Level.INFO, "RIKI: AFS1 RECORDS: "+indvARecords.size());
 				
 				this.storagePath = getResultFilePrefix(eventId, fs1.getName(), i);
 			}
 		}
 		@Override
 		public void run() {
-			
+			logger.info("RIKI: BEFORE JOIN RUN FOR CUBE "+cubeId);
 			MDC m = new MDC();
 			List<String> joinRes = m.iterativeMultiDimJoin(indvARecords, bRecords, aPosns, bPosns, epsilons, interpolatingFeature);
 			// TODO Auto-generated method stub
-			
+			logger.info("RIKI: AFTER JOIN RUN FOR CUBE "+cubeId);
 			
 			if (joinRes.size() > 0) {
 				FileOutputStream fos = null;
@@ -737,14 +746,18 @@ public class NeighborRequestHandler implements MessageListener {
 			} else {
 				this.storagePath = null;
 			}
-				
+			
+			logger.info("RIKI: AFTER SAVE FOR CUBE "+cubeId);
 			synchronized(resultFiles) {
 				if(storagePath != null)
 					resultFiles.add(storagePath);
 			}
+			
 			cubesLeft--;
 			
+			logger.info("RIKI: NUMBER OF CUBES LEFT: "+cubesLeft + " "+allCubes);
 			if(cubesLeft <= 0) {
+				
 				// LAUNCH CLOSE REQUEST
 				logger.log(Level.INFO, "All Joins on this node finished and saved");
 				new Thread() {

@@ -185,9 +185,9 @@ public class MyInsertSensorData {
 	 */
 	public static void main(String[] args1) {
 		String args[] = new String[3];
-		args[0] = "lattice-71.cs.colostate.edu";
+		args[0] = "lattice-21.cs.colostate.edu";
 		args[1] = "5634";
-		args[2] = "/s/green/a/tmp/sapmitra/sensor/testData.csv";
+		args[2] = "/s/green/a/tmp/sapmitra/finalDatasets/sensor/part-r-00000";
 		
 		
 		if (args.length != 3) {

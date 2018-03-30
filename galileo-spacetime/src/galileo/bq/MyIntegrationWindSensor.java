@@ -47,19 +47,31 @@ public class MyIntegrationWindSensor {
 		dr.setFsname1("sensorfsnew");
 		dr.setFsname2("windfs");
 		
-		Coordinates c1 = new Coordinates(34.8117f, -99.3311f);
+		/*Coordinates c1 = new Coordinates(34.8117f, -99.3311f);
 		Coordinates c2 = new Coordinates(34.78682f, -95.209f);
 		Coordinates c3 = new Coordinates(31.45682f, -95.209f);
-		Coordinates c4 = new Coordinates(31.62858f, -99.59101f);
+		Coordinates c4 = new Coordinates(31.62858f, -99.59101f);*/
+		
+		
+		
+		/*Coordinates c1 = new Coordinates(45.22f, -112.9f);
+		Coordinates c2 = new Coordinates(45.22f, -100.77f);
+		Coordinates c3 = new Coordinates(39.121f, -100.77f);
+		Coordinates c4 = new Coordinates(39.121f, -112.9f);*/
+		
+		Coordinates c1 = new Coordinates(34.22f, -101.9f);
+		Coordinates c2 = new Coordinates(34.22f, -89.57f);
+		Coordinates c3 = new Coordinates(27.421f, -89.57f);
+		Coordinates c4 = new Coordinates(27.421f, -101.9f);
 		//Coordinates c5 = new Coordinates(36.78f, -107.64f);
 		
 		List<Coordinates> cl = new ArrayList<Coordinates>();
 		cl.add(c1); cl.add(c2); cl.add(c3); cl.add(c4);
 		
 		dr.setPolygon(cl);
-		dr.setTime("2014-12-31-xx");
-		dr.setLatRelax(0.05f);
-		dr.setLongRelax(0.05f);
+		dr.setTime("2016-02-05-xx");
+		dr.setLatRelax(0.1f);
+		dr.setLongRelax(0.1f);
 		dr.setTimeRelaxation(1000*60*60);
 		dr.setInterpolatingFeature("wind_speed");
 		
@@ -80,7 +92,7 @@ public class MyIntegrationWindSensor {
 	 */
 	public static void main(String[] args1) {
 		String args[] = new String[2];
-		args[0] = "lattice-71.cs.colostate.edu";
+		args[0] = "lattice-21.cs.colostate.edu";
 		args[1] = "5634";
 		
 		

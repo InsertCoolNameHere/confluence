@@ -1467,6 +1467,9 @@ public class GeoHash {
 		System.out.println(getEndTimeStamp("2014","12","1","xx",TemporalType.DAY_OF_MONTH));
 		
 		
+		SpatialRange decodeHash = GeoHash.decodeHash("9x");
+		System.out.println(decodeHash.getBounds());
+		
 	}
 	
 	private static long getEndTimeStamp(TemporalProperties tp, TemporalType temporalType) {

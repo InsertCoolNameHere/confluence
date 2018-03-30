@@ -175,7 +175,7 @@ public class NeighborDataParallelQueryProcessor implements Runnable{
 					//this.featurePaths.add(featureValues);
 				}
 			} 
-			logger.info("RIKI: SHOULD ENTER "+blocks + fullRequired + " "+ this.featurePaths.size() + ">>"+recordsStringRepresentation+"<<");
+			//logger.info("RIKI: SHOULD ENTER "+blocks + fullRequired + " "+ this.featurePaths.size() + ">>"+recordsStringRepresentation+"<<");
 			
 			if(!fullRequired && this.featurePaths.size() > 0 && (recordsStringRepresentation == null || recordsStringRepresentation.isEmpty())) {
 				
@@ -188,7 +188,7 @@ public class NeighborDataParallelQueryProcessor implements Runnable{
 					}
 				}
 				
-				//logger.info("RIKI: THIS SCENARIO "+ recordsStringRepresentation + " "+blocks);
+				//logger.info("RIKI: SHOULD ENTER AFTER "+ recordsStringRepresentation + " "+blocks);
 			}
 
 			/*if (featurePaths.size() > 0) {

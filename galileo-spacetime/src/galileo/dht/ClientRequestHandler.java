@@ -109,10 +109,11 @@ public class ClientRequestHandler implements MessageListener {
 			try {
 				event = this.eventWrapper.unwrap(gresponse);
 				if(event instanceof DataIntegrationResponse && this.response instanceof DataIntegrationFinalResponse) {
-					logger.info("RIKI: DATA INTEGRATION RESPONSE RECEIVED....");
 					DataIntegrationFinalResponse actualResponse = (DataIntegrationFinalResponse) this.response;
 					
 					DataIntegrationResponse eventResponse = (DataIntegrationResponse) event;
+					
+					logger.info("RIKI: DATA INTEGRATION RESPONSE RECEIVED....FROM "+eventResponse.getNodeName()+":"+eventResponse.getNodePort() +" "+eventResponse.getResultPaths());
 					
 					if(eventResponse.getResultPaths() != null && eventResponse.getResultPaths().size() > 0) {
 						for(String path: eventResponse.getResultPaths()) {
@@ -308,13 +309,28 @@ public class ClientRequestHandler implements MessageListener {
 								+ e.getMessage(), e);
 			}
 		}
+		logger.info("RIKI: ENTIRE THING FINISHED AT: "+System.currentTimeMillis());
 		this.requestListener.onRequestCompleted(this.response, clientContext, this);
 	}
 
 	@Override
 	public void onMessage(GalileoMessage message) {
+		Event event;
+		try {
+			event = this.eventWrapper.unwrap(message);
+			DataIntegrationResponse eventResponse = (DataIntegrationResponse) event;
+			logger.log(Level.INFO, "RIKI: ONE DATA INTEGRATION RESPONSE RECEIVED FROM "+ eventResponse.getNodeName());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SerializationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
-		logger.log(Level.INFO, "RIKI: DATA INTEGRATION RESPONSE RECEIVED");
+		
+		
+		
 		if (null != message)
 			this.responses.add(message);
 		int awaitedResponses = this.expectedResponses.decrementAndGet();

@@ -78,9 +78,9 @@ public class LocalParallelQueryProcessor implements Runnable{
 	public void run() {
 		
 		try{
-			logger.log(Level.INFO, "RIKI: LocalParallelQueryProcessor PATHS "+featurePaths);
+			//logger.log(Level.INFO, "RIKI: LocalParallelQueryProcessor PATHS "+featurePaths);
 			if (queryBitmap != null) {
-				logger.log(Level.INFO, "RIKI: LocalParallelQueryProcessor PATHS1 "+featurePaths);
+				//logger.log(Level.INFO, "RIKI: LocalParallelQueryProcessor PATHS1 "+featurePaths);
 				int latOrder = -1, lngOrder = -1, index = 0;
 				for (Pair<String, FeatureType> columnPair : gfs.getFeatureList()) {
 					if (columnPair.a.equalsIgnoreCase(gfs.getSpatialHint().getLatitudeHint()))
@@ -103,14 +103,14 @@ public class LocalParallelQueryProcessor implements Runnable{
 					pathIterator.remove();
 				}
 				/*each string[] is a line of record*/
-				logger.log(Level.INFO, "RIKI: LocalParallelQueryProcessor PATHS2 "+featurePaths);
+				//logger.log(Level.INFO, "RIKI: LocalParallelQueryProcessor PATHS2 "+featurePaths);
 				for (List<String[]> paths : geoMap.query(queryBitmap).values()) 
 					this.featurePaths.addAll(paths);
-				logger.log(Level.INFO, "RIKI: LocalParallelQueryProcessor PATHS3 "+featurePaths);
+				//logger.log(Level.INFO, "RIKI: LocalParallelQueryProcessor PATHS3 "+featurePaths);
 				
 			}
 			if (query != null && this.featurePaths.size() > 0) {
-				logger.log(Level.INFO, "RIKI: LocalParallelQueryProcessor PATHS4 "+featurePaths);
+				//logger.log(Level.INFO, "RIKI: LocalParallelQueryProcessor PATHS4 "+featurePaths);
 				MetadataGraph temporaryGraph = new MetadataGraph();
 				Iterator<String[]> pathIterator = this.featurePaths.iterator();
 				while (pathIterator.hasNext()) {
@@ -149,7 +149,7 @@ public class LocalParallelQueryProcessor implements Runnable{
 					this.featurePaths.add(featureValues);
 				}
 			}
-			logger.log(Level.INFO, "RIKI: LocalParallelQueryProcessor PATHS5 "+featurePaths);
+			//logger.log(Level.INFO, "RIKI: LocalParallelQueryProcessor PATHS5 "+featurePaths);
 
 		} catch (BitmapException e) {
 			logger.log(Level.SEVERE, "Something went wrong while querying the filesystem.", e);

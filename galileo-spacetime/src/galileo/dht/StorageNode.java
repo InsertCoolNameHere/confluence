@@ -1095,7 +1095,7 @@ public class StorageNode implements RequestListener {
 	@EventHandler
 	public void handleDataIntegrationRequest(DataIntegrationRequest request, EventContext context) {
 		
-		logger.info("RIKI: DATA INTEGRATION REQUEST RECEIVED");
+		logger.info("RIKI: DATA INTEGRATION REQUEST RECEIVED AT TIME: "+System.currentTimeMillis());
 		String featureQueryString = request.getFeatureQueryString();
 		logger.log(Level.INFO, "Feature query request: {0}", featureQueryString);
 		
@@ -1253,7 +1253,9 @@ public class StorageNode implements RequestListener {
 		logger.log(Level.INFO, "RIKI: RELAXATIONS:"+Arrays.toString(epsilons));
 		
 		DataIntegrationResponse response = new DataIntegrationResponse(eventId);
-
+		response.setNodeName(hostname);
+		response.setNodePort(String.valueOf(port));
+		
 		try {
 			if (fs1 != null && fs2 != null) {
 
@@ -1262,220 +1264,235 @@ public class StorageNode implements RequestListener {
 				// All blocks of fs1 on this node that match our criteria
 				List<Path<Feature, String>> paths1 = fs1.listPaths(event.getTime(), event.getPolygon(), null, false);
 				
-				// LOGGING
-				logger.log(Level.INFO, "PATHS FROM FS1:");
-				for (Path<Feature, String> path : paths1) {
-					List<String> blocks = new ArrayList<String>(path.getPayload());
-					logger.log(Level.INFO, blocks.toString());
-				}
-
-				List<Coordinates> queryPolygon = event.getPolygon();
-				
-				logger.log(Level.INFO, "RIKI :QUERY POLYGON :"+queryPolygon);
-				logger.log(Level.INFO, "RIKI :PRECISION :"+fs2.getSpatialUncertaintyPrecision());
-				List<Coordinates> superPolygon = SuperPolygon.getSuperPolygon(queryPolygon, fs2.getSpatialUncertaintyPrecision());
-				
-				logger.log(Level.INFO, "RIKI: SUPER POLYGON :"+superPolygon);
-				
-				// For each block of fs1, we need to find what nodes to be queried in fs2
-				// Also, we need to calculate the superblock that needs to be queried at each node
-
-				// Map of what supercubes to query at each node (key->Supercube)
-				Map<String, List<Integer>> nodeToCubeMap = new HashMap<String, List<Integer>>();
-				List<NodeInfo> destinations = new ArrayList<NodeInfo>();
-				List<SuperCube> allCubes = new ArrayList<SuperCube>();
-
-				// Supercube index to all the nodes that this supercube has queried to
-				Map<Integer, List<String>> supercubeToNodeMap = new HashMap<Integer, List<String>>();
-				
-				// This will come in handy while receiving neighbor responses from requested nodes.
-				Map<Integer, Integer> superCubeNumNodesMap = new HashMap<Integer, Integer>();
-
-				Partitioner<Metadata> partitioner = fs2.getPartitioner();
-				Map<String, BorderingProperties> borderMap = fs1.getBorderMap();
-				
-				for (Path<Feature, String> path : paths1) {
-					// All the blocks under a certain directory
-					// There can be multiple blocks under the same directory as long as their names are different
-					List<String> blocks = new ArrayList<String>(path.getPayload());
-					logger.log(Level.INFO, "RIKI :FS1 BLOCKS MATCHED :"+blocks);
-
-					// EXTRACT THE SUPERCUBE FOR EACH OF THE BLOCK RETURNED
-					// Supercube also contains info about the core time and geoHash
-
-					// This supercube is in terms of FS1 rules
-					// Anything intersecting with this supercube in FS2 has to be returned
-
-					SuperCube sc = extractSuperCube(path, fs1);
-					sc.setFs1BlockPath(blocks);
-
-					String cGeo = sc.getCentralGeohash();
-
-					// Get the neighbors geohash, cgeo, that actually are needed, along with the centralGeohash
-					String[] validNeighborsGeohash = GeoHash.checkForNeighborValidity(queryPolygon, fs1.getSpatialUncertaintyPrecision(), cGeo,borderMap, blocks);
-					
-					logger.log(Level.INFO, "RIKI :VALID NEIGHBOR GEOHASHES :"+ Arrays.toString(validNeighborsGeohash));
-					
-					List<Date> dates = null;
-					List<TemporalProperties> tprops = null;
-
-					int indx = getMatchingCubeIndex(allCubes, sc);
-
-					/* Adding this new supercube to the list */
-					if (indx < 0) {
-						indx = allCubes.size();
-						logger.log(Level.INFO, "RIKI :NEW SUPERCUBE :"+sc);
-						sc.setId(indx);
-						allCubes.add(sc);
+				if(paths1 != null && paths1.size() > 0) {
+					// LOGGING
+					//logger.log(Level.INFO, "PATHS FROM FS1:");
+					for (Path<Feature, String> path : paths1) {
+						List<String> blocks = new ArrayList<String>(path.getPayload());
+						//logger.log(Level.INFO, blocks.toString());
 					}
-
-					SpatialProperties searchSp = new SpatialProperties(new SpatialRange(sc.getPolygon()));
+	
+					List<Coordinates> queryPolygon = event.getPolygon();
 					
-					if (sc.getTime() != null) {
-						/*
-						 * since the time could span over multiple days, we need to check
-						 */
-						// getting all dates that may lie between two timestamps
+					//logger.log(Level.INFO, "RIKI :QUERY POLYGON :"+queryPolygon);
+					//logger.log(Level.INFO, "RIKI :PRECISION :"+fs2.getSpatialUncertaintyPrecision());
+					List<Coordinates> superPolygon = SuperPolygon.getSuperPolygon(queryPolygon, fs2.getSpatialUncertaintyPrecision());
+					
+					//logger.log(Level.INFO, "RIKI: SUPER POLYGON :"+superPolygon);
+					
+					// For each block of fs1, we need to find what nodes to be queried in fs2
+					// Also, we need to calculate the superblock that needs to be queried at each node
+	
+					// Map of what supercubes to query at each node (key->Supercube)
+					Map<String, List<Integer>> nodeToCubeMap = new HashMap<String, List<Integer>>();
+					List<NodeInfo> destinations = new ArrayList<NodeInfo>();
+					List<SuperCube> allCubes = new ArrayList<SuperCube>();
+	
+					// Supercube index to all the nodes that this supercube has queried to
+					Map<Integer, List<String>> supercubeToNodeMap = new HashMap<Integer, List<String>>();
+					
+					// This will come in handy while receiving neighbor responses from requested nodes.
+					Map<Integer, Integer> superCubeNumNodesMap = new HashMap<Integer, Integer>();
+	
+					Partitioner<Metadata> partitioner = fs2.getPartitioner();
+					Map<String, BorderingProperties> borderMap = fs1.getBorderMap();
+					
+					for (Path<Feature, String> path : paths1) {
+						// All the blocks under a certain directory
+						// There can be multiple blocks under the same directory as long as their names are different
+						List<String> blocks = new ArrayList<String>(path.getPayload());
+						//logger.log(Level.INFO, "RIKI :FS1 BLOCKS MATCHED :"+blocks);
+	
+						// EXTRACT THE SUPERCUBE FOR EACH OF THE BLOCK RETURNED
+						// Supercube also contains info about the core time and geoHash
+	
+						// This supercube is in terms of FS1 rules
+						// Anything intersecting with this supercube in FS2 has to be returned
+	
+						SuperCube sc = extractSuperCube(path, fs1);
+						sc.setFs1BlockPath(blocks);
+	
+						String cGeo = sc.getCentralGeohash();
+	
+						// Get the neighbors geohash, cgeo, that actually are needed, along with the centralGeohash
+						String[] validNeighborsGeohash = GeoHash.checkForNeighborValidity(queryPolygon, fs1.getSpatialUncertaintyPrecision(), cGeo,borderMap, blocks);
 						
-						/* A string of two timestamps */
-						String timeString = sc.getTime();
+						//logger.log(Level.INFO, "RIKI :VALID NEIGHBOR GEOHASHES :"+ Arrays.toString(validNeighborsGeohash));
 						
-						logger.log(Level.INFO, "RIKI :TIME1 :"+sc.getTime());
+						List<Date> dates = null;
+						List<TemporalProperties> tprops = null;
+	
+						int indx = getMatchingCubeIndex(allCubes, sc);
+	
+						/* Adding this new supercube to the list */
+						if (indx < 0) {
+							indx = allCubes.size();
+							//logger.log(Level.INFO, "RIKI :NEW SUPERCUBE :"+sc);
+							sc.setId(indx);
+							allCubes.add(sc);
+						}
+	
+						SpatialProperties searchSp = new SpatialProperties(new SpatialRange(sc.getPolygon()));
 						
-						boolean hasUp = false;
-						boolean hasDown = false;
-						for(String block : blocks) {
+						if (sc.getTime() != null) {
+							/*
+							 * since the time could span over multiple days, we need to check
+							 */
+							// getting all dates that may lie between two timestamps
 							
-							BorderingProperties bpr = borderMap.get(block);
-							if(hasUp && hasDown) {
-								break;
+							/* A string of two timestamps */
+							String timeString = sc.getTime();
+							
+							//logger.log(Level.INFO, "RIKI :TIME1 :"+sc.getTime());
+							
+							boolean hasUp = false;
+							boolean hasDown = false;
+							for(String block : blocks) {
+								
+								BorderingProperties bpr = borderMap.get(block);
+								if(hasUp && hasDown) {
+									break;
+								}
+								if(bpr.getUpTimeEntries().size() > 0) {
+									hasUp = true;
+								}
+								if(bpr.getDownTimeEntries().size() > 0) {
+									hasDown = true;
+								}
 							}
-							if(bpr.getUpTimeEntries().size() > 0) {
-								hasUp = true;
+							//logger.log(Level.INFO, "RIKI :HHHH :"+hasUp+" "+hasDown);
+							if(!hasUp || !hasDown) {
+								//logger.log(Level.INFO, "RIKI :CENTRALTIME1 :"+sc.getCentralTime());
+								//logger.log(Level.INFO, "RIKI :TEMPORALTYPE :"+fs1.getTemporalType());
+								String[] tokens = sc.getCentralTime().split("-");
+								String[] timestamps = timeString.split("-");
+								if(!hasUp) {
+									long end = GeoHash.getEndTimeStamp(tokens[0], tokens[1], tokens[2], tokens[3], fs1.getTemporalType());
+									//logger.log(Level.INFO, "RIKI :END :"+end);
+									timestamps[1] = String.valueOf(end);
+									
+								}
+								if(!hasDown) {
+									
+									long start = GeoHash.getStartTimeStamp(tokens[0], tokens[1], tokens[2], tokens[3], fs1.getTemporalType());
+									//logger.log(Level.INFO, "RIKI :START :"+start);
+									timestamps[0] = String.valueOf(start);
+									
+								}
+								timeString = timestamps[0] + "-" + timestamps[1];
 							}
-							if(bpr.getDownTimeEntries().size() > 0) {
-								hasDown = true;
+							
+							
+									
+							dates = new ArrayList<Date>();
+							dates = SuperCube.handleTemporalRangeForEachBlock(timeString);
+	
+							tprops = new ArrayList<TemporalProperties>();
+	
+							for (Date d : dates) {
+	
+								tprops.add(new TemporalProperties(d.getTime()));
 							}
 						}
-						logger.log(Level.INFO, "RIKI :HHHH :"+hasUp+" "+hasDown);
-						if(!hasUp || !hasDown) {
-							logger.log(Level.INFO, "RIKI :CENTRALTIME1 :"+sc.getCentralTime());
-							logger.log(Level.INFO, "RIKI :TEMPORALTYPE :"+fs1.getTemporalType());
-							String[] tokens = sc.getCentralTime().split("-");
-							String[] timestamps = timeString.split("-");
-							if(!hasUp) {
-								long end = GeoHash.getEndTimeStamp(tokens[0], tokens[1], tokens[2], tokens[3], fs1.getTemporalType());
-								logger.log(Level.INFO, "RIKI :END :"+end);
-								timestamps[1] = String.valueOf(end);
-								
-							}
-							if(!hasDown) {
-								
-								long start = GeoHash.getStartTimeStamp(tokens[0], tokens[1], tokens[2], tokens[3], fs1.getTemporalType());
-								logger.log(Level.INFO, "RIKI :START :"+start);
-								timestamps[0] = String.valueOf(start);
-								
-							}
-							timeString = timestamps[0] + "-" + timestamps[1];
-						}
+	
+						// Found what nodes to query based on supercube data
+						// These are all nodes needed to query to get fs2 data required for this particular supercube in fs1
+						List<NodeInfo> nodes = partitioner.findDestinationsForFS2(searchSp, tprops, fs2.getGeohashPrecision(), validNeighborsGeohash);
 						
-						
-								
-						dates = new ArrayList<Date>();
-						dates = SuperCube.handleTemporalRangeForEachBlock(timeString);
-
-						tprops = new ArrayList<TemporalProperties>();
-
-						for (Date d : dates) {
-
-							tprops.add(new TemporalProperties(d.getTime()));
-						}
-					}
-
-					// Found what nodes to query based on supercube data
-					// These are all nodes needed to query to get fs2 data required for this particular supercube in fs1
-					List<NodeInfo> nodes = partitioner.findDestinationsForFS2(searchSp, tprops, fs2.getGeohashPrecision(), validNeighborsGeohash);
-					
-					// Hashcode calculation for NodeInfo is based on src and port
-					// Getting unique should not be a problem later
-					destinations.addAll(nodes);
-
-					// Need to send out the same supercube to all destination nodes
-
-					for (NodeInfo n : nodes) {
-
-						String key = n.getHostname() + "-" + n.getPort();
-
-						// Check if this cube is already getting queried at this
-						// node
-						if (!hasCube(nodeToCubeMap.get(key), indx)) {
-
-							List<Integer> cubeIndices;
-							if (nodeToCubeMap.get(key) == null) {
-								cubeIndices = new ArrayList<Integer>();
-							} else {
-								cubeIndices = nodeToCubeMap.get(key);
+						// Hashcode calculation for NodeInfo is based on src and port
+						// Getting unique should not be a problem later
+						destinations.addAll(nodes);
+	
+						// Need to send out the same supercube to all destination nodes
+	
+						for (NodeInfo n : nodes) {
+	
+							String key = n.getHostname() + "-" + n.getPort();
+	
+							// Check if this cube is already getting queried at this
+							// node
+							if (!hasCube(nodeToCubeMap.get(key), indx)) {
+	
+								List<Integer> cubeIndices;
+								if (nodeToCubeMap.get(key) == null) {
+									cubeIndices = new ArrayList<Integer>();
+								} else {
+									cubeIndices = nodeToCubeMap.get(key);
+								}
+	
+								cubeIndices.add(indx);
+								nodeToCubeMap.put(key, cubeIndices);
+	
+								SuperCube.addToCubeNodeMap(supercubeToNodeMap, superCubeNumNodesMap, key, indx);
+	
 							}
-
-							cubeIndices.add(indx);
-							nodeToCubeMap.put(key, cubeIndices);
-
-							SuperCube.addToCubeNodeMap(supercubeToNodeMap, superCubeNumNodesMap, key, indx);
-
+	
 						}
-
+	
 					}
-
+					
+					// send consolidated request for blocks to each of those nodes
+					Set<NodeInfo> setNodes = new TreeSet<NodeInfo>(destinations);
+					destinations = new ArrayList<NodeInfo>(setNodes);
+					
+					logger.log(Level.INFO, "RIKI : FS2 REQUESTS BEING SENT OUT TO :"+ destinations);
+	
+					List<NeighborDataEvent> individualRequests = new ArrayList<NeighborDataEvent>();
+					//List<NeighborDataEvent> internalEvents = new ArrayList<NeighborDataEvent>();
+	
+					// Before sending out requests to each node, catch the one
+					// directed to this node and save it for later.
+					for (NodeInfo n : destinations) {
+						
+						// See if this is the current node or not
+						//boolean thisNode = checkForThisNode(n);
+	
+						String nodeKey = n.getHostname() + "-" + n.getPort();
+						List<Integer> cubeIndices = nodeToCubeMap.get(nodeKey);
+						
+						/*int uncertaintyPrecision = fs1.getTemporalUncertaintyPrecision() > fs2.getTemporalUncertaintyPrecision() ? 
+								fs2.getTemporalUncertaintyPrecision() : fs1.getTemporalUncertaintyPrecision();*/
+						
+						NeighborDataEvent nEvent = createNeighborRequestPerNode(cubeIndices, allCubes, fsName2,fsName1, superPolygon, event.getTime(), event.getFeatureQuery());
+	
+						/*if (thisNode) {
+							internalEvents.add(nEvent);
+							destinations.remove(n);
+							continue;
+						}*/
+	
+						individualRequests.add(nEvent);
+					}
+					
+					GeoavailabilityQuery geoQuery = new GeoavailabilityQuery(event.getFeatureQuery(),
+							event.getPolygon());
+					
+					/* ALSO HANDLES ACTUAL JOIN */
+					NeighborRequestHandler rikiHandler = new NeighborRequestHandler(null, individualRequests, new ArrayList<NetworkDestination>(destinations), context, this,
+							allCubes, superCubeNumNodesMap, numCores, geoQuery, fs1, eventId, queryResultsDir, aPosns, bPosns, epsilons, hostname, String.valueOf(port), interpolatingFeaturePosn);
+					rikiHandler.handleRequest(response);
+					logger.log(Level.INFO, "RIKI :FS2 REQUESTS FINISHED SENDING :"+ destinations);
+					
+				} else {
+					// Empty Response
+					logger.log(Level.INFO, "RIKI :NO MATCHING FS1 PATHS FOUND");
+					context.sendReply(response);
 				}
-				
-				// send consolidated request for blocks to each of those nodes
-				Set<NodeInfo> setNodes = new TreeSet<NodeInfo>(destinations);
-				destinations = new ArrayList<NodeInfo>(setNodes);
-				
-				logger.log(Level.INFO, "RIKI : FS2 REQUESTS BEING SENT OUT TO :"+ destinations);
-
-				List<NeighborDataEvent> individualRequests = new ArrayList<NeighborDataEvent>();
-				//List<NeighborDataEvent> internalEvents = new ArrayList<NeighborDataEvent>();
-
-				// Before sending out requests to each node, catch the one
-				// directed to this node and save it for later.
-				for (NodeInfo n : destinations) {
 					
-					// See if this is the current node or not
-					//boolean thisNode = checkForThisNode(n);
-
-					String nodeKey = n.getHostname() + "-" + n.getPort();
-					List<Integer> cubeIndices = nodeToCubeMap.get(nodeKey);
-					
-					/*int uncertaintyPrecision = fs1.getTemporalUncertaintyPrecision() > fs2.getTemporalUncertaintyPrecision() ? 
-							fs2.getTemporalUncertaintyPrecision() : fs1.getTemporalUncertaintyPrecision();*/
-					
-					NeighborDataEvent nEvent = createNeighborRequestPerNode(cubeIndices, allCubes, fsName2,fsName1, superPolygon, event.getTime(), event.getFeatureQuery());
-
-					/*if (thisNode) {
-						internalEvents.add(nEvent);
-						destinations.remove(n);
-						continue;
-					}*/
-
-					individualRequests.add(nEvent);
-				}
-				
-				GeoavailabilityQuery geoQuery = new GeoavailabilityQuery(event.getFeatureQuery(),
-						event.getPolygon());
-				
-				/* ALSO HANDLES ACTUAL JOIN */
-				NeighborRequestHandler rikiHandler = new NeighborRequestHandler(null, individualRequests, new ArrayList<NetworkDestination>(destinations), context, this,
-						allCubes, superCubeNumNodesMap, numCores, geoQuery, fs1, eventId, queryResultsDir, aPosns, bPosns, epsilons, hostname, String.valueOf(port), interpolatingFeaturePosn);
-				rikiHandler.handleRequest(response);
-				logger.log(Level.INFO, "RIKI :FS2 REQUESTS FINISHED SENDING :"+ destinations);
-
+			} else {
+				// Empty response
+				context.sendReply(response);
 			}
 
 		} catch (Exception e) {
 			logger.log(Level.SEVERE,
 					"Something went wrong while data integration event on the filesystem. No results obtained. Sending blank list to the client. Issue details follow:",
 					e);
+			try {
+				context.sendReply(response);
+			} catch (IOException ioe) {
+				logger.log(Level.SEVERE, "Failed to send response back to main requester", ioe);
+			}
 		}
 
 	}
@@ -1566,7 +1583,7 @@ public class StorageNode implements RequestListener {
 			
 			logger.log(Level.INFO, "RIKI : INTERSECTING PATHS CALCULATED");
 			
-			if(pao != null) {
+			if(pao != null && pao.getPathToFragmentsMap() != null && pao.getPathToFragmentsMap().size() > 0) {
 				
 				/* Now to actually reading in the blocks */
 				//int totalBlocks = pao.getTotalBlocks();
@@ -1619,6 +1636,11 @@ public class StorageNode implements RequestListener {
 				
 			} else {
 				// NEED TO RETURN A BLANK RESPONSE
+				// No Data message will be sent back
+				// So this is a control message saying nothing is coming
+				logger.log(Level.INFO, "RIKI : CONTROL MESSAGE SENT: NO MATCHING PATHS FOUND");
+				NeighborDataResponse ndr = new NeighborDataResponse(superCubes, 0, nodeString);
+				context.sendReply(ndr);
 			}
 			
 			

@@ -680,7 +680,7 @@ public class GeospatialFileSystem extends FileSystem {
 			//SpatialGrid sg = new SpatialGrid(geohash, spatialUncertaintyPrecision);
 			//spatialGridsMap.put(blockPath, sg);
 			
-			logger.log(Level.INFO, "RIKI: BORDERMAP CREATED "+bp);
+			//logger.log(Level.INFO, "RIKI: BORDERMAP CREATED "+bp);
 			
 			storeMetadata(meta, blockPath);
 		}
@@ -764,12 +764,12 @@ public class GeospatialFileSystem extends FileSystem {
 				borderingProperties.addDownTimeEntries(recordCount);
 				if(!fringe)
 					borderingProperties.addFringeEntries((int)recordCount);
-				logger.info("RIKI: ENTERED DOWN TIME ENTRY");
+				//logger.info("RIKI: ENTERED DOWN TIME ENTRY");
 			} else if(timestamp<=borderingProperties.getUp1() && timestamp >= borderingProperties.getUp2()) {
 				borderingProperties.addUpTimeEntries(recordCount);
 				if(!fringe)
 					borderingProperties.addFringeEntries((int)recordCount);
-				logger.info("RIKI: ENTERED UP TIME ENTRY");
+				//logger.info("RIKI: ENTERED UP TIME ENTRY");
 			}
 			recordCount++;
 		}
@@ -786,38 +786,38 @@ public class GeospatialFileSystem extends FileSystem {
 		if(borderingProperties.getNe().equals(geoHash)) {
 			borderingProperties.addNEEntries(recordCount);
 			borderingProperties.addFringeEntries((int)recordCount);
-			logger.info("RIKI: ENTERED A NE ENTRY "+geoHash +" "+this.name);
+			//logger.info("RIKI: ENTERED A NE ENTRY "+geoHash +" "+this.name);
 		} else if(borderingProperties.getSe().equals(geoHash)) {
 			borderingProperties.addSEEntries(recordCount);
 			borderingProperties.addFringeEntries((int)recordCount);
-			logger.info("RIKI: ENTERED A SE ENTRY "+geoHash+" "+this.name);
+			//logger.info("RIKI: ENTERED A SE ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getNw().equals(geoHash)) {
 			borderingProperties.addNWEntries(recordCount);
 			borderingProperties.addFringeEntries((int)recordCount);
-			logger.info("RIKI: ENTERED A NW ENTRY "+geoHash+" "+this.name);
+			//logger.info("RIKI: ENTERED A NW ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getSw().equals(geoHash)) {
 			borderingProperties.addSWEntries(recordCount);
 			borderingProperties.addFringeEntries((int)recordCount);
-			logger.info("RIKI: ENTERED A SW ENTRY "+geoHash+" "+this.name);
+			//logger.info("RIKI: ENTERED A SW ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getN().contains(geoHash)) {
 			borderingProperties.addNorthEntries(recordCount);
 			borderingProperties.addFringeEntries((int)recordCount);
-			logger.info("RIKI: ENTERED A N ENTRY "+geoHash+" "+this.name);
+			//logger.info("RIKI: ENTERED A N ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getE().contains(geoHash)) {
 			borderingProperties.addEastEntries(recordCount);
 			borderingProperties.addFringeEntries((int)recordCount);
-			logger.info("RIKI: ENTERED A E ENTRY "+geoHash+" "+this.name);
+			//logger.info("RIKI: ENTERED A E ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getW().contains(geoHash)) {
 			borderingProperties.addWestEntries(recordCount);
 			borderingProperties.addFringeEntries((int)recordCount);
-			logger.info("RIKI: ENTERED A W ENTRY "+geoHash+" "+this.name);
+			//logger.info("RIKI: ENTERED A W ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getS().contains(geoHash)) {
 			borderingProperties.addSouthEntries(recordCount);
 			borderingProperties.addFringeEntries((int)recordCount);
-			logger.info("RIKI: ENTERED A S ENTRY "+geoHash+" "+this.name);
+			//logger.info("RIKI: ENTERED A S ENTRY "+geoHash+" "+this.name);
 		} else {
 			fringe = false;
-			logger.info("RIKI: ENTERED A CENTRAL ENTRY "+geoHash+" "+this.name);
+			//logger.info("RIKI: ENTERED A CENTRAL ENTRY "+geoHash+" "+this.name);
 		}
 		
 		return fringe;
@@ -1324,7 +1324,7 @@ public class GeospatialFileSystem extends FileSystem {
 		/* Both space and time in query */
 		
 		if (superPolygon != null && superPolygon.size() > 0 && temporalExpressionList != null && temporalExpressionList.size() > 0) {
-			logger.log(Level.INFO, "RIKI: ENTERED HERE");
+			//logger.log(Level.INFO, "RIKI: ENTERED HERE");
 			SpatialProperties sp = new SpatialProperties(new SpatialRange(superPolygon));
 			
 			List<Coordinates> geometry = sp.getSpatialRange().hasPolygon() ? sp.getSpatialRange().getPolygon() : sp.getSpatialRange().getBounds();
@@ -1446,7 +1446,7 @@ public class GeospatialFileSystem extends FileSystem {
 					String[] tokens = ret.split("\\$");
 					String fs2PathTime = tokens[0];
 					String fs2PathSpace = tokens[1];
-					logger.log(Level.INFO, "RIKI: BEFORE ORIENTATION: "+fs1PathTime+" "+fs2PathTime);
+					//logger.log(Level.INFO, "RIKI: BEFORE ORIENTATION: "+fs1PathTime+" "+fs2PathTime);
 					String orientation = GeoHash.getOrientation(fs1PathSpace, fs2PathSpace, fs1PathTime, fs2PathTime, srcTT, this.temporalType);
 					logger.log(Level.INFO, "RIKI: ORIENTATION: "+orientation + path.getPayload());
 					if(orientation.contains("ignore"))
@@ -2438,7 +2438,7 @@ public class GeospatialFileSystem extends FileSystem {
 			int i=0;
 			for (List<String[]> subset: featurePaths) {
 				if(subset != null && subset.size() > 0) {
-					logger.log(Level.INFO, "RIKI: INDIVIDUAL SUBSETS "+i+" "+subset + " "+ blocks);
+					//logger.log(Level.INFO, "RIKI: INDIVIDUAL SUBSETS "+i+" "+subset + " "+ blocks);
 					NeighborDataParallelQueryProcessor pqp = new NeighborDataParallelQueryProcessor(this, subset, geoQuery.getQuery(), grid, queryBitmap, i, blocks);
 					
 					queryProcessors.add(pqp);
@@ -2454,7 +2454,7 @@ public class GeospatialFileSystem extends FileSystem {
 			
 			fullyEmpty = true;
 			for(NeighborDataParallelQueryProcessor nqp : queryProcessors) {
-				logger.log(Level.INFO, "RIKI: DID IT ENTER? " + blocks);
+				//logger.log(Level.INFO, "RIKI: DID IT ENTER? " + blocks);
 				if(nqp.getRecordsStringRepresentation() != null && nqp.getRecordsStringRepresentation().length() > 0) {
 					//logger.log(Level.INFO, "RIKI: INDIVIDUAL FRAGMENTS "+nqp.getRecordsStringRepresentation() + " "+ blocks);
 					fullyEmpty = false;
@@ -2507,7 +2507,7 @@ public class GeospatialFileSystem extends FileSystem {
 			featurePaths = getFeaturePathsLocal(blocks);
 		} 
 		
-		logger.log(Level.INFO, "RIKI: FS1 LOCAL RECORDS FOUND: "+Arrays.asList(featurePaths));
+		//logger.log(Level.INFO, "RIKI: FS1 LOCAL RECORDS FOUND: "+Arrays.asList(featurePaths));
 		int size = featurePaths.size();
 		int partition = java.lang.Math.max(size / numCores, MIN_GRID_POINTS);
 		int parallelism = java.lang.Math.min(size / partition, numCores);
@@ -2531,8 +2531,8 @@ public class GeospatialFileSystem extends FileSystem {
 				int from = i * partition;
 				int to = (i + 1 != parallelism) ? (i + 1) * partition : size;
 				List<String[]> subset = new ArrayList<>(featurePaths.subList(from, to));
-				logger.log(Level.INFO, "RIKI: FS1 LOCAL RECORDS FOUND2: "+Arrays.asList(featurePaths));
-				logger.log(Level.INFO, "RIKI: FS1 LOCAL RECORDS FOUND3: "+Arrays.asList(subset));
+				//logger.log(Level.INFO, "RIKI: FS1 LOCAL RECORDS FOUND2: "+Arrays.asList(featurePaths));
+				//logger.log(Level.INFO, "RIKI: FS1 LOCAL RECORDS FOUND3: "+Arrays.asList(subset));
 				if(subset != null) {
 					
 					LocalParallelQueryProcessor pqp = new LocalParallelQueryProcessor(this, subset, geoQuery.getQuery(), grid, queryBitmap);
@@ -2548,7 +2548,7 @@ public class GeospatialFileSystem extends FileSystem {
 				logger.log(Level.WARNING, "queryFragments: Executor terminated because of the specified timeout=10minutes");
 			
 			for(LocalParallelQueryProcessor nqp : queryProcessors) {
-				logger.log(Level.INFO, "RIKI: LocalParallelQueryProcessor PATHS6"+nqp.getFeaturePaths());
+				//logger.log(Level.INFO, "RIKI: LocalParallelQueryProcessor PATHS6"+nqp.getFeaturePaths());
 				if(nqp.getFeaturePaths().size() > 0) {
 					returnPaths.addAll(nqp.getFeaturePaths());
 				}

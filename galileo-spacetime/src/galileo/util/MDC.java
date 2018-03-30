@@ -133,7 +133,7 @@ public class MDC {
 		
 		
 		
-		System.out.println("APOSNS:");
+		/*System.out.println("APOSNS:");
 		for(int i: aPosns) {
 			System.out.print(i+" ");
 		}
@@ -149,7 +149,7 @@ public class MDC {
 		System.out.println("EPSILONS:");
 		for(double i: epsilons) {
 			System.out.print(i+" ");
-		}
+		}*/
 		
 		System.out.println();
 		/* Do not modify these 2 data */
@@ -159,7 +159,7 @@ public class MDC {
 		//String[] indvARecords = aRecords.split("\\$\\$");
 		String[] indvBRecords = bRecords.split("\\n");
 		
-
+		// these two records only contain 3 fields, time, lat and long
 		List<double[]> splitARecords = new ArrayList<double[]>();
 		List<double[]> splitBRecords = new ArrayList<double[]>();
 		
@@ -224,7 +224,7 @@ public class MDC {
 			
 			/* If no match has been found and setA/ setB has become empty now */
 			if(splitARecords.isEmpty() || splitBRecords.isEmpty()) {
-				logger.info("GOING OUT FOR A RECORDS");
+				logger.info("GOING OUT FOR NO MATCHES");
 				pairs = new ArrayList<String>();
 				break;
 			}
@@ -233,13 +233,15 @@ public class MDC {
 			List<Double> setB = new ArrayList<Double>();
 			
 			for(double[] frs: splitARecords) {
-				System.out.println("SPLIT A RECORDS: "+Arrays.asList(frs)+" "+frs.length);
-				setA.add(frs[aPosn]);
+				//System.out.println("SPLIT A RECORDS: "+Arrays.asList(frs)+" "+frs.length);
+				//setA.add(frs[aPosn]);
+				setA.add(frs[i]);
 				
 			}
 			for(double[] frs: splitBRecords) {
 				
-				setB.add(frs[bPosn]);
+				//setB.add(frs[bPosn]);
+				setB.add(frs[i]);
 				
 			}
 			

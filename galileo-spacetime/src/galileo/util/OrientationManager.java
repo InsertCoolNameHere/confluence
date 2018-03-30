@@ -117,10 +117,10 @@ public class OrientationManager {
 		//System.out.println("TEMPORAL NUM: "+chunk + " "+temporals[temporalNumber]);
 		//System.out.println(temporals[temporalNumber]);
 		List<Long> temporalRecordNums = getSpecificRecords(temporals[temporalNumber], 2, bp);
-		System.out.println("SPATIAL NUM: "+chunk + " "+spatials[spatialNumber]+
+		/*System.out.println("SPATIAL NUM: "+chunk + " "+spatials[spatialNumber]+
 				"\nSPATIAL REC NUM: "+chunk + " "+spatialRecordNums+
 				"\nTEMPORAL NUM: "+chunk + " "+temporals[temporalNumber]+
-				"\nTEMPORAL REC NUM: "+chunk + " "+temporalRecordNums);
+				"\nTEMPORAL REC NUM: "+chunk + " "+temporalRecordNums);*/
 			
 		if(spatialRecordNums == null || temporalRecordNums == null || spatialRecordNums.size() <= 0 || temporalRecordNums.size() <= 0 )
 			return null;

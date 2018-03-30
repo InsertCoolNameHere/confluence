@@ -37,7 +37,10 @@ public class DataIntegrationResponse implements Event{
 	public DataIntegrationResponse(SerializationInputStream in) throws IOException, SerializationException {
 		eventId = in.readString();
 		resultPaths = new ArrayList<String>();
-		in.readStringCollection(resultPaths);
+		boolean hasPaths = in.readBoolean();
+		if(hasPaths)
+			in.readStringCollection(resultPaths);
+		
 		nodeName = in.readString();
 		nodePort = in.readString();
 		
@@ -46,7 +49,12 @@ public class DataIntegrationResponse implements Event{
 	@Override
 	public void serialize(SerializationOutputStream out) throws IOException {
 		out.writeString(eventId);
-		out.writeStringCollection(resultPaths);
+		boolean hasPaths = false;
+		if(resultPaths != null && resultPaths.size() > 0)
+			hasPaths = true;
+		out.writeBoolean(hasPaths);
+		if(hasPaths)
+			out.writeStringCollection(resultPaths);
 		out.writeString(nodeName);
 		out.writeString(nodePort);
 	}
