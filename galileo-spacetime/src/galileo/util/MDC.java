@@ -132,7 +132,7 @@ public class MDC {
 		
 		try {
 
-			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/A2042.txt");
+			fr = new FileReader("D:\\CONFLUX\\join1\\A2042.txt");
 			br = new BufferedReader(fr);
 
 			String sCurrentLine;
@@ -168,7 +168,7 @@ public class MDC {
 		String bRecords="";
 		try {
 
-			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/B2042.txt");
+			fr = new FileReader("D:\\CONFLUX\\join1\\B2042.txt");
 			br = new BufferedReader(fr);
 
 			String sCurrentLine;
@@ -192,13 +192,11 @@ public class MDC {
 		
 		int[] aPosns = {42,24,25};
 		int[] bPosns = {2,0,1};
-		double[] epsilons = {3600000, 0.1, 0.1};
-		iterativeMultiDimJoin(indvARecords, bRecords, aPosns, bPosns, epsilons, 3);
+		double[] epsilons = {1000*60*60, 0.01, 0.01};
+		System.out.println("SIZEEEE"+iterativeMultiDimJoin(indvARecords, bRecords, aPosns, bPosns, epsilons, 3).size());
 		
 		
 	}
-	
-	
 	
 	public List<String> iterativeMultiDimJoin(List<String[]> indvARecords,/*String aRecords,*/ String bRecords, int[] aPosns, int[] bPosns, double[] epsilons, int interpolatingFeature) {
 		
@@ -207,6 +205,8 @@ public class MDC {
 		/*for(String[] sa: indvARecords) {
 			System.out.println(Arrays.asList(sa));
 		}*/
+		int aLength = indvARecords.size();
+		int bLength = 0;
 		
 		int fileNum = indvARecords.size();
 		
@@ -285,6 +285,7 @@ public class MDC {
 			
 			ind++;
 		}
+		bLength = ind;
 		
 		System.out.println("\nSAMPLE A ENTRY "+Arrays.asList(indvARecords.get(0)));
 		System.out.println("SAMPLE B ENTRY "+indvBRecords[bValidEntries.get(0)]);
@@ -320,7 +321,16 @@ public class MDC {
 		/* Iterative 1D join */
 		List<String> pairs = new ArrayList<String>();
 		
-		for(int i=0 ; i < 3 ; i++) {
+		
+		// initializing bitmap
+		char[] finalbitmap = new char[aLength*bLength];
+		
+		for(int i=0; i < aLength*bLength; i++)
+			finalbitmap[i] = '0';
+		
+		
+		
+		for(int i=2 ; i >= 0 ; i--) {
 			
 			//System.out.println("DIMENSION: "+(i+1)+"\n==============\n");
 			/* At all times splitEntries and valid entries should correspond */
@@ -363,13 +373,54 @@ public class MDC {
 			Collections.sort(validBs, comparator1);
 			Collections.sort(setB);
 			
+			// temporary bitmaps
+			char[] currentbitmap = new char[aLength*bLength];
 			
-			List<String> tmpPairs = oneDJoin(setA, validAs, setB, validBs, epsilons[i], splitARecords, splitBRecords);
+			for(int j=0; j < aLength*bLength; j++)
+				currentbitmap[j] = '0';
 			
-			if(i == 0)
-				pairs = tmpPairs;
-			else
-				pairs.retainAll(tmpPairs);
+			List<String> tmpPairs = oneDJoin(setA, validAs, setB, validBs, epsilons[i], splitARecords, splitBRecords,
+					currentbitmap, bLength);
+			
+			if(i == 2) {
+				// first round, set whatever is returned to be the finalbitmap
+				
+				for(int j = 0; j < aLength*bLength; j++) {
+					finalbitmap[j] = currentbitmap[j];
+				}
+			} else if (i == 1) {
+				// second round, update the previous bitmap
+				
+				int cnn = 0;
+				for(int j = 0; j < aLength*bLength; j++) {
+					if(finalbitmap[j] == '1' && currentbitmap[j] == '1') {
+						finalbitmap[j] = '1';
+						cnn++;
+					} else {
+						finalbitmap[j] = '0';
+					}
+				}
+				
+				System.out.println("CNN "+cnn);
+			} else if (i == 0) {
+				// final round
+				for(int j = 0; j < aLength*bLength; j++) {
+					if(finalbitmap[j] == '1' && currentbitmap[j] == '1') {
+						//finalbitmap[j] = '1';
+						
+						int x = j / bLength;
+						int y = j % bLength;
+						pairs.add(x+","+y);
+					} else {
+						//finalbitmap[j] = '0';
+					}
+				}
+			
+			}
+				
+			
+			
+			//pairs1.add(tmpPairs);
 			
 			/* At this point validAs and validBs actually contain invalid entries */
 			List<double[]> removalsA = new ArrayList<double[]>();
@@ -394,6 +445,7 @@ public class MDC {
 			System.out.println("REMOVING "+validBs.size()+" B ENTRIES FOR"+ ll);
 			
 		}
+	
 		
 		System.out.println("JOIN HAS FINISHED.... ON TO IDW "+ll);
 		
@@ -888,6 +940,208 @@ public class MDC {
 		
 		bInd.removeAll(bValids);
 		return pairs;
+	}
+	
+	
+	public List<String> oneDJoin(List<Double> setA, List<Integer> aInd, List<Double> setB, List<Integer> bInd, 
+			double epsilon, List<double[]> splitAs, List<double[]> splitBs, char[] bitMap, int roundVal) {
+		System.out.println("RIKI HERE");
+		List<String> pairs = new ArrayList<String>();
+		
+		List<Integer> aValids = new ArrayList<Integer>();
+		List<Integer> bValids = new ArrayList<Integer>();
+		
+		int aLen = setA.size();
+		int bLen = setB.size();
+		
+		System.out.println("# SET A ENTRIES "+aLen);
+		System.out.println("# SET B ENTRIES "+bLen);
+		
+		int aCurrIndex = 0;
+		int bCurrIndex = 0;
+		
+		double aStart = setA.get(0);
+		double aEnd = setA.get(aLen-1);
+		double bStart = setB.get(0);
+		double bEnd = setB.get(bLen-1);
+		
+		double start = aStart;
+		
+		double end = aEnd;
+		
+		if(aStart > bStart) {
+			if(aStart - epsilon > bStart)
+				start = aStart - epsilon;
+			else
+				start = bStart;
+		}
+		
+		if(aEnd < bEnd) {
+			if(aEnd + epsilon < bEnd)
+				end = aEnd + epsilon;
+			else
+				end = bEnd;
+		}
+		
+		double current = start;
+		
+		List<Double> setATemp;
+		List<Integer> setATempInd;
+		List<Double> setBTemp1 = new ArrayList<Double>();
+		List<Integer> setBTempInd1 = new ArrayList<Integer>();
+		List<Double> setBTemp2 = new ArrayList<Double>();
+		List<Integer> setBTempInd2 = new ArrayList<Integer>();
+		List<Double> setBTemp3 = new ArrayList<Double>();
+		List<Integer> setBTempInd3 = new ArrayList<Integer>();
+		
+		boolean firstTime = true;
+		
+		while(current < end) {
+			
+			//System.out.println("CURRENT:"+current);
+			setATemp = new ArrayList<Double>();
+			setATempInd = new ArrayList<Integer>();
+			
+			int acurrIndexBefore = aCurrIndex;
+			
+			/* load A data - 0 to e */
+			while(aCurrIndex < aLen && setA.get(aCurrIndex) <= current+epsilon) {
+				setATemp.add(setA.get(aCurrIndex));
+				setATempInd.add(aInd.get(aCurrIndex));
+				aCurrIndex++;
+			}
+			
+			/* load B data - 0 to e */
+			if(firstTime) {
+				
+				while(bCurrIndex < bLen && setB.get(bCurrIndex) <= current+epsilon) {
+					setBTemp2.add(setB.get(bCurrIndex));
+					setBTempInd2.add(bInd.get(bCurrIndex));
+					bCurrIndex++;
+				}
+			}
+			
+			/* load B data - e to 2e */
+			while(bCurrIndex < bLen && setB.get(bCurrIndex) <= current+epsilon+epsilon && setB.get(bCurrIndex) > current) {
+				
+				setBTemp3.add(setB.get(bCurrIndex));
+				setBTempInd3.add(bInd.get(bCurrIndex));
+				bCurrIndex++;
+				
+				if(firstTime)
+					firstTime = false;
+			}
+			
+			
+			current = current+epsilon;
+			
+			int indxA = 0;
+			
+			/* Actual Join*/
+			/* Only if both A and B entries are non empty */
+			if(acurrIndexBefore != aCurrIndex && (!setBTemp1.isEmpty() || !setBTemp2.isEmpty())) {
+				for(double d: setATemp) {
+					boolean found = false;
+					
+					int indxB = 0;
+					
+					for(double dd: setBTemp1) {
+						if(java.lang.Math.abs(d-dd)<=epsilon) {
+							found = true;
+							//System.out.println(setATempInd.get(indxA)+","+setBTempInd1.get(indxB));
+							
+							// PAIRS ADDING
+							int x = setATempInd.get(indxA);
+							int y = setBTempInd1.get(indxB);
+							bitMap[x*roundVal+y] = '1';
+							
+							//pairs.add(setATempInd.get(indxA)+","+setBTempInd1.get(indxB));
+						
+							
+							bValids.add(setBTempInd1.get(indxB));
+						}
+						indxB++;
+					}
+					
+					if(setBTempInd2.size() > 0) 
+						found = true;
+					
+					for(int i: setBTempInd2) {
+						//System.out.println(setATempInd.get(indxA)+","+i);
+						
+						// PAIRS ADDING
+						int x = setATempInd.get(indxA);
+						int y = i;
+						bitMap[x*roundVal+y] = '1';
+						
+						
+						//pairs.add(setATempInd.get(indxA)+","+i);
+						bValids.add(i);
+					}
+					
+					indxB = 0;
+					if(!firstTime) {
+						for(double dd: setBTemp3) {
+							if(java.lang.Math.abs(d-dd)<=epsilon) {
+								found = true;
+								//System.out.println(setATempInd.get(indxA)+","+setBTempInd3.get(indxB));
+								
+								int x = setATempInd.get(indxA);
+								int y = setBTempInd3.get(indxB);
+								bitMap[x*roundVal+y] = '1';
+								
+								//pairs.add(setATempInd.get(indxA)+","+setBTempInd3.get(indxB));
+								bValids.add(setBTempInd3.get(indxB));
+							}
+							indxB++;
+						}
+					}
+					
+					if(found)
+						aValids.add(setATempInd.get(indxA));
+					indxA++;
+				}
+			}
+			
+			/* Swap references between b1 & b2 & b3 */
+			setBTemp1 = new ArrayList<Double>();
+			setBTemp1.addAll(setBTemp2);
+			
+			setBTempInd1 = new ArrayList<>();
+			setBTempInd1.addAll(setBTempInd2);
+			
+			setBTemp2 = new ArrayList<Double>();
+			setBTemp2.addAll(setBTemp3);
+			
+			setBTempInd2 = new ArrayList<>();
+			setBTempInd2.addAll(setBTempInd3);
+			
+			setBTemp3 = new ArrayList<Double>();
+			setBTempInd3 = new ArrayList<Integer>();
+			
+			
+		}
+		
+		//System.out.println(aValids);
+		//System.out.println(bValids);
+		
+		aInd.removeAll(aValids);
+		
+		bInd.removeAll(bValids);
+		return pairs;
+	}
+	
+	
+	public void addToBitMap(int[][] bitmap, int round, int i, int j) {
+		
+		if(round == 2) {
+			bitmap[i][j] = 1;
+		} else if (round == 1) {
+			if(bitmap[i][j] == 1) {
+				
+			}
+		}
+		
 	}
 
 
