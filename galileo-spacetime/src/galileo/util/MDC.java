@@ -1,4 +1,10 @@
 package galileo.util;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -96,7 +102,7 @@ public class MDC {
 	}
 	
 	
-	public static void main(String arg[]) {
+	public static void main2(String arg[]) {
 		List<Integer> aRecordIndices = new ArrayList<Integer>();
 		List<List<Integer>> bRecordIndices = new ArrayList<List<Integer>>();
 		MDC m = new MDC();
@@ -113,14 +119,85 @@ public class MDC {
 		System.out.println(aRecordIndices);
 		System.out.println(bRecordIndices);
 	}
-	/*public static void main(String arg[]) {
-		String[] ss = new String[3];
-		ss[0] = "hi";
-		ss[1] = "hello";
-		ss[2] = "lo";
+	public static void main(String arg[]) {
+		MDC m = new MDC();
+		m.whyIsThisHappening();
+	}
+	
+	public void whyIsThisHappening() {
 		
-		System.out.println(java.util.Arrays.toString(ss));
-	}*/
+		BufferedReader br = null;
+		FileReader fr = null;
+		List<String[]> indvARecords = new ArrayList<>();
+		
+		try {
+
+			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/A2042.txt");
+			br = new BufferedReader(fr);
+
+			String sCurrentLine;
+
+			while ((sCurrentLine = br.readLine()) != null) {
+				if(!sCurrentLine.isEmpty() && sCurrentLine.contains("[") && sCurrentLine.contains("]")) {
+					
+					sCurrentLine = sCurrentLine.substring(1, sCurrentLine.length() - 1);
+					String tokens[] = sCurrentLine.split(",");
+					
+					int count = 0;
+					for(String t : tokens) {
+						
+						t = t.trim();
+						tokens[count] = t;
+						count++;
+						
+					}
+					indvARecords.add(tokens);
+					
+				}
+			}
+			
+			br.close();
+			fr.close();
+
+		} catch (IOException e) {
+
+			e.printStackTrace();
+
+		} 
+		
+		String bRecords="";
+		try {
+
+			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/B2042.txt");
+			br = new BufferedReader(fr);
+
+			String sCurrentLine;
+			
+			
+			while ((sCurrentLine = br.readLine()) != null) {
+				
+				bRecords += sCurrentLine+"\n";
+					
+				
+			}
+			
+			br.close();
+			fr.close();
+
+		} catch (IOException e) {
+
+			e.printStackTrace();
+
+		} 
+		
+		int[] aPosns = {42,24,25};
+		int[] bPosns = {2,0,1};
+		double[] epsilons = {3600000, 0.1, 0.1};
+		iterativeMultiDimJoin(indvARecords, bRecords, aPosns, bPosns, epsilons, 3);
+		
+		
+	}
+	
 	
 	
 	public List<String> iterativeMultiDimJoin(List<String[]> indvARecords,/*String aRecords,*/ String bRecords, int[] aPosns, int[] bPosns, double[] epsilons, int interpolatingFeature) {
@@ -131,9 +208,10 @@ public class MDC {
 			System.out.println(Arrays.asList(sa));
 		}*/
 		
+		int fileNum = indvARecords.size();
 		
-		
-		/*System.out.println("APOSNS:");
+		long ll = System.currentTimeMillis()%100;
+		System.out.println("APOSNS: "+ indvARecords.get(0).length);
 		for(int i: aPosns) {
 			System.out.print(i+" ");
 		}
@@ -149,15 +227,16 @@ public class MDC {
 		System.out.println("EPSILONS:");
 		for(double i: epsilons) {
 			System.out.print(i+" ");
-		}*/
+		}
 		
-		System.out.println();
+		//System.out.println();
 		/* Do not modify these 2 data */
 		String doublePattern = "-?([0-9]*)\\.?([0-9]*)";
 		String intPattern = "-?([0-9])([0-9]*)";
 		
 		//String[] indvARecords = aRecords.split("\\$\\$");
 		String[] indvBRecords = bRecords.split("\\n");
+		
 		
 		// these two records only contain 3 fields, time, lat and long
 		List<double[]> splitARecords = new ArrayList<double[]>();
@@ -206,6 +285,36 @@ public class MDC {
 			
 			ind++;
 		}
+		
+		System.out.println("\nSAMPLE A ENTRY "+Arrays.asList(indvARecords.get(0)));
+		System.out.println("SAMPLE B ENTRY "+indvBRecords[bValidEntries.get(0)]);
+		
+		/*
+		try {
+			// WRITING OUT TO FILES FOR TESTING
+			BufferedWriter writer = new BufferedWriter(new FileWriter("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/A"+fileNum+".txt", true));
+			
+		    
+			for(String[] key : indvARecords) {
+				writer.append(Arrays.asList(key)+"\n");
+			}
+			
+			writer.close();
+			
+			
+			writer = new BufferedWriter(new FileWriter("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/B"+fileNum+".txt", true));
+			
+		    
+			for(String key : indvBRecords) {
+				writer.append(key+"\n");
+			}
+			
+			writer.close();
+			
+		} catch (Exception e) {}
+		*/
+		
+		
 		
 		
 		/* Iterative 1D join */
@@ -281,7 +390,12 @@ public class MDC {
 			aValidEntries.removeAll(validAs);
 			bValidEntries.removeAll(validBs);
 			
+			System.out.println("REMOVING "+validAs.size()+" A ENTRIES FOR"+ ll);
+			System.out.println("REMOVING "+validBs.size()+" B ENTRIES FOR"+ ll);
+			
 		}
+		
+		System.out.println("JOIN HAS FINISHED.... ON TO IDW "+ll);
 		
 		List<String> retJoinRecords = new ArrayList<String> ();
 		
@@ -618,6 +732,9 @@ public class MDC {
 		
 		int aLen = setA.size();
 		int bLen = setB.size();
+		
+		System.out.println("# SET A ENTRIES "+aLen);
+		System.out.println("# SET B ENTRIES "+bLen);
 		
 		int aCurrIndex = 0;
 		int bCurrIndex = 0;

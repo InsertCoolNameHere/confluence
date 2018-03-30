@@ -55,13 +55,13 @@ public class MyInsertWindData {
 			SpatialHint sp1 = new SpatialHint("gps_abs_lat", "gps_abs_lon");
 			String temporalHint1 = "epoch_time";
 			//if(!FS_CREATED){
-			gc.createFS("windfs", sp1, featureList1, temporalHint1, 1);
+			gc.createFS("windfsnew", sp1, featureList1, temporalHint1, 1);
 			FS_CREATED = true;
 			Thread.sleep(1000);
 			
 		}
 		try {
-			insertData(files, gc, "windfs", 1);
+			insertData(files, gc, "windfsnew", 1);
 			Thread.sleep(5000);
 		} finally {
 			gc.disconnect();
@@ -161,7 +161,7 @@ public class MyInsertWindData {
 	 * 
 	 * @param args
 	 */
-	public static void main1(String[] args1) {
+	/*public static void main1(String[] args1) {
 		String args[] = new String[3];
 		args[0] = "phoenix.cs.colostate.edu";
 		args[1] = "5634";
@@ -180,7 +180,7 @@ public class MyInsertWindData {
 				if (file.isFile()) {
 					System.out.println("processing - " + args[2]);
 					//processFile(args[2], gc);
-				} /*else {
+				} else {
 					if (file.isDirectory()) {
 						File[] files = file.listFiles();
 						for (File f : files) {
@@ -189,20 +189,20 @@ public class MyInsertWindData {
 							processFile(f.getAbsolutePath(), gc);
 						}
 					}
-				}*/
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
 		System.out.println("Data successfully inserted into galileo");
 		System.exit(0);
-	}
+	}*/
 	
 	public static void main(String[] args1) {
 		String args[] = new String[3];
 		args[0] = "lattice-21.cs.colostate.edu";
 		args[1] = "5634";
-		args[2] = "/s/green/a/tmp/sapmitra/finalDatasets/windData";
+		args[2] = "/s/green/a/tmp/sapmitra/finalDatasets/windDataRemastered";
 		
 		if (args.length != 3) {
 			System.out.println(

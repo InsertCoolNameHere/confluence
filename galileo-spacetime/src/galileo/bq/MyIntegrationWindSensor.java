@@ -45,7 +45,7 @@ public class MyIntegrationWindSensor {
 		
 		DataIntegrationRequest dr = new DataIntegrationRequest(); 
 		dr.setFsname1("sensorfsnew");
-		dr.setFsname2("windfs");
+		dr.setFsname2("windfsnew");
 		
 		/*Coordinates c1 = new Coordinates(34.8117f, -99.3311f);
 		Coordinates c2 = new Coordinates(34.78682f, -95.209f);
@@ -72,7 +72,7 @@ public class MyIntegrationWindSensor {
 		dr.setTime("2016-02-05-xx");
 		dr.setLatRelax(0.1f);
 		dr.setLongRelax(0.1f);
-		dr.setTimeRelaxation(1000*60*60);
+		dr.setTimeRelaxation(1000*60*60*2);
 		dr.setInterpolatingFeature("wind_speed");
 		
 		try {
