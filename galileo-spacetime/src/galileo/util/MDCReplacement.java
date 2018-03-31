@@ -17,18 +17,18 @@ import java.util.regex.Pattern;
 import galileo.comm.TemporalType;
 import galileo.dataset.SpatialRange;
 
-public class MDC {
+public class MDCReplacement {
 	
 	List<Integer> aValidEntries = new ArrayList<Integer>();
 	List<Integer> bValidEntries = new ArrayList<Integer>();
 	private static final Logger logger = Logger.getLogger("galileo");
 	private int mode = 7;
 	
-	public MDC(int mode) {
+	public MDCReplacement(int mode) {
 		this.mode = 0;
 	}
 	
-	public MDC() {this.mode = 7;}
+	public MDCReplacement() {this.mode = 7;}
 	
 	public static void main1(String arg[]) {
 		List<String[]> aRecords = new ArrayList<>();
@@ -95,7 +95,7 @@ public class MDC {
 		int[] bPosns = {0,1,2};
 		double[] epsilons = {100,0.05,0.05};
 		
-		MDC m = new MDC();
+		MDCReplacement m = new MDCReplacement();
 		System.out.println(System.currentTimeMillis());
 		System.out.println(m.iterativeMultiDimJoin(aRecords, bRecords, aPosns, bPosns, epsilons,3));
 		System.out.println(System.currentTimeMillis());
@@ -105,7 +105,7 @@ public class MDC {
 	public static void main2(String arg[]) {
 		List<Integer> aRecordIndices = new ArrayList<Integer>();
 		List<List<Integer>> bRecordIndices = new ArrayList<List<Integer>>();
-		MDC m = new MDC();
+		MDCReplacement m = new MDCReplacement();
 		List<String> pairs = new ArrayList<String>();
 		pairs.add("1,2");
 		pairs.add("1,3");
@@ -120,7 +120,7 @@ public class MDC {
 		System.out.println(bRecordIndices);
 	}
 	public static void main(String arg[]) {
-		MDC m = new MDC();
+		MDCReplacement m = new MDCReplacement();
 		
 		m.whyIsThisHappening();
 		
@@ -204,11 +204,6 @@ public class MDC {
 	
 	public List<String> iterativeMultiDimJoin(List<String[]> indvARecords,/*String aRecords,*/ String bRecords, int[] aPosns, int[] bPosns, double[] epsilons, int interpolatingFeature) {
 		
-		/*System.out.println("BRECORDS: "+bRecords);
-		System.out.println("ARECORDS: ");*/
-		/*for(String[] sa: indvARecords) {
-			System.out.println(Arrays.asList(sa));
-		}*/
 		int aLength = indvARecords.size();
 		int bLength = 0;
 		
@@ -291,34 +286,6 @@ public class MDC {
 		}
 		bLength = ind;
 		
-		//System.out.println("\nSAMPLE A ENTRY "+Arrays.asList(indvARecords.get(0)));
-		//System.out.println("SAMPLE B ENTRY "+indvBRecords[bValidEntries.get(0)]);
-		
-		/*
-		try {
-			// WRITING OUT TO FILES FOR TESTING
-			BufferedWriter writer = new BufferedWriter(new FileWriter("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/A"+fileNum+".txt", true));
-			
-		    
-			for(String[] key : indvARecords) {
-				writer.append(Arrays.asList(key)+"\n");
-			}
-			
-			writer.close();
-			
-			
-			writer = new BufferedWriter(new FileWriter("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/B"+fileNum+".txt", true));
-			
-		    
-			for(String key : indvBRecords) {
-				writer.append(key+"\n");
-			}
-			
-			writer.close();
-			
-		} catch (Exception e) {}
-		*/
-		
 		
 		/* Iterative 1D join */
 		List<String> pairs = new ArrayList<String>();
@@ -388,7 +355,6 @@ public class MDC {
 					currentbitmap, bLength);
 			//System.out.println("TIME: "+(System.currentTimeMillis() - tl));
 			if(i == 2) {
-				// first round, set whatever is returned to be the finalbitmap
 				
 				finalbitmap3 = currentbitmap;
 			} else if (i == 1) {
@@ -398,49 +364,47 @@ public class MDC {
 				
 				finalbitmap1 = currentbitmap;
 			}
+			
+			
+			aValidEntries = new ArrayList<Integer>();
+			bValidEntries = new ArrayList<Integer>();
+			if(i != 0) {
 				
-			
-			
-			//pairs1.add(tmpPairs);
-			
-			/* At this point validAs and validBs actually contain invalid entries */
-			List<double[]> removalsA = new ArrayList<double[]>();
-			for(int in : validAs) {
-				int indx = aValidEntries.indexOf(in);
-				removalsA.add(splitARecords.get(indx));
+				for(int id1 = 0; id1 < aLength; id1++) {
+					for(int id2 = 0; id2 < bLength; id2++) {
+						
+						
+						
+					}
+					
+				}
+				
+				// THE LATER PART WILL BE REMOVED LATER
+				// At this point validAs and validBs actually contain invalid entries 
+				List<double[]> removalsA = new ArrayList<double[]>();
+				for(int in : validAs) {
+					int indx = aValidEntries.indexOf(in);
+					removalsA.add(splitARecords.get(indx));
+				}
+				splitARecords.removeAll(removalsA);
+				
+				List<double[]> removalsB = new ArrayList<double[]>();
+				for(int in : validBs) {
+					int indx = bValidEntries.indexOf(in);
+					//splitBRecords.remove(indx);
+					removalsB.add(splitBRecords.get(indx));
+				}
+				splitBRecords.removeAll(removalsB);
+				
+				aValidEntries.removeAll(validAs);
+				bValidEntries.removeAll(validBs);
 			}
-			splitARecords.removeAll(removalsA);
-			
-			List<double[]> removalsB = new ArrayList<double[]>();
-			for(int in : validBs) {
-				int indx = bValidEntries.indexOf(in);
-				//splitBRecords.remove(indx);
-				removalsB.add(splitBRecords.get(indx));
-			}
-			splitBRecords.removeAll(removalsB);
-			
-			aValidEntries.removeAll(validAs);
-			bValidEntries.removeAll(validBs);
-			
-			//System.out.println("REMOVING "+validAs.size()+" A ENTRIES FOR"+ ll);
-			//System.out.println("REMOVING "+validBs.size()+" B ENTRIES FOR"+ ll);
 			
 		}
 	
-		// final round
-		/*for(int j = 0; j < aLength*bLength; j++) {
-			if(finalbitmap1[j] == '1' && finalbitmap2[j] == '1' && finalbitmap3[j] == '1') {
-				
-				int x = j / bLength;
-				int y = j % bLength;
-				pairs.add(x+","+y);
-			} else {
-				//finalbitmap[j] = '0';
-			}
-		}*/
 		
-		//Collections.sort(aValidEntries);
-		//Collections.sort(bValidEntries);
+		Collections.sort(aValidEntries);
+		Collections.sort(bValidEntries);
 		
 		// combining bitmaps
 		for(int ind1 = 0; ind1 < aLength ; ind1++) {
@@ -963,8 +927,8 @@ public class MDC {
 		//System.out.println("RIKI HERE");
 		List<String> pairs = new ArrayList<String>();
 		
-		List<Integer> aValids = new ArrayList<Integer>();
-		List<Integer> bValids = new ArrayList<Integer>();
+		//List<Integer> aValids = new ArrayList<Integer>();
+		//List<Integer> bValids = new ArrayList<Integer>();
 		
 		int aLen = setA.size();
 		int bLen = setB.size();
@@ -1000,6 +964,7 @@ public class MDC {
 		
 		double current = start;
 		
+		// The sets and related setInd correspond
 		List<Double> setATemp;
 		List<Integer> setATempInd;
 		List<Double> setBTemp1 = new ArrayList<Double>();
@@ -1070,9 +1035,6 @@ public class MDC {
 							int y = setBTempInd1.get(indxB);
 							bitMap[x*roundVal+y] = '1';
 							
-							//pairs.add(setATempInd.get(indxA)+","+setBTempInd1.get(indxB));
-						
-							bValids.add(setBTempInd1.get(indxB));
 						}
 						indxB++;
 					}
@@ -1088,9 +1050,6 @@ public class MDC {
 						int y = i;
 						bitMap[x*roundVal+y] = '1';
 						
-						
-						//pairs.add(setATempInd.get(indxA)+","+i);
-						bValids.add(i);
 					}
 					
 					indxB = 0;
@@ -1104,15 +1063,11 @@ public class MDC {
 								int y = setBTempInd3.get(indxB);
 								bitMap[x*roundVal+y] = '1';
 								
-								//pairs.add(setATempInd.get(indxA)+","+setBTempInd3.get(indxB));
-								bValids.add(setBTempInd3.get(indxB));
 							}
 							indxB++;
 						}
 					}
 					
-					if(found)
-						aValids.add(setATempInd.get(indxA));
 					indxA++;
 				}
 			}
@@ -1136,12 +1091,6 @@ public class MDC {
 			
 		}
 		
-		//System.out.println(aValids);
-		//System.out.println(bValids);
-		
-		aInd.removeAll(aValids);
-		
-		bInd.removeAll(bValids);
 		return pairs;
 	}
 	

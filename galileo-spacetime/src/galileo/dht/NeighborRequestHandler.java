@@ -340,7 +340,7 @@ public class NeighborRequestHandler implements MessageListener {
 								if(expectedPaths.size() <= 0) {
 									
 									/* LAUNCH THIS SUPERCUBE INTO A NEW THREAD*/
-									logger.log(Level.INFO, "RIKI: READY TO LAUNCH " + i);
+									//logger.log(Level.INFO, "RIKI: READY TO LAUNCH " + i);
 									
 									//JoiningThread jt = new JoiningThread(fs1SuperCubeDataMap.get(i), bRecords, aPosns, bPosns, epsilons, cubeId);
 									JoiningThread jt = new JoiningThread(i);
@@ -682,7 +682,7 @@ public class NeighborRequestHandler implements MessageListener {
 					// This is coming from control message
 					List<Integer> frags = lr.getFragments();
 					
-					System.out.println("LOCAL REQUIREMENTS FOR SUPERCUBE: "+key+" "+frags);
+					//System.out.println("LOCAL REQUIREMENTS FOR SUPERCUBE: "+key+" "+frags);
 					
 					synchronized(pathIdToFragmentDataMap) {
 						List<String> allFrags = pathIdToFragmentDataMap.get(key);
@@ -713,8 +713,8 @@ public class NeighborRequestHandler implements MessageListener {
 				for(String[] aa : indvARecords) {
 					aas+= Arrays.asList(aa)+"\n";
 				}*/
-				logger.log(Level.INFO, "RIKI: FS2 RECORDS: "+bRecords.length());
-				logger.log(Level.INFO, "RIKI: AFS1 RECORDS: "+indvARecords.size());
+				//logger.log(Level.INFO, "RIKI: FS2 RECORDS: "+bRecords.length());
+				//logger.log(Level.INFO, "RIKI: AFS1 RECORDS: "+indvARecords.size());
 				
 				this.storagePath = getResultFilePrefix(eventId, fs1.getName(), i);
 			}
@@ -755,7 +755,7 @@ public class NeighborRequestHandler implements MessageListener {
 			
 			cubesLeft--;
 			
-			logger.info("RIKI: NUMBER OF CUBES LEFT: "+cubesLeft + " "+allCubes);
+			//logger.info("RIKI: NUMBER OF CUBES LEFT: "+cubesLeft + " "+allCubes);
 			if(cubesLeft <= 0) {
 				
 				// LAUNCH CLOSE REQUEST

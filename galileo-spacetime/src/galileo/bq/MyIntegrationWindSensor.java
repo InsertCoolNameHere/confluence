@@ -70,9 +70,9 @@ public class MyIntegrationWindSensor {
 		
 		dr.setPolygon(cl);
 		dr.setTime("2016-02-05-xx");
-		dr.setLatRelax(0.1f);
-		dr.setLongRelax(0.1f);
-		dr.setTimeRelaxation(1000*60*60*2);
+		dr.setLatRelax(0.05f);
+		dr.setLongRelax(0.05f);
+		dr.setTimeRelaxation(1000*60*60);
 		dr.setInterpolatingFeature("wind_speed");
 		
 		try {
