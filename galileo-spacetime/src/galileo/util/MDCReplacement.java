@@ -134,7 +134,7 @@ public class MDCReplacement {
 		
 		try {
 
-			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/A11194.txt");
+			fr = new FileReader("D:\\CONFLUX\\join1\\A11194.txt");
 			br = new BufferedReader(fr);
 
 			String sCurrentLine;
@@ -170,7 +170,7 @@ public class MDCReplacement {
 		String bRecords="";
 		try {
 
-			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/B11194.txt");
+			fr = new FileReader("D:\\CONFLUX\\join1\\B11194.txt");
 			br = new BufferedReader(fr);
 
 			String sCurrentLine;
@@ -366,18 +366,9 @@ public class MDCReplacement {
 			}
 			
 			
-			aValidEntries = new ArrayList<Integer>();
-			bValidEntries = new ArrayList<Integer>();
+			//aValidEntries = new ArrayList<Integer>();
+			//bValidEntries = new ArrayList<Integer>();
 			if(i != 0) {
-				
-				for(int id1 = 0; id1 < aLength; id1++) {
-					for(int id2 = 0; id2 < bLength; id2++) {
-						
-						
-						
-					}
-					
-				}
 				
 				// THE LATER PART WILL BE REMOVED LATER
 				// At this point validAs and validBs actually contain invalid entries 
@@ -927,8 +918,8 @@ public class MDCReplacement {
 		//System.out.println("RIKI HERE");
 		List<String> pairs = new ArrayList<String>();
 		
-		//List<Integer> aValids = new ArrayList<Integer>();
-		//List<Integer> bValids = new ArrayList<Integer>();
+		List<Integer> aValids = new ArrayList<Integer>();
+		List<Integer> bValids = new ArrayList<Integer>();
 		
 		int aLen = setA.size();
 		int bLen = setB.size();
@@ -1034,6 +1025,7 @@ public class MDCReplacement {
 							int x = setATempInd.get(indxA);
 							int y = setBTempInd1.get(indxB);
 							bitMap[x*roundVal+y] = '1';
+							bValids.add(setBTempInd1.get(indxB));
 							
 						}
 						indxB++;
@@ -1050,6 +1042,8 @@ public class MDCReplacement {
 						int y = i;
 						bitMap[x*roundVal+y] = '1';
 						
+						bValids.add(i);	
+						
 					}
 					
 					indxB = 0;
@@ -1063,11 +1057,13 @@ public class MDCReplacement {
 								int y = setBTempInd3.get(indxB);
 								bitMap[x*roundVal+y] = '1';
 								
+								bValids.add(setBTempInd3.get(indxB));
 							}
 							indxB++;
 						}
 					}
-					
+					 if(found)	
+						 aValids.add(setATempInd.get(indxA));
 					indxA++;
 				}
 			}
@@ -1091,6 +1087,9 @@ public class MDCReplacement {
 			
 		}
 		
+		
+		aInd.removeAll(aValids);
+		bInd.removeAll(bValids);
 		return pairs;
 	}
 	
