@@ -71,6 +71,7 @@ public class FilesystemRequest implements Event {
 	
 	private int spatialUncertaintyPrecision;
 	private int temporalUncertaintyPrecision;
+	private int spatialPartitioningType = 0;
 	
 	
 	
@@ -267,7 +268,9 @@ public class FilesystemRequest implements Event {
 		this.temporalHint = in.readString();
 		this.spatialUncertaintyPrecision = in.readInt();
 		this.temporalUncertaintyPrecision = in.readInt();
+		this.spatialPartitioningType = in.readInt();
 		this.isRasterized = in.readBoolean();
+		
 	}
 
 	@Override
@@ -286,6 +289,7 @@ public class FilesystemRequest implements Event {
 		out.writeString(this.temporalHint);
 		out.writeInt(this.spatialUncertaintyPrecision);
 		out.writeInt(this.temporalUncertaintyPrecision);
+		out.writeInt(this.spatialPartitioningType);
 		out.writeBoolean(this.isRasterized);
 
 	}
@@ -334,6 +338,16 @@ public class FilesystemRequest implements Event {
 
 	public void setTemporalHint(String temporalHint) {
 		this.temporalHint = temporalHint;
+	}
+
+
+	public int getSpatialPartitioningType() {
+		return spatialPartitioningType;
+	}
+
+
+	public void setSpatialPartitioningType(int spatialPartitioningType) {
+		this.spatialPartitioningType = spatialPartitioningType;
 	}
 
 }

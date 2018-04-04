@@ -3,6 +3,8 @@ package galileo.dht;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -14,6 +16,7 @@ import galileo.comm.TemporalType;
 import galileo.dataset.Coordinates;
 import galileo.dataset.Metadata;
 import galileo.dataset.SpatialProperties;
+import galileo.dataset.SpatialRange;
 import galileo.dataset.TemporalProperties;
 import galileo.dht.hash.BalancedHashRing;
 import galileo.dht.hash.ConstrainedGeohash;
@@ -35,7 +38,7 @@ public class TemporalHierarchyPartitioner extends Partitioner<Metadata> {
 	private Map<BigInteger, BalancedHashRing<Metadata>> nodeHashRings;
 	private Map<BigInteger, Map<BigInteger, NodeInfo>> nodePositions;
 	
-	public TemporalHierarchyPartitioner(StorageNode storageNode, NetworkInfo network, int temporalHashType)
+	public TemporalHierarchyPartitioner(StorageNode storageNode, NetworkInfo network, int temporalHashType, int spatialHashType)
 			throws PartitionException, HashException, HashTopologyException {
 
 		super(storageNode, network);
@@ -46,13 +49,26 @@ public class TemporalHierarchyPartitioner extends Partitioner<Metadata> {
 			throw new PartitionException("At least one group must exist in "
 					+ "the current network configuration to use this " + "partitioner.");
 		}
-
-		// Geohashes for US region.
-		String[] geohashes = { "8g", "8u", "8v", "8x", "8y", "8z", "94", "95", "96", "97", "9d", "9e", "9g", "9h", "9j",
+		String[] geohashes = null;
+		/*String[] geohashes_2char = { "8g", "8u", "8v", "8x", "8y", "8z", "94", "95", "96", "97", "9d", "9e", "9g", "9h", "9j",
 				"9k", "9m", "9n", "9p", "9q", "9r", "9s", "9t", "9u", "9v", "9w", "9x", "9y", "9z", "b8", "b9", "bb",
 				"bc", "bf", "c0", "c1", "c2", "c3", "c4", "c6", "c8", "c9", "cb", "cc", "cd", "cf", "d4", "d5", "d6",
 				"d7", "dd", "de", "dh", "dj", "dk", "dm", "dn", "dp", "dq", "dr", "ds", "dt", "dw", "dx", "dz", "f0",
-				"f1", "f2", "f3", "f4", "f6", "f8", "f9", "fb", "fc", "fd", "ff" };
+				"f1", "f2", "f3", "f4", "f6", "f8", "f9", "fb", "fc", "fd", "ff" };*/
+		
+		
+		String[] geohashes_2char = {"9x", "9y", "9v", "9q"};
+		
+		if(spatialHashType == 2) {
+		// Geohashes for US region.
+			
+			geohashes = geohashes_2char;
+		} else if(spatialHashType > 2) {
+			
+			geohashes = generateGeohashes(geohashes_2char, spatialHashType);
+		} else {
+			logger.severe("GEOHASH PARTITIONING FAILED. INVALID LENGTH: "+spatialHashType);
+		}
 
 		groupHash = new TemporalHash(TemporalType.fromType(temporalHashType));
 		groupHashRing = new BalancedHashRing<>(groupHash);
@@ -63,6 +79,43 @@ public class TemporalHierarchyPartitioner extends Partitioner<Metadata> {
 		for (GroupInfo group : groups) {
 			placeGroup(group);
 		}
+	}
+	
+	public static void main(String arg[]) {
+		
+		String[] geohashes_2char = { "8g", "8u"};
+		System.out.println(Arrays.asList(generateGeohashes(geohashes_2char, 4)));
+	}
+
+	private static String[] generateGeohashes(String[] geohashes_2char, int spatialHashType) {
+		List<String> allGeoHashes = new ArrayList<String>(Arrays.asList(geohashes_2char));
+		
+		for(int i = 2; i < spatialHashType; i++) {
+			
+			List<String> currentGeohashes = new ArrayList<String>();
+			
+			for(String geoHash : allGeoHashes) {
+				
+				
+				SpatialRange range1 = GeoHash.decodeHash(geoHash);
+				
+				Coordinates c1 = new Coordinates(range1.getLowerBoundForLatitude(), range1.getLowerBoundForLongitude());
+				Coordinates c2 = new Coordinates(range1.getUpperBoundForLatitude(), range1.getLowerBoundForLongitude());
+				Coordinates c3 = new Coordinates(range1.getUpperBoundForLatitude(), range1.getUpperBoundForLongitude());
+				Coordinates c4 = new Coordinates(range1.getLowerBoundForLatitude(), range1.getUpperBoundForLongitude());
+				
+				ArrayList<Coordinates> cs1 = new ArrayList<Coordinates>();
+				cs1.add(c1);cs1.add(c2);cs1.add(c3);cs1.add(c4);
+				
+				currentGeohashes.addAll(Arrays.asList(GeoHash.getIntersectingGeohashesForConvexBoundingPolygon(cs1, i+1)));
+				
+			}
+			allGeoHashes = currentGeohashes;
+			
+		}
+		Collections.sort(allGeoHashes);
+		String[] returnArray = allGeoHashes.toArray(new String[allGeoHashes.size()]);
+		return returnArray;
 	}
 
 	private void placeGroup(GroupInfo group) throws HashException, HashTopologyException {

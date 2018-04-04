@@ -155,6 +155,7 @@ public class GeospatialFileSystem extends FileSystem {
 	private int temporalPosn;
 	private int spatialPosn1;
 	private int spatialPosn2;
+	private int spatialPartitioningType;
 
 	private static final String TEMPORAL_YEAR_FEATURE = "x__year__x";
 	private static final String TEMPORAL_MONTH_FEATURE = "x__month__x";
@@ -175,11 +176,12 @@ public class GeospatialFileSystem extends FileSystem {
 	
 
 	public GeospatialFileSystem(StorageNode sn, String storageDirectory, String name, int precision, int nodesPerGroup,
-			int temporalType, NetworkInfo networkInfo, String featureList, SpatialHint sHint, boolean ignoreIfPresent)
+			int temporalType, NetworkInfo networkInfo, String featureList, SpatialHint sHint, boolean ignoreIfPresent, int spatialPartitioningType)
 			throws FileSystemException, IOException, SerializationException, PartitionException, HashException,
 			HashTopologyException {
 		super(storageDirectory, name, ignoreIfPresent);
 
+		this.spatialPartitioningType = spatialPartitioningType;
 		this.nodesPerGroup = nodesPerGroup;
 		this.geohashIndex = new HashSet<>();
 		
@@ -236,7 +238,7 @@ public class GeospatialFileSystem extends FileSystem {
 		 * spatiotemporal. Accordingly, use TemporalHierarchyPartitioner or
 		 * SpatialHierarchyPartitioner
 		 **/
-		this.partitioner = new TemporalHierarchyPartitioner(sn, this.network, this.temporalType.getType());
+		this.partitioner = new TemporalHierarchyPartitioner(sn, this.network, this.temporalType.getType(), spatialPartitioningType);
 
 		this.timeFormat = System.getProperty("galileo.fs.GeospatialFileSystem.timeFormat", DEFAULT_TIME_FORMAT);
 		int maxPrecision = GeoHash.MAX_PRECISION / 5;
@@ -251,8 +253,32 @@ public class GeospatialFileSystem extends FileSystem {
 		createMetadataGraph();
 	}
 	
+	/**
+	 * MY VERSION 
+	 * @param sn
+	 * @param storageDirectory
+	 * @param name
+	 * @param precision
+	 * @param nodesPerGroup
+	 * @param temporalType
+	 * @param networkInfo
+	 * @param featureList
+	 * @param sHint
+	 * @param temporalHint
+	 * @param ignoreIfPresent
+	 * @param spatialUncertainty
+	 * @param temporalUncertainty
+	 * @param isRasterized
+	 * @throws FileSystemException
+	 * @throws IOException
+	 * @throws SerializationException
+	 * @throws PartitionException
+	 * @throws HashException
+	 * @throws HashTopologyException
+	 */
 	public GeospatialFileSystem(StorageNode sn, String storageDirectory, String name, int precision, int nodesPerGroup,
-			int temporalType, NetworkInfo networkInfo, String featureList, SpatialHint sHint, String temporalHint, boolean ignoreIfPresent, int spatialUncertainty, int temporalUncertainty, boolean isRasterized)
+			int temporalType, NetworkInfo networkInfo, String featureList, SpatialHint sHint, String temporalHint, 
+			boolean ignoreIfPresent, int spatialUncertainty, int temporalUncertainty, boolean isRasterized, int spatialPartitioningType)
 			throws FileSystemException, IOException, SerializationException, PartitionException, HashException,
 			HashTopologyException {
 		super(storageDirectory, name, ignoreIfPresent);
@@ -260,6 +286,7 @@ public class GeospatialFileSystem extends FileSystem {
 		this.borderMap = new HashMap<String, BorderingProperties>();
 		//this.spatialGridsMap = new HashMap<String, SpatialGrid>();
 		
+		this.spatialPartitioningType = spatialPartitioningType;
 		this.spatialUncertaintyPrecision = spatialUncertainty;
 		this.temporalUncertaintyPrecision = temporalUncertainty;
 		this.isRasterized = isRasterized;
@@ -324,7 +351,7 @@ public class GeospatialFileSystem extends FileSystem {
 		 * spatiotemporal. Accordingly, use TemporalHierarchyPartitioner or
 		 * SpatialHierarchyPartitioner
 		 **/
-		this.partitioner = new TemporalHierarchyPartitioner(sn, this.network, this.temporalType.getType());
+		this.partitioner = new TemporalHierarchyPartitioner(sn, this.network, this.temporalType.getType(), spatialPartitioningType);
 
 		this.timeFormat = System.getProperty("galileo.fs.GeospatialFileSystem.timeFormat", DEFAULT_TIME_FORMAT);
 		int maxPrecision = GeoHash.MAX_PRECISION / 5;
@@ -436,9 +463,10 @@ public class GeospatialFileSystem extends FileSystem {
 		state.put("temporalPosn", this.temporalPosn);
 		state.put("spatialPosn1", this.spatialPosn1);
 		state.put("spatialPosn2", this.spatialPosn2);
+		state.put("spatialPartitioningType", this.spatialPartitioningType);
 		
-		logger.log(Level.INFO, "RIKI: BORDERMAP" + borderMap.keySet().size());
-		logger.log(Level.INFO, "RIKI: BORDERMAP" + borderMap.size());
+		//logger.log(Level.INFO, "RIKI: BORDERMAP" + borderMap.keySet().size());
+		//logger.log(Level.INFO, "RIKI: BORDERMAP" + borderMap.size());
 		
 		if(borderMap.size() > 0) {
 			JSONArray bMaps = new JSONArray();
@@ -479,8 +507,9 @@ public class GeospatialFileSystem extends FileSystem {
 			spHint = new SpatialHint(spHintJSON.getString("latHint"), spHintJSON.getString("lngHint"));
 		}
 		//logger.log(Level.INFO, "RIKI: NETWORK2: "+networkInfo);
+		int spPartitioningType = state.getInt("spatialPartitioningType");
 		GeospatialFileSystem gfs = new GeospatialFileSystem(storageNode, storageRoot, name, geohashPrecision,
-				nodesPerGroup, temporalType, networkInfo, featureList, spHint, true);
+				nodesPerGroup, temporalType, networkInfo, featureList, spHint, true, spPartitioningType);
 		gfs.earliestTime = (state.get("earliestTime") != JSONObject.NULL)
 				? new TemporalProperties(state.getLong("earliestTime")) : null;
 		gfs.earliestSpace = (state.get("earliestSpace") != JSONObject.NULL) ? state.getString("earliestSpace") : null;
@@ -499,6 +528,7 @@ public class GeospatialFileSystem extends FileSystem {
 		gfs.temporalPosn = state.getInt("temporalPosn");
 		gfs.spatialPosn1 = state.getInt("spatialPosn1");
 		gfs.spatialPosn2 = state.getInt("spatialPosn2");
+		
 		
 		gfs.borderMap = new HashMap<String, BorderingProperties>();
 		if(state.has("borderMaps")) {
@@ -2846,6 +2876,14 @@ public class GeospatialFileSystem extends FileSystem {
 		}
 		
 		return featurePosn;
+	}
+
+	public int getSpatialPartitioningType() {
+		return spatialPartitioningType;
+	}
+
+	public void setSpatialPartitioningType(int spatialPartitioningType) {
+		this.spatialPartitioningType = spatialPartitioningType;
 	}
 	
 	

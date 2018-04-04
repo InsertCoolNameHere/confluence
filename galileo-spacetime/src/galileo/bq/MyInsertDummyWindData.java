@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.TimeZone;
 
-public class MyInsertWindData {
+public class MyInsertDummyWindData {
 
 	// [START processFile]
 	/**
@@ -37,7 +37,7 @@ public class MyInsertWindData {
 	 *            GalileoConnector instance
 	 * @throws Exception
 	 */
-	private static boolean FS_CREATED = false;
+	private static boolean FS_CREATED = true;
 	
 	private static void processFile(File[] files, GalileoConnector gc) throws Exception {
 		
@@ -45,9 +45,11 @@ public class MyInsertWindData {
 		if( ! FS_CREATED ) {
 			List<Pair<String, FeatureType>> featureList1 = new ArrayList<>();
 	  		
+			featureList1.add(new Pair<>("epoch_time", FeatureType.FLOAT));
 			featureList1.add(new Pair<>("gps_abs_lat", FeatureType.FLOAT));
 			featureList1.add(new Pair<>("gps_abs_lon", FeatureType.FLOAT));
-			featureList1.add(new Pair<>("epoch_time", FeatureType.FLOAT));
+			featureList1.add(new Pair<>("temperature", FeatureType.FLOAT));
+			featureList1.add(new Pair<>("humidity", FeatureType.FLOAT));
 			featureList1.add(new Pair<>("wind_speed", FeatureType.FLOAT));
 			featureList1.add(new Pair<>("wind_dir", FeatureType.STRING));
 			
@@ -55,13 +57,13 @@ public class MyInsertWindData {
 			SpatialHint sp1 = new SpatialHint("gps_abs_lat", "gps_abs_lon");
 			String temporalHint1 = "epoch_time";
 			//if(!FS_CREATED){
-			gc.createFS("windfsnew", sp1, featureList1, temporalHint1, 1);
+			gc.createFS("windfsdummy", sp1, featureList1, temporalHint1, 1);
 			FS_CREATED = true;
 			Thread.sleep(1000);
 			
 		}
 		try {
-			insertData(files, gc, "windfsnew", 1);
+			insertData(files, gc, "windfsdummy", 1);
 			Thread.sleep(5000);
 		} finally {
 			gc.disconnect();
@@ -87,7 +89,7 @@ public class MyInsertWindData {
 				inputStream = new FileInputStream(filepath);
 				sc = new Scanner(inputStream);
 				StringBuffer data = new StringBuffer();
-				System.out.println("Start Reading CSV File");
+				//System.out.println("Start Reading CSV File");
 				String currentDay = null;
 				int rowCount = 0;
 				Calendar c = Calendar.getInstance();
@@ -103,10 +105,10 @@ public class MyInsertWindData {
 					if(line.trim().isEmpty())
 						continue;
 					String tmpvalues[] = line.split(",");
-					if (line.contains("epoch_time") || tmpvalues.length != 5) {
+					if (line.contains("epoch_time") || tmpvalues.length != 7) {
 						continue;
 					}
-					if (Float.parseFloat(tmpvalues[0]) == 0.0f && Float.parseFloat(tmpvalues[1]) == 0.0f) {
+					if (Float.parseFloat(tmpvalues[1]) == 0.0f && Float.parseFloat(tmpvalues[2]) == 0.0f) {
 						continue;
 					}
 					
@@ -114,7 +116,7 @@ public class MyInsertWindData {
 					
 					if(firstLine.length() == 0) {
 						firstLine = line;
-						long epoch = GalileoConnector.reformatDatetime(tmpvalues[2]);
+						long epoch = GalileoConnector.reformatDatetime(tmpvalues[0]);
 						c.setTimeInMillis(epoch);
 						currentDay = String.format("%d-%d-%d", c.get(Calendar.YEAR), c.get(Calendar.MONTH) + 1, c.get(Calendar.DAY_OF_MONTH));
 					}
@@ -130,7 +132,7 @@ public class MyInsertWindData {
 					continue;
 				}
 				
-				Block tmp = GalileoConnector.createBlockWind(firstLine, allLines.substring(0, allLines.length() - 1), fsName);
+				Block tmp = GalileoConnector.createBlockWindDummy(firstLine, allLines.substring(0, allLines.length() - 1), fsName);
 				if (tmp != null) {
 					gc.store(tmp);
 					Thread.sleep(100);
@@ -202,7 +204,7 @@ public class MyInsertWindData {
 		String args[] = new String[3];
 		args[0] = "lattice-21.cs.colostate.edu";
 		args[1] = "5634";
-		args[2] = "/s/green/a/tmp/sapmitra/finalDatasets/windDataRemastered";
+		args[2] = "/s/green/a/tmp/sapmitra/dummyDataWind";
 		
 		if (args.length != 3) {
 			System.out.println(

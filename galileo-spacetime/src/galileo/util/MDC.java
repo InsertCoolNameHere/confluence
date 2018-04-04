@@ -21,7 +21,7 @@ public class MDC {
 	
 	List<Integer> aValidEntries = new ArrayList<Integer>();
 	List<Integer> bValidEntries = new ArrayList<Integer>();
-	private static final Logger logger = Logger.getLogger("galileo");
+	//private static final Logger logger = Logger.getLogger("galileo");
 	private int mode = 7;
 	
 	public MDC(int mode) {
@@ -134,7 +134,8 @@ public class MDC {
 		
 		try {
 
-			fr = new FileReader("D:\\CONFLUX\\join1\\A11194.txt");
+			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/A11194.txt");
+			//fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/A2042.txt");
 			br = new BufferedReader(fr);
 
 			String sCurrentLine;
@@ -170,7 +171,8 @@ public class MDC {
 		String bRecords="";
 		try {
 
-			fr = new FileReader("D:\\CONFLUX\\join1\\B11194.txt");
+			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/B11194.txt");
+			//fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/B2042.txt");
 			br = new BufferedReader(fr);
 
 			String sCurrentLine;
@@ -202,13 +204,9 @@ public class MDC {
 		
 	}
 	
+	/* ACTUAL JOIN */
 	public List<String> iterativeMultiDimJoin(List<String[]> indvARecords,/*String aRecords,*/ String bRecords, int[] aPosns, int[] bPosns, double[] epsilons, int interpolatingFeature) {
 		
-		/*System.out.println("BRECORDS: "+bRecords);
-		System.out.println("ARECORDS: ");*/
-		/*for(String[] sa: indvARecords) {
-			System.out.println(Arrays.asList(sa));
-		}*/
 		int aLength = indvARecords.size();
 		int bLength = 0;
 		
@@ -235,8 +233,8 @@ public class MDC {
 		
 		//System.out.println();
 		/* Do not modify these 2 data */
-		String doublePattern = "-?([0-9]*)\\.?([0-9]*)";
-		String intPattern = "-?([0-9])([0-9]*)";
+		//String doublePattern = "-?([0-9]*)\\.?([0-9]*)";
+		//String intPattern = "-?([0-9])([0-9]*)";
 		
 		//String[] indvARecords = aRecords.split("\\$\\$");
 		String[] indvBRecords = bRecords.split("\\n");
@@ -254,15 +252,14 @@ public class MDC {
 		
 		for(String[] frs: indvARecords) {
 			
-			if(Pattern.matches(doublePattern, frs[aPosns[1]]) && Pattern.matches(doublePattern, frs[aPosns[2]])
-					&& Pattern.matches(intPattern, frs[aPosns[0]])){
-				double[] tempArr = new double[3];
-				tempArr[0] = Double.valueOf(frs[aPosns[0]]);
-				tempArr[1] = Double.valueOf(frs[aPosns[1]]);
-				tempArr[2] = Double.valueOf(frs[aPosns[2]]);
-				splitARecords.add(tempArr);
-				aValidEntries.add(ind);
-			}
+		
+			double[] tempArr = new double[3];
+			tempArr[0] = Double.valueOf(frs[aPosns[0]]);
+			tempArr[1] = Double.valueOf(frs[aPosns[1]]);
+			tempArr[2] = Double.valueOf(frs[aPosns[2]]);
+			splitARecords.add(tempArr);
+			aValidEntries.add(ind);
+		
 			
 			ind++;
 		}
@@ -276,48 +273,18 @@ public class MDC {
 			}
 			line = line.replace(", ", ",");
 			String[] frs = line.split(",");
-			if(Pattern.matches(doublePattern, frs[bPosns[1]]) && Pattern.matches(doublePattern, frs[bPosns[2]])
-					&& Pattern.matches(intPattern, frs[bPosns[0]])){
-				
-				double[] tempArr = new double[3];
-				tempArr[0] = Double.valueOf(frs[bPosns[0]]);
-				tempArr[1] = Double.valueOf(frs[bPosns[1]]);
-				tempArr[2] = Double.valueOf(frs[bPosns[2]]);
-				splitBRecords.add(tempArr);
-				bValidEntries.add(ind);
-			}
+		
+			double[] tempArr = new double[3];
+			tempArr[0] = Double.valueOf(frs[bPosns[0]]);
+			tempArr[1] = Double.valueOf(frs[bPosns[1]]);
+			tempArr[2] = Double.valueOf(frs[bPosns[2]]);
+			splitBRecords.add(tempArr);
+			bValidEntries.add(ind);
+			
 			
 			ind++;
 		}
 		bLength = ind;
-		
-		//System.out.println("\nSAMPLE A ENTRY "+Arrays.asList(indvARecords.get(0)));
-		//System.out.println("SAMPLE B ENTRY "+indvBRecords[bValidEntries.get(0)]);
-		
-		/*
-		try {
-			// WRITING OUT TO FILES FOR TESTING
-			BufferedWriter writer = new BufferedWriter(new FileWriter("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/A"+fileNum+".txt", true));
-			
-		    
-			for(String[] key : indvARecords) {
-				writer.append(Arrays.asList(key)+"\n");
-			}
-			
-			writer.close();
-			
-			
-			writer = new BufferedWriter(new FileWriter("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/B"+fileNum+".txt", true));
-			
-		    
-			for(String key : indvBRecords) {
-				writer.append(key+"\n");
-			}
-			
-			writer.close();
-			
-		} catch (Exception e) {}
-		*/
 		
 		
 		/* Iterative 1D join */
@@ -329,11 +296,6 @@ public class MDC {
 		char[] finalbitmap2 = new char[aLength*bLength];
 		char[] finalbitmap3 = new char[aLength*bLength];
 		
-		/*for(int i=0; i < aLength*bLength; i++)
-			finalbitmap[i] = '0';*/
-		
-		
-		
 		for(int i=2 ; i >= 0 ; i--) {
 			
 			//System.out.println("DIMENSION: "+(i+1)+"\n==============\n");
@@ -342,12 +304,12 @@ public class MDC {
 			List<Integer> validAs = new ArrayList<Integer>(aValidEntries);
 			List<Integer> validBs = new ArrayList<Integer>(bValidEntries);
 			
-			int aPosn = aPosns[i];
-			int bPosn = bPosns[i];
+			//int aPosn = aPosns[i];
+			//int bPosn = bPosns[i];
 			
 			/* If no match has been found and setA/ setB has become empty now */
 			if(splitARecords.isEmpty() || splitBRecords.isEmpty()) {
-				logger.info("GOING OUT FOR NO MATCHES");
+				//logger.info("GOING OUT FOR NO MATCHES");
 				pairs = new ArrayList<String>();
 				break;
 			}
@@ -383,12 +345,11 @@ public class MDC {
 			for(int j=0; j < aLength*bLength; j++)
 				currentbitmap[j] = '0';
 			
-			long tl = System.currentTimeMillis();
-			List<String> tmpPairs = oneDJoin(setA, validAs, setB, validBs, epsilons[i], splitARecords, splitBRecords,
+			//long tl = System.currentTimeMillis();
+			oneDJoin(setA, validAs, setB, validBs, epsilons[i], splitARecords, splitBRecords,
 					currentbitmap, bLength);
 			//System.out.println("TIME: "+(System.currentTimeMillis() - tl));
 			if(i == 2) {
-				// first round, set whatever is returned to be the finalbitmap
 				
 				finalbitmap3 = currentbitmap;
 			} else if (i == 1) {
@@ -398,55 +359,42 @@ public class MDC {
 				
 				finalbitmap1 = currentbitmap;
 			}
+			
+			
+			if(i != 0) {
 				
-			
-			
-			//pairs1.add(tmpPairs);
-			
-			/* At this point validAs and validBs actually contain invalid entries */
-			List<double[]> removalsA = new ArrayList<double[]>();
-			for(int in : validAs) {
-				int indx = aValidEntries.indexOf(in);
-				removalsA.add(splitARecords.get(indx));
+				// THE LATER PART WILL BE REMOVED LATER
+				// At this point validAs and validBs actually contain invalid entries 
+				List<double[]> removalsA = new ArrayList<double[]>();
+				for(int in : validAs) {
+					int indx = aValidEntries.indexOf(in);
+					removalsA.add(splitARecords.get(indx));
+				}
+				splitARecords.removeAll(removalsA);
+				
+				List<double[]> removalsB = new ArrayList<double[]>();
+				for(int in : validBs) {
+					int indx = bValidEntries.indexOf(in);
+					//splitBRecords.remove(indx);
+					removalsB.add(splitBRecords.get(indx));
+				}
+				splitBRecords.removeAll(removalsB);
+				
+				aValidEntries.removeAll(validAs);
+				bValidEntries.removeAll(validBs);
 			}
-			splitARecords.removeAll(removalsA);
-			
-			List<double[]> removalsB = new ArrayList<double[]>();
-			for(int in : validBs) {
-				int indx = bValidEntries.indexOf(in);
-				//splitBRecords.remove(indx);
-				removalsB.add(splitBRecords.get(indx));
-			}
-			splitBRecords.removeAll(removalsB);
-			
-			aValidEntries.removeAll(validAs);
-			bValidEntries.removeAll(validBs);
-			
-			//System.out.println("REMOVING "+validAs.size()+" A ENTRIES FOR"+ ll);
-			//System.out.println("REMOVING "+validBs.size()+" B ENTRIES FOR"+ ll);
 			
 		}
 	
-		// final round
-		/*for(int j = 0; j < aLength*bLength; j++) {
-			if(finalbitmap1[j] == '1' && finalbitmap2[j] == '1' && finalbitmap3[j] == '1') {
-				
-				int x = j / bLength;
-				int y = j % bLength;
-				pairs.add(x+","+y);
-			} else {
-				//finalbitmap[j] = '0';
-			}
-		}*/
 		
 		//Collections.sort(aValidEntries);
 		//Collections.sort(bValidEntries);
 		
 		// combining bitmaps
 		for(int ind1 = 0; ind1 < aLength ; ind1++) {
-			if(aValidEntries.contains(ind1)) {
+			//if(aValidEntries.contains(ind1)) {
 				for(int ind2 = 0; ind2 < bLength; ind2++) {
-					if(bValidEntries.contains(ind2)) {
+					//if(bValidEntries.contains(ind2)) {
 						int bitMapIndex = ind1*bLength + ind2;
 						if(finalbitmap1[bitMapIndex] == '1' && finalbitmap2[bitMapIndex] == '1' && finalbitmap3[bitMapIndex] == '1') {
 							
@@ -457,12 +405,12 @@ public class MDC {
 						} else {
 							//finalbitmap[j] = '0';
 						}
-					}
-				}
+					//}
+				//}
 			}
 		}
 		
-		System.out.println("JOIN HAS FINISHED.... ON TO IDW ");
+		//System.out.println("JOIN HAS FINISHED.... ON TO IDW ");
 		
 		List<String> retJoinRecords = new ArrayList<String> ();
 		
@@ -492,7 +440,6 @@ public class MDC {
 				
 				if(entry[bPosns[0]] == aRec[aPosns[0]] && entry[bPosns[1]] == aRec[aPosns[1]] && entry[bPosns[2]] == aRec[aPosns[2]]) {
 					fullMatch = ib;
-					
 				}
 				
 				bRecs.add(entry);
@@ -958,10 +905,10 @@ public class MDC {
 	}
 	
 	// REAL JOIN
-	public List<String> oneDJoin(List<Double> setA, List<Integer> aInd, List<Double> setB, List<Integer> bInd, 
+	public void oneDJoin(List<Double> setA, List<Integer> aInd, List<Double> setB, List<Integer> bInd, 
 			double epsilon, List<double[]> splitAs, List<double[]> splitBs, char[] bitMap, int roundVal) {
 		//System.out.println("RIKI HERE");
-		List<String> pairs = new ArrayList<String>();
+		//List<String> pairs = new ArrayList<String>();
 		
 		List<Integer> aValids = new ArrayList<Integer>();
 		List<Integer> bValids = new ArrayList<Integer>();
@@ -1000,6 +947,7 @@ public class MDC {
 		
 		double current = start;
 		
+		// The sets and related setInd correspond
 		List<Double> setATemp;
 		List<Integer> setATempInd;
 		List<Double> setBTemp1 = new ArrayList<Double>();
@@ -1069,10 +1017,8 @@ public class MDC {
 							int x = setATempInd.get(indxA);
 							int y = setBTempInd1.get(indxB);
 							bitMap[x*roundVal+y] = '1';
-							
-							//pairs.add(setATempInd.get(indxA)+","+setBTempInd1.get(indxB));
-						
 							bValids.add(setBTempInd1.get(indxB));
+							
 						}
 						indxB++;
 					}
@@ -1088,9 +1034,8 @@ public class MDC {
 						int y = i;
 						bitMap[x*roundVal+y] = '1';
 						
+						bValids.add(i);	
 						
-						//pairs.add(setATempInd.get(indxA)+","+i);
-						bValids.add(i);
 					}
 					
 					indxB = 0;
@@ -1104,15 +1049,13 @@ public class MDC {
 								int y = setBTempInd3.get(indxB);
 								bitMap[x*roundVal+y] = '1';
 								
-								//pairs.add(setATempInd.get(indxA)+","+setBTempInd3.get(indxB));
 								bValids.add(setBTempInd3.get(indxB));
 							}
 							indxB++;
 						}
 					}
-					
-					if(found)
-						aValids.add(setATempInd.get(indxA));
+					 if(found)	
+						 aValids.add(setATempInd.get(indxA));
 					indxA++;
 				}
 			}
@@ -1136,13 +1079,10 @@ public class MDC {
 			
 		}
 		
-		//System.out.println(aValids);
-		//System.out.println(bValids);
 		
 		aInd.removeAll(aValids);
-		
 		bInd.removeAll(bValids);
-		return pairs;
+		
 	}
 	
 	

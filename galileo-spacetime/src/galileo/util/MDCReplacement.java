@@ -134,7 +134,7 @@ public class MDCReplacement {
 		
 		try {
 
-			fr = new FileReader("D:\\CONFLUX\\join1\\A11194.txt");
+			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/A11194.txt");
 			br = new BufferedReader(fr);
 
 			String sCurrentLine;
@@ -170,7 +170,7 @@ public class MDCReplacement {
 		String bRecords="";
 		try {
 
-			fr = new FileReader("D:\\CONFLUX\\join1\\B11194.txt");
+			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/B11194.txt");
 			br = new BufferedReader(fr);
 
 			String sCurrentLine;

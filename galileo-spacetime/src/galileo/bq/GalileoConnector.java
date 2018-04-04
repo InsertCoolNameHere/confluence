@@ -228,6 +228,54 @@ public class GalileoConnector extends GalileoConnectorInterface {
 		return new Block(fsName, metadata, data.getBytes("UTF-8"));
 	}
 	
+	
+	public static Block createBlockWindDummy(String edfRecord, String data, String fsName) throws UnsupportedEncodingException {
+		String[] values = edfRecord.split(",");
+		TemporalProperties temporalProperties = new TemporalProperties(reformatDatetime(values[0]));
+		SpatialProperties spatialProperties = new SpatialProperties(parseFloat(values[1]), parseFloat(values[2]));
+		
+		FeatureSet features = getFeaturesWindDummy(values);
+		
+		Metadata metadata = new Metadata();
+		metadata.setName(GeoHash.encode(parseFloat(values[1]), parseFloat(values[2]), 4));
+		metadata.setTemporalProperties(temporalProperties);
+		metadata.setSpatialProperties(spatialProperties);
+		metadata.setAttributes(features);
+		
+		return new Block(fsName, metadata, data.getBytes("UTF-8"));
+	}
+	
+	
+	private static FeatureSet getFeaturesWindDummy(String[] values) {
+		
+		
+		FeatureSet features = new FeatureSet();
+		
+		features.put(new Feature("epoch_time", values[0]));		
+		features.put(new Feature("gps_abs_lat", values[1]));
+		features.put(new Feature("gps_abs_lon", values[2]));
+		features.put(new Feature("temperature", values[3]));
+		features.put(new Feature("humidity", values[4]));
+		features.put(new Feature("wind_speed", values[5]));
+		features.put(new Feature("wind_dir", values[6]));
+		
+		return features;
+	}
+	
+	private static FeatureSet getFeaturesSensorDummy(String[] values) {
+		
+		FeatureSet features = new FeatureSet();
+		
+		features.put(new Feature("epoch_time", values[0]));		
+		features.put(new Feature("gps_abs_lat", values[1]));
+		features.put(new Feature("gps_abs_lon", values[2]));
+		features.put(new Feature("cavity_pressure", values[3]));
+		features.put(new Feature("cavity_temp", values[4]));
+		features.put(new Feature("ch4", values[5]));
+		
+		return features;
+	}
+	
 	/**
 	 * @param values
 	 * @return
@@ -322,4 +370,21 @@ public class GalileoConnector extends GalileoConnectorInterface {
 		
 	}
 	// [END reformatDatetime]
+
+	public static Block createBlockSensorDummy(String edfRecord, String data, String fsName) throws UnsupportedEncodingException{
+		
+		String[] values = edfRecord.split(",");
+		TemporalProperties temporalProperties = new TemporalProperties(reformatDatetime(values[0]));
+		SpatialProperties spatialProperties = new SpatialProperties(parseFloat(values[1]), parseFloat(values[2]));
+		
+		FeatureSet features = getFeaturesSensorDummy(values);
+		
+		Metadata metadata = new Metadata();
+		metadata.setName(GeoHash.encode(parseFloat(values[1]), parseFloat(values[2]), 4));
+		metadata.setTemporalProperties(temporalProperties);
+		metadata.setSpatialProperties(spatialProperties);
+		metadata.setAttributes(features);
+		
+		return new Block(fsName, metadata, data.getBytes("UTF-8"));
+	}
 }

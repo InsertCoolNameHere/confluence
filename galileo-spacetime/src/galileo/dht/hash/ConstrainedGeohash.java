@@ -79,6 +79,8 @@ public class ConstrainedGeohash implements HashFunction<Metadata> {
 		} else {
 			hash = GeoHash.encode(spatialProps.getCoordinates(), precision);
 		}
+		//System.out.println("TRYING TO FIND: "+ hash);
+		//System.out.println("CURRENT KEYSET: "+hashMappings.keySet());
 		BigInteger position = hashMappings.get(hash);
 		if (position == null) {
 			throw new HashException("Could not find position in hash space.");

@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.TimeZone;
 
-public class MyIntegrationWindSensor {
+public class MyIntegrationWindSensorDummy {
 
 	// [START processFile]
 	/**
@@ -44,8 +44,8 @@ public class MyIntegrationWindSensor {
 		// CREATING FS1
 		
 		DataIntegrationRequest dr = new DataIntegrationRequest(); 
-		dr.setFsname1("sensorfsnew");
-		dr.setFsname2("windfsnew");
+		dr.setFsname1("sensorfsdummy");
+		dr.setFsname2("windfsdummy");
 		
 		/*Coordinates c1 = new Coordinates(34.8117f, -99.3311f);
 		Coordinates c2 = new Coordinates(34.78682f, -95.209f);
@@ -59,17 +59,17 @@ public class MyIntegrationWindSensor {
 		Coordinates c3 = new Coordinates(39.121f, -100.77f);
 		Coordinates c4 = new Coordinates(39.121f, -112.9f);*/
 		
-		Coordinates c1 = new Coordinates(37.22f, -101.9f);
-		Coordinates c2 = new Coordinates(37.22f, -89.57f);
-		Coordinates c3 = new Coordinates(27.421f, -89.57f);
-		Coordinates c4 = new Coordinates(27.421f, -101.9f);
+		Coordinates c1 = new Coordinates(38.22f, -100.85f);
+		Coordinates c2 = new Coordinates(38.22f, -90.57f);
+		Coordinates c3 = new Coordinates(34.121f, -90.57f);
+		Coordinates c4 = new Coordinates(34.121f, -100.8f);
 		//Coordinates c5 = new Coordinates(36.78f, -107.64f);
 		
 		List<Coordinates> cl = new ArrayList<Coordinates>();
 		cl.add(c1); cl.add(c2); cl.add(c3); cl.add(c4);
 		
 		dr.setPolygon(cl);
-		dr.setTime("2016-02-05-xx");
+		dr.setTime("2016-05-12-xx");
 		dr.setLatRelax(0.05f);
 		dr.setLongRelax(0.05f);
 		dr.setTimeRelaxation(1000*60*60);

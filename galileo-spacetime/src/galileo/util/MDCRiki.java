@@ -134,7 +134,7 @@ public class MDCRiki {
 		
 		try {
 
-			fr = new FileReader("D:\\CONFLUX\\join1\\A11194.txt");
+			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/A11194.txt");
 			br = new BufferedReader(fr);
 
 			String sCurrentLine;
@@ -170,7 +170,7 @@ public class MDCRiki {
 		String bRecords="";
 		try {
 
-			fr = new FileReader("D:\\CONFLUX\\join1\\B11194.txt");
+			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/B11194.txt");
 			br = new BufferedReader(fr);
 
 			String sCurrentLine;
@@ -202,6 +202,7 @@ public class MDCRiki {
 		
 	}
 	
+	/* ACTUAL JOIN */
 	public List<String> iterativeMultiDimJoin(List<String[]> indvARecords,/*String aRecords,*/ String bRecords, int[] aPosns, int[] bPosns, double[] epsilons, int interpolatingFeature) {
 		
 		int aLength = indvARecords.size();
@@ -343,7 +344,7 @@ public class MDCRiki {
 				currentbitmap[j] = '0';
 			
 			//long tl = System.currentTimeMillis();
-			List<String> tmpPairs = oneDJoin(setA, validAs, setB, validBs, epsilons[i], splitARecords, splitBRecords,
+			oneDJoin(setA, validAs, setB, validBs, epsilons[i], splitARecords, splitBRecords,
 					currentbitmap, bLength);
 			//System.out.println("TIME: "+(System.currentTimeMillis() - tl));
 			if(i == 2) {
@@ -437,7 +438,6 @@ public class MDCRiki {
 				
 				if(entry[bPosns[0]] == aRec[aPosns[0]] && entry[bPosns[1]] == aRec[aPosns[1]] && entry[bPosns[2]] == aRec[aPosns[2]]) {
 					fullMatch = ib;
-					
 				}
 				
 				bRecs.add(entry);
@@ -903,10 +903,10 @@ public class MDCRiki {
 	}
 	
 	// REAL JOIN
-	public List<String> oneDJoin(List<Double> setA, List<Integer> aInd, List<Double> setB, List<Integer> bInd, 
+	public void oneDJoin(List<Double> setA, List<Integer> aInd, List<Double> setB, List<Integer> bInd, 
 			double epsilon, List<double[]> splitAs, List<double[]> splitBs, char[] bitMap, int roundVal) {
 		//System.out.println("RIKI HERE");
-		List<String> pairs = new ArrayList<String>();
+		//List<String> pairs = new ArrayList<String>();
 		
 		List<Integer> aValids = new ArrayList<Integer>();
 		List<Integer> bValids = new ArrayList<Integer>();
@@ -1080,7 +1080,7 @@ public class MDCRiki {
 		
 		aInd.removeAll(aValids);
 		bInd.removeAll(bValids);
-		return pairs;
+		
 	}
 	
 	

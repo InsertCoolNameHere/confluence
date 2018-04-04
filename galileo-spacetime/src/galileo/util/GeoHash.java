@@ -1609,10 +1609,10 @@ public class GeoHash {
 		String seCornerGeohash = getCornerGeohash(seNeighbor, precision, "nw");
 		Coordinates sePoint = getCornerPoint(seCornerGeohash, "se");
 		
-		System.out.println(nwCornerGeohash);
-		System.out.println(neCornerGeohash);
-		System.out.println(seCornerGeohash);
-		System.out.println(swCornerGeohash);
+		//System.out.println(nwCornerGeohash);
+		//System.out.println(neCornerGeohash);
+		//System.out.println(seCornerGeohash);
+		//System.out.println(swCornerGeohash);
 		
 		List<Coordinates> bounds = new ArrayList<Coordinates>();
 		bounds.add(swPoint);
@@ -1620,7 +1620,7 @@ public class GeoHash {
 		bounds.add(nePoint);
 		bounds.add(sePoint);
 		
-		System.out.println(bounds);
+		//System.out.println(bounds);
 		
 		return bounds;
 		

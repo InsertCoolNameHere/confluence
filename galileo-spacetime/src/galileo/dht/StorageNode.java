@@ -313,6 +313,7 @@ public class StorageNode implements RequestListener {
 		event.setSpatialUncertaintyPrecision(request.getSpatialUncertaintyPrecision());
 		event.setTemporalUncertaintyPrecision(request.getTemporalUncertaintyPrecision());
 		event.setTemporalHint(request.getTemporalHint());
+		event.setSpatialPartitioningType(request.getSpatialPartitioningType());
 		for (NodeInfo node : nodes) {
 			logger.info("Requesting " + node + " to perform a file system action");
 			sendEvent(node, event);
@@ -330,7 +331,14 @@ public class StorageNode implements RequestListener {
 				try {
 					fs = new GeospatialFileSystem(this, this.rootDir, event.getName(), event.getPrecision(),
 							event.getNodesPerGroup(), event.getTemporalValue(), this.network, event.getFeatures(),
-							event.getSpatialHint(),event.getTemporalHint(), false, event.getSpatialUncertaintyPrecision(), event.getTemporalUncertaintyPrecision(), event.isRasterized());
+							event.getSpatialHint(),event.getTemporalHint(), false, event.getSpatialUncertaintyPrecision(),
+							event.getTemporalUncertaintyPrecision(), event.isRasterized(), event.getSpatialPartitioningType());
+					
+					if(event.getSpatialPartitioningType() <= 0)
+						fs.setSpatialPartitioningType(2);
+					else
+						fs.setSpatialPartitioningType(event.getSpatialPartitioningType());
+					
 					fsMap.put(event.getName(), fs);
 				} catch (FileSystemException | SerializationException | IOException | PartitionException | HashException
 						| HashTopologyException e) {
@@ -1242,6 +1250,10 @@ public class StorageNode implements RequestListener {
 		// fs2 is the secondary filesystem
 		String fsName2 = event.getFsname2();
 		GeospatialFileSystem fs2 = fsMap.get(fsName2);
+		
+		logger.info("RIKI: KEYSET FS: "+fsMap.keySet());
+		logger.info("RIKI: INTERPOLATOR : "+interpolatingFeature);
+		
 		int interpolatingFeaturePosn = fs2.getFeaturePosition(interpolatingFeature);
 		
 		/* Getting positions */
@@ -1794,7 +1806,7 @@ public class StorageNode implements RequestListener {
 			} else {
 				s.setTime(null);
 			}
-			logger.log(Level.INFO, "TIME2 "+s.getTime());
+			//logger.log(Level.INFO, "TIME2 "+s.getTime());
 			
 		}
 		

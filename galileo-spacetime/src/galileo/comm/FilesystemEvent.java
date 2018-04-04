@@ -29,6 +29,7 @@ public class FilesystemEvent implements Event{
 	private List<Pair<String, FeatureType>> featureList;
 	private SpatialHint spatialHint;
 	private String temporalHint;
+	private int spatialPartitioningType = 0;
 	
 	/**
 	 *  The uncertainty in join */
@@ -174,6 +175,7 @@ public class FilesystemEvent implements Event{
 		this.temporalUncertaintyPrecision = in.readInt();
 		this.isRasterized = in.readBoolean();
 		this.temporalHint = in.readString();
+		this.spatialPartitioningType = in.readInt();
 	}
 
 	@Override
@@ -193,6 +195,7 @@ public class FilesystemEvent implements Event{
 		out.writeInt(this.temporalUncertaintyPrecision);
 		out.writeBoolean(this.isRasterized);
 		out.writeString(this.temporalHint);
+		out.writeInt(spatialPartitioningType);
 	}
 
 	public boolean isRasterized() {
@@ -230,5 +233,33 @@ public class FilesystemEvent implements Event{
 
 	public void setTemporalHint(String temporalHint) {
 		this.temporalHint = temporalHint;
+	}
+
+	public int getSpatialPartitioningType() {
+		return spatialPartitioningType;
+	}
+
+	public void setSpatialPartitioningType(int spatialPartitioningType) {
+		this.spatialPartitioningType = spatialPartitioningType;
+	}
+
+	public static int getMaxPrecision() {
+		return MAX_PRECISION;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public void setAction(FilesystemAction action) {
+		this.action = action;
+	}
+
+	public void setFeatureList(List<Pair<String, FeatureType>> featureList) {
+		this.featureList = featureList;
+	}
+
+	public void setSpatialHint(SpatialHint spatialHint) {
+		this.spatialHint = spatialHint;
 	}
 }

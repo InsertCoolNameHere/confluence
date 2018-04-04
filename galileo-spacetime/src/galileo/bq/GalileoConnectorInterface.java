@@ -32,17 +32,6 @@ abstract class GalileoConnectorInterface {
 		publisher.publish(server, store);
 	}
 	
-	/*public void createFS(String name) throws IOException {
-		
-		FilesystemRequest fsRequest = new FilesystemRequest("nyc_yellow_taxi", FilesystemAction.CREATE, featureList, spatialHint);
-		FilesystemRequest fsr = new FilesystemRequest(name, FilesystemAction.CREATE, pr);
-		publisher.publish(server, fsr);
-	}*/
-	/*public void createFS(String name, float a, float b) throws IOException {
-		PrecisionLimit pr = new PrecisionLimit(a, b);
-		FileSystemRequest fsr = new FileSystemRequest(name, FileSystemAction.CREATE, pr);
-		publisher.publish(server, fsr);
-	}*/
 	
 	public void createFS(String name, SpatialHint sh,List<Pair<String, FeatureType>> featureList, String temporalHint, int mode) throws IOException {
 		int spUnc = 0;
@@ -67,8 +56,8 @@ abstract class GalileoConnectorInterface {
 			// geohash precision for storage is preset to 4
 		}
 		FilesystemRequest fsRequest = new FilesystemRequest(name, FilesystemAction.CREATE, featureList, sh, spUnc, tempUnc,  false, temporalHint);
-		
-		fsRequest.setNodesPerGroup(2);
+		fsRequest.setSpatialPartitioningType(4);
+		fsRequest.setNodesPerGroup(5);
 		//fsRequest.setPrecision(6);
 		fsRequest.setTemporalType(TemporalType.DAY_OF_MONTH);
 		
