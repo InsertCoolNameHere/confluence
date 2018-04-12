@@ -134,7 +134,7 @@ public class MDCRiki {
 		
 		try {
 
-			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/A11194.txt");
+			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/A.txt");
 			br = new BufferedReader(fr);
 
 			String sCurrentLine;
@@ -170,7 +170,7 @@ public class MDCRiki {
 		String bRecords="";
 		try {
 
-			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/B11194.txt");
+			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/B.txt");
 			br = new BufferedReader(fr);
 
 			String sCurrentLine;
@@ -192,73 +192,38 @@ public class MDCRiki {
 
 		} 
 		
-		int[] aPosns = {42,24,25};
-		int[] bPosns = {2,0,1};
-		double[] epsilons = {1000*60*60, 0.1, 0.1};
+		int[] aPosns = {0,1,2};
+		int[] bPosns = {0,1,2};
+		double[] epsilons = {1000*60*10, 0.01, 0.01};
 		long ll1 = System.currentTimeMillis();
-		System.out.println("SIZEEEE"+iterativeMultiDimJoin(indvARecords, bRecords, aPosns, bPosns, epsilons, 3).size());
-		System.out.println(System.currentTimeMillis() - ll1);
+		iterativeMultiDimJoin(indvARecords, bRecords, aPosns, bPosns, epsilons, 3).size();
+		long ll2 = System.currentTimeMillis() - ll1;
+		System.out.println(ll2);
 		
 		
 	}
 	
 	/* ACTUAL JOIN */
 	public List<String> iterativeMultiDimJoin(List<String[]> indvARecords,/*String aRecords,*/ String bRecords, int[] aPosns, int[] bPosns, double[] epsilons, int interpolatingFeature) {
-		
 		int aLength = indvARecords.size();
 		int bLength = 0;
-		
-		//int fileNum = indvARecords.size();
-		
-		//long ll = System.currentTimeMillis()%100;
-		/*System.out.println("APOSNS: "+ indvARecords.get(0).length);
-		for(int i: aPosns) {
-			System.out.print(i+" ");
-		}
-		
-		System.out.println();
-		
-		System.out.println("BPOSNS:");
-		for(int i: bPosns) {
-			System.out.print(i+" ");
-		}
-		
-		System.out.println();
-		System.out.println("EPSILONS:");
-		for(double i: epsilons) {
-			System.out.print(i+" ");
-		}*/
-		
-		//System.out.println();
-		/* Do not modify these 2 data */
-		//String doublePattern = "-?([0-9]*)\\.?([0-9]*)";
-		//String intPattern = "-?([0-9])([0-9]*)";
-		
-		//String[] indvARecords = aRecords.split("\\$\\$");
+	
 		String[] indvBRecords = bRecords.split("\\n");
-		
-		
-		// these two records only contain 3 fields, time, lat and long
-		List<double[]> splitARecords = new ArrayList<double[]>();
-		List<double[]> splitBRecords = new ArrayList<double[]>();
 		
 		/* splitARecords and validAEntries must always correspond */
 		
 		/* Loading & filtering */
 		
 		int ind = 0;
+		int i = 2;
+		
+		List<Double> setA = new ArrayList<Double>();
+		List<Double> setB = new ArrayList<Double>();
 		
 		for(String[] frs: indvARecords) {
 			
-		
-			double[] tempArr = new double[3];
-			tempArr[0] = Double.valueOf(frs[aPosns[0]]);
-			tempArr[1] = Double.valueOf(frs[aPosns[1]]);
-			tempArr[2] = Double.valueOf(frs[aPosns[2]]);
-			splitARecords.add(tempArr);
 			aValidEntries.add(ind);
-		
-			
+			setA.add(Double.valueOf(frs[aPosns[i]]));
 			ind++;
 		}
 		
@@ -269,16 +234,10 @@ public class MDCRiki {
 				ind++;
 				continue;
 			}
-			line = line.replace(", ", ",");
-			String[] frs = line.split(",");
-		
-			double[] tempArr = new double[3];
-			tempArr[0] = Double.valueOf(frs[bPosns[0]]);
-			tempArr[1] = Double.valueOf(frs[bPosns[1]]);
-			tempArr[2] = Double.valueOf(frs[bPosns[2]]);
-			splitBRecords.add(tempArr);
+			//line = line.replace(", ", ",");
+			String[] frs = line.split(", ");
 			bValidEntries.add(ind);
-			
+			setB.add(Double.valueOf(frs[bPosns[i]]));
 			
 			ind++;
 		}
@@ -290,135 +249,95 @@ public class MDCRiki {
 		
 		
 		// initializing bitmap
-		char[] finalbitmap1 = new char[aLength*bLength];
-		char[] finalbitmap2 = new char[aLength*bLength];
-		char[] finalbitmap3 = new char[aLength*bLength];
+		char[] finalbitmap = new char[aLength*bLength];
 		
-		for(int i=2 ; i >= 0 ; i--) {
-			
-			//System.out.println("DIMENSION: "+(i+1)+"\n==============\n");
-			/* At all times splitEntries and valid entries should correspond */
-			
-			List<Integer> validAs = new ArrayList<Integer>(aValidEntries);
-			List<Integer> validBs = new ArrayList<Integer>(bValidEntries);
-			
-			//int aPosn = aPosns[i];
-			//int bPosn = bPosns[i];
-			
-			/* If no match has been found and setA/ setB has become empty now */
-			if(splitARecords.isEmpty() || splitBRecords.isEmpty()) {
-				logger.info("GOING OUT FOR NO MATCHES");
-				pairs = new ArrayList<String>();
-				break;
-			}
-			
-			List<Double> setA = new ArrayList<Double>();
-			List<Double> setB = new ArrayList<Double>();
-			
-			for(double[] frs: splitARecords) {
-				//System.out.println("SPLIT A RECORDS: "+Arrays.asList(frs)+" "+frs.length);
-				//setA.add(frs[aPosn]);
-				setA.add(frs[i]);
-				
-			}
-			for(double[] frs: splitBRecords) {
-				
-				//setB.add(frs[bPosn]);
-				setB.add(frs[i]);
-				
-			}
-			
-			
-			ListIndexComparator comparator = new ListIndexComparator(setA, validAs);
-			Collections.sort(validAs, comparator);
-			Collections.sort(setA);
-			
-			ListIndexComparator comparator1 = new ListIndexComparator(setB, validBs);
-			Collections.sort(validBs, comparator1);
-			Collections.sort(setB);
-			
-			// temporary bitmaps
-			char[] currentbitmap = new char[aLength*bLength];
-			
-			for(int j=0; j < aLength*bLength; j++)
-				currentbitmap[j] = '0';
-			
-			//long tl = System.currentTimeMillis();
-			oneDJoin(setA, validAs, setB, validBs, epsilons[i], splitARecords, splitBRecords,
-					currentbitmap, bLength);
-			//System.out.println("TIME: "+(System.currentTimeMillis() - tl));
-			if(i == 2) {
-				
-				finalbitmap3 = currentbitmap;
-			} else if (i == 1) {
-				finalbitmap2 = currentbitmap;
-				
-			} else if (i == 0) {
-				
-				finalbitmap1 = currentbitmap;
-			}
-			
-			
-			if(i != 0) {
-				
-				// THE LATER PART WILL BE REMOVED LATER
-				// At this point validAs and validBs actually contain invalid entries 
-				List<double[]> removalsA = new ArrayList<double[]>();
-				for(int in : validAs) {
-					int indx = aValidEntries.indexOf(in);
-					removalsA.add(splitARecords.get(indx));
-				}
-				splitARecords.removeAll(removalsA);
-				
-				List<double[]> removalsB = new ArrayList<double[]>();
-				for(int in : validBs) {
-					int indx = bValidEntries.indexOf(in);
-					//splitBRecords.remove(indx);
-					removalsB.add(splitBRecords.get(indx));
-				}
-				splitBRecords.removeAll(removalsB);
-				
-				aValidEntries.removeAll(validAs);
-				bValidEntries.removeAll(validBs);
-			}
+		
+		/* If no match has been found and setA/ setB has become empty now */
+		if(indvARecords.isEmpty() || indvBRecords.length <= 0) {
+			logger.info("GOING OUT FOR NO MATCHES");
+			pairs = new ArrayList<String>();
+			return pairs;
+		}
+		
+		
+		
+		/*for(String[] frs: indvARecords) {
+			//System.out.println("SPLIT A RECORDS: "+Arrays.asList(frs)+" "+frs.length);
+			//setA.add(frs[aPosn]);
+			setA.add(Double.valueOf(frs[aPosns[i]]));
 			
 		}
+		for(String ln: indvBRecords) {
+			String[] frs = ln.split(",");
+			//setB.add(frs[bPosn]);
+			setB.add(Double.valueOf(frs[bPosns[i]]));
+			
+		}*/
+		
+		
+		ListIndexComparator comparator = new ListIndexComparator(setA, aValidEntries);
+		Collections.sort(aValidEntries, comparator);
+		Collections.sort(setA);
+		
+		ListIndexComparator comparator1 = new ListIndexComparator(setB, bValidEntries);
+		Collections.sort(bValidEntries, comparator1);
+		Collections.sort(setB);
+		
+		
+		oneDJoin(i, setA, aValidEntries, setB, bValidEntries, epsilons, indvARecords, indvBRecords, finalbitmap, bLength, aPosns, bPosns);
+		
+		
+		// all A Points
+		List<Integer> aRecordIndices = new ArrayList<Integer>();
+		// all B points list for each A point
+		List<List<Integer>> bRecordIndices = new ArrayList<List<Integer>>();
 	
 		
 		//Collections.sort(aValidEntries);
 		//Collections.sort(bValidEntries);
-		
 		// combining bitmaps
 		for(int ind1 = 0; ind1 < aLength ; ind1++) {
 			//if(aValidEntries.contains(ind1)) {
 				for(int ind2 = 0; ind2 < bLength; ind2++) {
 					//if(bValidEntries.contains(ind2)) {
 						int bitMapIndex = ind1*bLength + ind2;
-						if(finalbitmap1[bitMapIndex] == '1' && finalbitmap2[bitMapIndex] == '1' && finalbitmap3[bitMapIndex] == '1') {
+						if(finalbitmap[bitMapIndex] == '1') {
 							
 							//int x = ind2 / bLength;
 							//int y = ind2 % bLength;
-							pairs.add(ind1+","+ind2);
+							//pairs.add(ind1+","+ind2);
 							
-						} else {
-							//finalbitmap[j] = '0';
+							//String ret1 = java.util.Arrays.toString(indvARecords.get(i1));
+							//String ret2 = java.util.Arrays.toString(indvBRecords.get(i2));
+							
+							//retJoinRecords.add(ret1+"$$"+ret2);
+							
+							int index = -1;
+							List<Integer> neighborIndices;
+							
+							if(aRecordIndices.contains(ind1)) {
+								index = aRecordIndices.indexOf(ind1);
+								neighborIndices = bRecordIndices.get(index);
+							} else {
+								index = aRecordIndices.size();
+								aRecordIndices.add(ind1);
+								neighborIndices = new ArrayList<Integer>();
+								bRecordIndices.add(neighborIndices);
+							}
+							neighborIndices.add(ind2);
 						}
 					//}
 				//}
 			}
 		}
 		
-		//System.out.println("JOIN HAS FINISHED.... ON TO IDW ");
+		
+		//System.out.println("MATCHES "+aRecordIndices.size());
 		
 		List<String> retJoinRecords = new ArrayList<String> ();
-		
-		// all A Points
-		List<Integer> aRecordIndices = new ArrayList<Integer>();
-		// all B points list for each A point
-		List<List<Integer>> bRecordIndices = new ArrayList<List<Integer>>();
-		
+
 		// create the one to many mapping between A and B entries
-		generateNeighborSphere(pairs, aRecordIndices, bRecordIndices);
+		//generateNeighborSphere(pairs, aRecordIndices, bRecordIndices);
 		
 		// for each entry in aRecords and corresponding neighbors in bRecords, now
 		// apply IDW with different betas
@@ -466,7 +385,7 @@ public class MDCRiki {
 			
 			count++;
 		}
-		
+		//System.out.println("TIME: "+(System.currentTimeMillis() - tl));
 		return retJoinRecords;
 	}
 	
@@ -485,7 +404,7 @@ public class MDCRiki {
 	 * @param temporalType 
 	 * @return
 	 */
-	public List<String> iterativeMultiDimSelfJoin(List<String[]> indvARecords, List<String[]> indvBRecords, 
+	public List<String> iterativeMultiDimSelfJoinML(List<String[]> indvARecords, List<String[]> indvBRecords, 
 			double[] epsilons, double[] betas, String pathInfo, TemporalType temporalType) {
 		
 		List<Double> mins = new ArrayList<Double>();
@@ -573,7 +492,7 @@ public class MDCRiki {
 			Collections.sort(setB);
 			
 			
-			List<String> tmpPairs = oneDJoin(setA, validAs, setB, validBs, epsilons[i], splitARecords, splitBRecords);
+			List<String> tmpPairs = oneDJoinML(setA, validAs, setB, validBs, epsilons[i], splitARecords, splitBRecords);
 			
 			if(i == 0)
 				pairs = tmpPairs;
@@ -734,7 +653,7 @@ public class MDCRiki {
 	
 	
 	/* setA and setB are ordered according to the dimension in question */
-	public List<String> oneDJoin(List<Double> setA, List<Integer> aInd, List<Double> setB, List<Integer> bInd, 
+	public List<String> oneDJoinML(List<Double> setA, List<Integer> aInd, List<Double> setB, List<Integer> bInd, 
 			double epsilon, List<double[]> splitAs, List<double[]> splitBs) {
 		//System.out.println("RIKI HERE");
 		List<String> pairs = new ArrayList<String>();
@@ -903,13 +822,11 @@ public class MDCRiki {
 	}
 	
 	// REAL JOIN
-	public void oneDJoin(List<Double> setA, List<Integer> aInd, List<Double> setB, List<Integer> bInd, 
-			double epsilon, List<double[]> splitAs, List<double[]> splitBs, char[] bitMap, int roundVal) {
+	public void oneDJoin(int currentInd, List<Double> setA, List<Integer> aInd, List<Double> setB, List<Integer> bInd, 
+			double[] epsilons, List<String[]> indvARecords, String[] indvBRecords, char[] bitMap, int roundVal, int[] aPosns, int[] bPosns) {
 		//System.out.println("RIKI HERE");
 		//List<String> pairs = new ArrayList<String>();
-		
-		List<Integer> aValids = new ArrayList<Integer>();
-		List<Integer> bValids = new ArrayList<Integer>();
+		double epsilon = epsilons[currentInd];
 		
 		int aLen = setA.size();
 		int bLen = setB.size();
@@ -1014,8 +931,20 @@ public class MDCRiki {
 							// PAIRS ADDING
 							int x = setATempInd.get(indxA);
 							int y = setBTempInd1.get(indxB);
-							bitMap[x*roundVal+y] = '1';
-							bValids.add(setBTempInd1.get(indxB));
+							
+							String[] tokensA = indvARecords.get(x);
+							String line = indvBRecords[y];
+							//line = line.replace(", ", ",");
+							String[] tokensB = line.split(", ");
+							
+							if(java.lang.Math.abs(Double.valueOf(tokensA[aPosns[0]]) - Double.valueOf(tokensB[bPosns[0]]))<= epsilons[0]
+									&& java.lang.Math.abs(Double.valueOf(tokensA[aPosns[1]]) - Double.valueOf(tokensB[bPosns[1]]))<= epsilons[1]) {
+								
+								bitMap[x*roundVal+y] = '1';
+							}
+							
+							
+							//bValids.add(setBTempInd1.get(indxB));
 							
 						}
 						indxB++;
@@ -1030,9 +959,21 @@ public class MDCRiki {
 						// PAIRS ADDING
 						int x = setATempInd.get(indxA);
 						int y = i;
-						bitMap[x*roundVal+y] = '1';
 						
-						bValids.add(i);	
+						
+						String[] tokensA = indvARecords.get(x);
+						String line = indvBRecords[y];
+						line = line.replace(", ", ",");
+						String[] tokensB = line.split(",");
+						
+						if(java.lang.Math.abs(Double.valueOf(tokensA[aPosns[0]]) - Double.valueOf(tokensB[bPosns[0]]))<= epsilons[0]
+								&& java.lang.Math.abs(Double.valueOf(tokensA[aPosns[1]]) - Double.valueOf(tokensB[bPosns[1]]))<= epsilons[1]) {
+							
+							bitMap[x*roundVal+y] = '1';
+						}
+						//bitMap[x*roundVal+y] = '1';
+						
+						//bValids.add(i);	
 						
 					}
 					
@@ -1045,15 +986,30 @@ public class MDCRiki {
 								
 								int x = setATempInd.get(indxA);
 								int y = setBTempInd3.get(indxB);
-								bitMap[x*roundVal+y] = '1';
 								
-								bValids.add(setBTempInd3.get(indxB));
+								
+								String[] tokensA = indvARecords.get(x);
+								String line = indvBRecords[y];
+								line = line.replace(", ", ",");
+								String[] tokensB = line.split(",");
+								
+								if(java.lang.Math.abs(Double.valueOf(tokensA[aPosns[0]]) - Double.valueOf(tokensB[bPosns[0]]))<= epsilons[0]
+										&& java.lang.Math.abs(Double.valueOf(tokensA[aPosns[1]]) - Double.valueOf(tokensB[bPosns[1]]))<= epsilons[1]) {
+									
+									bitMap[x*roundVal+y] = '1';
+								}
+								
+								
+								
+								//bitMap[x*roundVal+y] = '1';
+								
+								//bValids.add(setBTempInd3.get(indxB));
 							}
 							indxB++;
 						}
 					}
 					 if(found)	
-						 aValids.add(setATempInd.get(indxA));
+						 //aValids.add(setATempInd.get(indxA));
 					indxA++;
 				}
 			}
@@ -1078,8 +1034,8 @@ public class MDCRiki {
 		}
 		
 		
-		aInd.removeAll(aValids);
-		bInd.removeAll(bValids);
+		//aInd.removeAll(aValids);
+		//bInd.removeAll(bValids);
 		
 	}
 	

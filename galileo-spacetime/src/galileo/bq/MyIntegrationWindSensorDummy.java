@@ -44,8 +44,8 @@ public class MyIntegrationWindSensorDummy {
 		// CREATING FS1
 		
 		DataIntegrationRequest dr = new DataIntegrationRequest(); 
-		dr.setFsname1("sensorfsdummy");
-		dr.setFsname2("windfsdummy");
+		dr.setFsname1("sensorfsdummyfinal");
+		dr.setFsname2("windfsdummyfinal");
 		
 		/*Coordinates c1 = new Coordinates(34.8117f, -99.3311f);
 		Coordinates c2 = new Coordinates(34.78682f, -95.209f);
@@ -59,10 +59,10 @@ public class MyIntegrationWindSensorDummy {
 		Coordinates c3 = new Coordinates(39.121f, -100.77f);
 		Coordinates c4 = new Coordinates(39.121f, -112.9f);*/
 		
-		Coordinates c1 = new Coordinates(38.22f, -100.85f);
-		Coordinates c2 = new Coordinates(38.22f, -90.57f);
-		Coordinates c3 = new Coordinates(34.121f, -90.57f);
-		Coordinates c4 = new Coordinates(34.121f, -100.8f);
+		Coordinates c1 = new Coordinates(40.96f, -109.11f);
+		Coordinates c2 = new Coordinates(40.96f, -102.07f);
+		Coordinates c3 = new Coordinates(37.021f, -102.07f);
+		Coordinates c4 = new Coordinates(37.021f, -100.11f);
 		//Coordinates c5 = new Coordinates(36.78f, -107.64f);
 		
 		List<Coordinates> cl = new ArrayList<Coordinates>();
@@ -70,9 +70,9 @@ public class MyIntegrationWindSensorDummy {
 		
 		dr.setPolygon(cl);
 		dr.setTime("2016-05-12-xx");
-		dr.setLatRelax(0.05f);
-		dr.setLongRelax(0.05f);
-		dr.setTimeRelaxation(1000*60*60);
+		dr.setLatRelax(0.01f);
+		dr.setLongRelax(0.01f);
+		dr.setTimeRelaxation(1000*60*10);
 		dr.setInterpolatingFeature("wind_speed");
 		
 		try {

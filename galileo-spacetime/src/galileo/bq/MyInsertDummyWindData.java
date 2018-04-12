@@ -37,7 +37,7 @@ public class MyInsertDummyWindData {
 	 *            GalileoConnector instance
 	 * @throws Exception
 	 */
-	private static boolean FS_CREATED = true;
+	private static boolean FS_CREATED = false;
 	
 	private static void processFile(File[] files, GalileoConnector gc) throws Exception {
 		
@@ -57,13 +57,13 @@ public class MyInsertDummyWindData {
 			SpatialHint sp1 = new SpatialHint("gps_abs_lat", "gps_abs_lon");
 			String temporalHint1 = "epoch_time";
 			//if(!FS_CREATED){
-			gc.createFS("windfsdummy", sp1, featureList1, temporalHint1, 1);
+			gc.createFS("windfsdummyfinal", sp1, featureList1, temporalHint1, 1);
 			FS_CREATED = true;
 			Thread.sleep(1000);
 			
 		}
 		try {
-			insertData(files, gc, "windfsdummy", 1);
+			insertData(files, gc, "windfsdummyfinal", 1);
 			Thread.sleep(5000);
 		} finally {
 			gc.disconnect();
@@ -81,10 +81,13 @@ public class MyInsertDummyWindData {
 			throws FileNotFoundException, UnsupportedEncodingException, Exception, IOException {
 		FileInputStream inputStream = null;
 		Scanner sc = null;
-		
+		int count = 0;
 		try{
 			for(File f : files) {
-				System.out.println("processing - " + f);
+				count++;
+				if(count%1000 == 0)
+					System.out.println("\n\n============="+count+"============\n\n");
+				//System.out.println("processing - " + f);
 				String filepath = f.getAbsolutePath();
 				inputStream = new FileInputStream(filepath);
 				sc = new Scanner(inputStream);
@@ -125,8 +128,8 @@ public class MyInsertDummyWindData {
 				}
 				
 				String allLines = data.toString();
-				System.out.println("Creating a block for " + currentDay + " GMT having " + rowCount + " rows");
-				System.out.println(firstLine);
+				//System.out.println("Creating a block for " + currentDay + " GMT having " + rowCount + " rows");
+				//System.out.println(firstLine);
 				
 				if(allLines.trim().isEmpty()) {
 					continue;
@@ -204,7 +207,7 @@ public class MyInsertDummyWindData {
 		String args[] = new String[3];
 		args[0] = "lattice-21.cs.colostate.edu";
 		args[1] = "5634";
-		args[2] = "/s/green/a/tmp/sapmitra/dummyDataWind";
+		args[2] = "/s/green/a/tmp/sapmitra/dummyDataWindFinal";
 		
 		if (args.length != 3) {
 			System.out.println(

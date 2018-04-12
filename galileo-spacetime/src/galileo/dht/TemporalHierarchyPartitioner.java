@@ -57,7 +57,8 @@ public class TemporalHierarchyPartitioner extends Partitioner<Metadata> {
 				"f1", "f2", "f3", "f4", "f6", "f8", "f9", "fb", "fc", "fd", "ff" };*/
 		
 		
-		String[] geohashes_2char = {"9x", "9y", "9v", "9q"};
+		String[] geohashes_2char = {"9x", "9y", "9z", "9w"};
+		//String[] geohashes_2char = {"9r", "9x","9z", "9y", "9w", "9q", "9y","dp", "dn","9t","9v"};
 		
 		if(spatialHashType == 2) {
 		// Geohashes for US region.
@@ -113,7 +114,7 @@ public class TemporalHierarchyPartitioner extends Partitioner<Metadata> {
 			allGeoHashes = currentGeohashes;
 			
 		}
-		Collections.sort(allGeoHashes);
+		Collections.shuffle(allGeoHashes);
 		String[] returnArray = allGeoHashes.toArray(new String[allGeoHashes.size()]);
 		return returnArray;
 	}

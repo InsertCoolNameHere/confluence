@@ -159,7 +159,7 @@ public class SuperCube implements ByteSerializable{
 	 * @author sapmitra
 	 * @param supercubeToNodeMap
 	 * @param superCubeNumNodesMap
-	 * @param key
+	 * @param key : node string
 	 * @param index
 	 */
 	public static void addToCubeNodeMap(Map<Integer, List<String>> supercubeToNodeMap, Map<Integer, Integer> superCubeNumNodesMap, String key, int index) {

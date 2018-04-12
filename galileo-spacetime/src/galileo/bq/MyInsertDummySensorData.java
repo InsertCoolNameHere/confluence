@@ -56,13 +56,13 @@ public class MyInsertDummySensorData {
 			SpatialHint sp1 = new SpatialHint("gps_abs_lat", "gps_abs_lon");
 			String temporalHint1 = "epoch_time";
 			//if(!FS_CREATED){
-			gc.createFS("sensorfsdummy", sp1, featureList1, temporalHint1, 1);
+			gc.createFS("sensorfsdummyfinal", sp1, featureList1, temporalHint1, 1);
 			FS_CREATED = true;
 			Thread.sleep(1000);
 			
 		}
 		try {
-			insertData(files, gc, "sensorfsdummy", 1);
+			insertData(files, gc, "sensorfsdummyfinal", 1);
 			Thread.sleep(5000);
 		} finally {
 			gc.disconnect();
@@ -87,7 +87,7 @@ public class MyInsertDummySensorData {
 				count++;
 				if(count%1000 == 0)
 					System.out.println("\n\n============="+count+"============\n\n");
-				System.out.println("processing - " + f);
+				//System.out.println("processing - " + f);
 				String filepath = f.getAbsolutePath();
 				inputStream = new FileInputStream(filepath);
 				sc = new Scanner(inputStream);
@@ -119,7 +119,7 @@ public class MyInsertDummySensorData {
 					
 					if(firstLine.length() == 0) {
 						firstLine = line;
-						long epoch = GalileoConnector.reformatDatetime(tmpvalues[2]);
+						long epoch = GalileoConnector.reformatDatetime(tmpvalues[0]);
 						c.setTimeInMillis(epoch);
 						currentDay = String.format("%d-%d-%d", c.get(Calendar.YEAR), c.get(Calendar.MONTH) + 1, c.get(Calendar.DAY_OF_MONTH));
 					}
@@ -128,8 +128,8 @@ public class MyInsertDummySensorData {
 				}
 				
 				String allLines = data.toString();
-				System.out.println("Creating a block for " + currentDay + " GMT having " + rowCount + " rows");
-				System.out.println(firstLine);
+				//System.out.println("Creating a block for " + currentDay + " GMT having " + rowCount + " rows");
+				//System.out.println(firstLine);
 				
 				if(allLines.trim().isEmpty()) {
 					continue;
@@ -207,7 +207,7 @@ public class MyInsertDummySensorData {
 		String args[] = new String[3];
 		args[0] = "lattice-21.cs.colostate.edu";
 		args[1] = "5634";
-		args[2] = "/s/green/a/tmp/sapmitra/dummyDataSensor";
+		args[2] = "/s/green/a/tmp/sapmitra/dummyDataSensorFinal";
 		
 		if (args.length != 3) {
 			System.out.println(

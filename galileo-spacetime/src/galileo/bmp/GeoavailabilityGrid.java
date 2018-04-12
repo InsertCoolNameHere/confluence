@@ -98,11 +98,11 @@ public class GeoavailabilityGrid {
 		yDegreesPerPixel = yDegrees / (float) this.height;
 
 		if (logger.isLoggable(Level.INFO)) {
-			logger.log(Level.INFO,
+			/*logger.log(Level.INFO,
 					"Created geoavailability grid: " + "geohash={0}, precision={1}, "
 							+ "width={2}, height={3}, baseRange={6}, " + "xDegreesPerPixel={4}, yDegreesPerPixel={5}",
 					new Object[] { baseGeohash, precision, width, height, xDegreesPerPixel, yDegreesPerPixel,
-							baseRange });
+							baseRange });*/
 		}
 	}
 	

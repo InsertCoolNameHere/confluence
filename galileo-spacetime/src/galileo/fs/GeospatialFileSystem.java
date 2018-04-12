@@ -741,7 +741,7 @@ public class GeospatialFileSystem extends FileSystem {
 			this.earliestSpace = geohash;
 		}
 
-		this.geohashIndex.add(geohash.substring(0, Partitioner.SPATIAL_PRECISION));
+		this.geohashIndex.add(geohash.substring(0, spatialPartitioningType));
 
 		return blockPath;
 	}
@@ -1164,7 +1164,7 @@ public class GeospatialFileSystem extends FileSystem {
 	}
 
 	private List<Path<Feature, String>> executeParallelQuery(Query finalQuery) throws InterruptedException {
-		logger.info("Query: " + finalQuery.toString());
+		//logger.info("Query: " + finalQuery.toString());
 		List<Path<Feature, String>> paths = new ArrayList<>();
 		List<Operation> operations = finalQuery.getOperations();
 		if (operations.size() > 0) {
@@ -1199,6 +1199,7 @@ public class GeospatialFileSystem extends FileSystem {
 		}
 		return paths;
 	}
+	
 
 	/**
 	 * 
@@ -1375,7 +1376,7 @@ public class GeospatialFileSystem extends FileSystem {
 					String binaryHash = String.format(pattern, Long.toBinaryString(GeoHash.hashToLong(geohash)));
 					GeoHash.getGeohashPrefixes(polygon, new GeoHash(binaryHash.replace(" ", "0")),
 							this.geohashPrecision * GeoHash.BITS_PER_CHAR, intersections);
-					logger.info("baseHash: " + geohash + ", intersections: " + intersections.size());
+					//logger.info("baseHash: " + geohash + ", intersections: " + intersections.size());
 					for (GeoHash gh : intersections) {
 						String[] hashRange = gh.getValues(this.geohashPrecision);
 						if (hashRange != null) {
@@ -1412,7 +1413,7 @@ public class GeospatialFileSystem extends FileSystem {
 					: sp.getSpatialRange().getBounds();
 			List<String> hashLocations = new ArrayList<>(Arrays.asList(GeoHash.getIntersectingGeohashes(geometry)));
 			hashLocations.retainAll(this.geohashIndex);
-			logger.info("baseLocations: " + hashLocations);
+			//logger.info("baseLocations: " + hashLocations);
 			Query query = new Query();
 			Polygon polygon = GeoHash.buildAwtPolygon(geometry);
 			for (String geohash : hashLocations) {
@@ -1421,7 +1422,7 @@ public class GeospatialFileSystem extends FileSystem {
 				String binaryHash = String.format(pattern, Long.toBinaryString(GeoHash.hashToLong(geohash)));
 				GeoHash.getGeohashPrefixes(polygon, new GeoHash(binaryHash.replace(" ", "0")),
 						this.geohashPrecision * GeoHash.BITS_PER_CHAR, intersections);
-				logger.info("baseHash: " + geohash + ", intersections: " + intersections.size());
+				//logger.info("baseHash: " + geohash + ", intersections: " + intersections.size());
 				for (GeoHash gh : intersections) {
 					String[] hashRange = gh.getValues(this.geohashPrecision);
 					if (hashRange != null) {
@@ -1456,11 +1457,17 @@ public class GeospatialFileSystem extends FileSystem {
 		
 		Map<Path<Feature, String>, PathFragments> pathToFragmentsMap = new HashMap<Path<Feature, String>, PathFragments>();
 		Map<SuperCube,List<Requirements>> supercubeRequirementsMap = new HashMap<SuperCube,List<Requirements>>();
-		logger.log(Level.SEVERE, "RIKI: ABOUT TO ENTER LOOP " + superCubes +" "+paths);
+		//logger.log(Level.SEVERE, "RIKI: ABOUT TO ENTER LOOP " + superCubes +" "+paths);
 		
 		// For each supercube
 		// CALCULATE THE FRAGMENTS THAT ARE NEEDED
+		
 		for (SuperCube sc : superCubes) {
+			
+			if(supercubeRequirementsMap.get(sc) == null) {
+				supercubeRequirementsMap.put(sc, null);
+			}
+			
 			// For each path that matched the query hyper-polygon and time limit
 			for (Path<Feature, String> path : paths) {
 				boolean fullPathRequired_NoChunks = false;
@@ -1478,13 +1485,13 @@ public class GeospatialFileSystem extends FileSystem {
 					String fs2PathSpace = tokens[1];
 					//logger.log(Level.INFO, "RIKI: BEFORE ORIENTATION: "+fs1PathTime+" "+fs2PathTime);
 					String orientation = GeoHash.getOrientation(fs1PathSpace, fs2PathSpace, fs1PathTime, fs2PathTime, srcTT, this.temporalType);
-					logger.log(Level.INFO, "RIKI: ORIENTATION: "+orientation + path.getPayload());
+					//logger.log(Level.INFO, "RIKI: ORIENTATION: "+orientation + path.getPayload());
 					if(orientation.contains("ignore"))
 						continue;
 					
 					// These are the fragments of path required by the particular supercube sc
 					List<Integer> fragments = OrientationManager.getRequiredChunks(orientation);
-					logger.log(Level.INFO, "RIKI: FRAGMENTS FROM ORIENTATION: "+fragments + path.getPayload());
+					//logger.log(Level.INFO, "RIKI: FRAGMENTS FROM ORIENTATION: "+fragments + path.getPayload());
 					if(fragments == null || fragments.size() == 0) 
 						continue;
 					
@@ -1538,11 +1545,10 @@ public class GeospatialFileSystem extends FileSystem {
 
 			}
 		}
-		for(Path<Feature, String> p: pathToFragmentsMap.keySet()) {
-			logger.log(Level.INFO, "RIKI : PATHHZZ: " +pathToFragmentsMap.get(p).getChunks()+" "+pathToFragmentsMap.get(p).getOrientations());
-		}
 		
 		int totalBlocks = 0;
+		
+		//paths = new ArrayList<Path<Feature, String>>(pathToFragmentsMap.keySet());
 		
 		for (Path<Feature, String> path : paths) {
 			totalBlocks+=path.getPayload().size();
@@ -1722,8 +1728,11 @@ public class GeospatialFileSystem extends FileSystem {
 			
 			/* Returns all 2 char geohashes that intersect with the searched polygon */
 			List<String> hashLocations = new ArrayList<>(Arrays.asList(GeoHash.getIntersectingGeohashes(geometry)));
+			
+			//logger.info("RIKI: MATCHING PATHS: "+hashLocations);
+			//logger.info("RIKI: HASH LOCATIONS: "+this.geohashIndex);
 			hashLocations.retainAll(this.geohashIndex);
-			logger.info("baseLocations: " + hashLocations);
+			//logger.info("baseLocations: " + hashLocations);
 			Query query = new Query();
 			
 			/* Builds an expression for the temporal query asking the top level temporal levels to be 
@@ -2005,7 +2014,7 @@ public class GeospatialFileSystem extends FileSystem {
 			polygon.addPoint(point.X(), point.Y());
 		}
 		
-		logger.info("checking geohash " + grid.getBaseHash() + " intersection with the polygon");
+		//logger.info("checking geohash " + grid.getBaseHash() + " intersection with the polygon");
 		SpatialRange hashRange = grid.getBaseRange();
 		Pair<Coordinates, Coordinates> pair = hashRange.get2DCoordinates();
 		Point<Integer> upperLeft = GeoHash.coordinatesToXY(pair.a);
@@ -2414,7 +2423,7 @@ public class GeospatialFileSystem extends FileSystem {
 		for(int i=0; i < 28; i++) {
 			recordFragmentsPerPath.add("");
 			featurePaths.add(null);
-			recordFragmentsPerPath.add("");
+			//recordFragmentsPerPath.add("");
 			
 		}
 		//logger.info("RIKI: HERE FOR "+ blocks);
@@ -2548,7 +2557,7 @@ public class GeospatialFileSystem extends FileSystem {
 		
 		queryBitmap = skipGridProcessing ? null : queryBitmap;
 		if(parallelism <=0 ) {
-			logger.log(Level.INFO, "RIKI: THIS HAPPENED");
+			//logger.log(Level.INFO, "RIKI: THIS HAPPENED");
 			parallelism = 1;
 		}
 		if (parallelism > 0) {
@@ -2861,6 +2870,17 @@ public class GeospatialFileSystem extends FileSystem {
 		System.out.println(cl);
 		System.out.println(clNew.size());
 		System.out.println(cl.size());
+		
+		
+		List<String> l1 = new ArrayList<String>();
+		l1.add("abc");l1.add("def");l1.add("acb");l1.add("abcd");
+		
+		Set<String> l2 = new HashSet<String>();
+		l1.add("ab");l1.add("de");
+		
+		
+		System.out.println(l1);
+		
 		
 	}
 	

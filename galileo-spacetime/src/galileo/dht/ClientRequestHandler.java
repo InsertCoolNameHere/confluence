@@ -319,7 +319,7 @@ public class ClientRequestHandler implements MessageListener {
 		try {
 			event = this.eventWrapper.unwrap(message);
 			DataIntegrationResponse eventResponse = (DataIntegrationResponse) event;
-			logger.log(Level.INFO, "RIKI: ONE DATA INTEGRATION RESPONSE RECEIVED FROM "+ eventResponse.getNodeName());
+			logger.log(Level.INFO, "RIKI: ONE DATA INTEGRATION RESPONSE RECEIVED FROM "+ eventResponse.getNodeName()+" "+eventResponse.getResultPaths());
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

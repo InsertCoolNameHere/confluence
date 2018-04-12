@@ -112,11 +112,11 @@ public class QueryTransform {
 		w = w + wshift;
 		h = h + hshift;
 
-		if (logger.isLoggable(Level.INFO)) {
+		/*if (logger.isLoggable(Level.INFO)) {
 			logger.log(Level.INFO, "Converting query polygon to " + "GeoavailabilityGrid bitmap. {0}x{1} at ({2}, {3});"
 					+ " shifts: +({4}, {5})", new Object[] { w, h, x, y, wshift, hshift });
 			logger.log(Level.INFO, "Polygon shifted by {0} along x axis on the new plane", shift);
-		}
+		}*/
 
 		BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_BYTE_INDEXED);
 		Graphics2D g = img.createGraphics();

@@ -156,6 +156,7 @@ public class NeighborRequestHandler implements MessageListener {
 						// are added.
 
 		if (this.response instanceof DataIntegrationResponse) {
+			logger.info("RIKI: THESE ARE THE FINAL PATHS BEING SENT OUT: "+resultFiles);
 			DataIntegrationResponse actualResponse = (DataIntegrationResponse) this.response;
 			actualResponse.setResultPaths(resultFiles);
 			actualResponse.setNodeName(hostName);
@@ -229,25 +230,31 @@ public class NeighborRequestHandler implements MessageListener {
 				boolean isControlMessage = checkMessageType(rsp);
 				
 				/* This is a node telling beforehand what is coming */
+				// CONTROL MESSAGE
+				logger.info("RIKI: SUPERCUBES TO NUMNODESMAP: "+ superCubeNumNodesMap);
 				if(isControlMessage) {
 					
 					/* The machine this response came from */
 					String nodeName = rsp.getNodeString();
-					logger.log(Level.INFO, "RIKI : CONTROL MESSAGE RECEIVED FROM "+nodeName);
+					logger.log(Level.INFO, "RIKI : CONTROL MESSAGE RECEIVED FROM "+ nodeName 
+							+ " FOR SUPERCUBES: " + rsp.getSupercubeIDList()+ " EXPECTING TOTAL PATHS: "+rsp.getTotalPaths());
+					
 					/* This node is about to send back this many data messages */
 					if(rsp.getTotalPaths() > 0) {
 						synchronized(nodeToNumberOfDataMessagesMap) {
 							nodeToNumberOfDataMessagesMap.put(nodeName, rsp.getTotalPaths());
 						}
 					}
+					
 					if(rsp.getSupercubeIDList() != null && rsp.getSupercubeIDList().size() > 0) {
 						/* The # of supercubes returns =  number of requirements string */
 						for(int superCubeId: rsp.getSupercubeIDList()) {
 							int index = rsp.getSupercubeIDList().indexOf(superCubeId);
 							
-							/* This supercube is expecting response from one less nodes */
+							int expectedNodes = 0;
+							/* This supercube is expecting control message from one less nodes */
 							synchronized(superCubeNumNodesMap) {
-								int expectedNodes = superCubeNumNodesMap.get(superCubeId) - 1;
+								expectedNodes = superCubeNumNodesMap.get(superCubeId) - 1;
 								
 								/* One less node to expect control message from */
 								superCubeNumNodesMap.put(superCubeId, expectedNodes);
@@ -257,8 +264,31 @@ public class NeighborRequestHandler implements MessageListener {
 							 * pathIndex-0,1,2...\n */
 							if(rsp.getRequirementsList() != null && rsp.getRequirementsList().size() > 0) {
 								String requirementsString = rsp.getRequirementsList().get(index);
-								logger.log(Level.INFO, "RIKI : RETURNED REQUIREMENTS STRING LOOKS LIKE: "+nodeName +" "+requirementsString);
+								//logger.log(Level.INFO, "RIKI : RETURNED REQUIREMENTS STRING LOOKS LIKE: "+nodeName +" "+requirementsString);
 								handleRequirementsOnControlMessage(requirementsString, superCubeId, nodeName);
+							}
+							
+							// If all control messages have been received and still no expected paths
+							// supercubeToExpectedPathsMap is for data messages
+							if(expectedNodes == 0) {
+								synchronized(supercubeToExpectedPathsMap) {
+									List<String> rlist = supercubeToExpectedPathsMap.get(superCubeId);
+									if(rlist ==null || rlist.size() <= 0 ) {
+										cubesLeft--;
+										logger.log(Level.INFO,"RIKI: REMOVED A CUBE FOR NO PATHS: "+superCubeId +" LEFT: "+cubesLeft);
+										
+										if(cubesLeft == 0) {
+											
+											// LAUNCH CLOSE REQUEST
+											logger.log(Level.INFO, "All Joins on this node finished and saved");
+											new Thread() {
+												public void run() {
+													NeighborRequestHandler.this.closeRequest();
+												}
+											}.start();
+										}
+									}
+								}
 							}
 						}
 					}
@@ -304,11 +334,13 @@ public class NeighborRequestHandler implements MessageListener {
 					
 					// We assume the control message from this node has already been received and processed
 					synchronized(supercubeToExpectedPathsMap) {
+						List<Integer> removalsI = new ArrayList<Integer>();
+						
 						for(int i : supercubeToExpectedPathsMap.keySet()) {
 							
 							List<String> expectedPaths = supercubeToExpectedPathsMap.get(i);
-							logger.log(Level.INFO, "RIKI : EXPECTED PATHS" + expectedPaths);
-							logger.log(Level.INFO, "RIKI : RECEIVED PATH" + pathString);
+							logger.log(Level.INFO, "RIKI : EXPECTED PATHS " + expectedPaths);
+							logger.log(Level.INFO, "RIKI : RECEIVED PATH " + pathString);
 							if(expectedPaths.contains(pathString)) {
 								
 								// checking if a local fetch on this supercube has finished
@@ -320,7 +352,7 @@ public class NeighborRequestHandler implements MessageListener {
 								
 								synchronized(cleanupCandidateCubes) {
 									if(!localFetchDone) {
-										// means control message for this node has not come in yet
+										// means localfetch for this node has not been done yet
 										// This supercube has to be shelved and checked later on using the cleanup service
 										if(!cleanupCandidateCubes.contains(i))
 											cleanupCandidateCubes.add(i);
@@ -332,15 +364,22 @@ public class NeighborRequestHandler implements MessageListener {
 								}
 								
 								expectedPaths.remove(pathString);
+								logger.log(Level.INFO, "RIKI: SUPERCUBE " + i +" NEEDS "+expectedPaths.size() +" MORE DATA MESSAGES");
 								
 								if(!localFetchDone)
 									continue;
 								
+								// Whether all control messages have come in for this cube?
+								int numNodesPendingControlMessages = 0;
+								
+								synchronized(superCubeNumNodesMap) {
+									numNodesPendingControlMessages = superCubeNumNodesMap.get(i);
+								}
 								// This supercube has everything it needs
-								if(expectedPaths.size() <= 0) {
-									
+								if(expectedPaths.size() <= 0 && numNodesPendingControlMessages == 0) {
+									removalsI.add(i);
 									/* LAUNCH THIS SUPERCUBE INTO A NEW THREAD*/
-									//logger.log(Level.INFO, "RIKI: READY TO LAUNCH " + i);
+									logger.log(Level.INFO, "RIKI: READY TO LAUNCH SUPERCUBE" + i);
 									
 									//JoiningThread jt = new JoiningThread(fs1SuperCubeDataMap.get(i), bRecords, aPosns, bPosns, epsilons, cubeId);
 									JoiningThread jt = new JoiningThread(i);
@@ -349,6 +388,14 @@ public class NeighborRequestHandler implements MessageListener {
 									// executor shutdown could be done in closeRequest()
 								}
 							}
+						}
+						
+						if(!removalsI.isEmpty()) {
+							for(int i : removalsI) {
+								logger.info("RIKI: REMOVING SUPERCUBE: " + i);
+								supercubeToExpectedPathsMap.remove(i);
+							}
+							logger.info("RIKI: AFTER REMOVAL: " + supercubeToExpectedPathsMap.keySet());
 						}
 					}
 					
@@ -449,7 +496,7 @@ public class NeighborRequestHandler implements MessageListener {
 			//readFS1Blocks(allCubes);
 			
 			/* TODO: HANDLE INTERNAL EVENTS BEFORE SENDING OUT REQUESTS */
-			
+			logger.info("RIKI: TOTAL NUMBER OF SUPERCUBES " + cubesLeft + " LIST: "+ allCubes);
 			for (NetworkDestination node : nodes) {
 				Event request = individualRequests.get(count);
 				GalileoMessage mrequest = this.eventWrapper.wrap(request);
@@ -687,6 +734,9 @@ public class NeighborRequestHandler implements MessageListener {
 					synchronized(pathIdToFragmentDataMap) {
 						List<String> allFrags = pathIdToFragmentDataMap.get(key);
 						
+						if(allFrags == null || allFrags.size() == 0)
+							continue;
+						
 						if(frags.containsAll(allFragsTo26) && allFrags.get(27) != null && !allFrags.get(27).isEmpty()) {
 							frags = new ArrayList<Integer>();
 							frags.add(27);
@@ -697,10 +747,16 @@ public class NeighborRequestHandler implements MessageListener {
 						//System.out.println("EXISTING FRAGMENTS FOR PATH : "+key+" "+allFrags);
 						int cnt = 0;
 						for(int frag: frags) {
-							bRecords += allFrags.get(frag);
+							
+							String frg = allFrags.get(frag);
+							
 							if(cnt == frags.size() - 1)
 								continue;
-							bRecords+="\n";
+							if(frg.length() > 2) {
+								bRecords += allFrags.get(frag);
+								
+								bRecords+="\n";
+							}
 							cnt++;
 						}
 					}
@@ -747,7 +803,7 @@ public class NeighborRequestHandler implements MessageListener {
 				this.storagePath = null;
 			}
 			
-			logger.info("RIKI: AFTER SAVE FOR CUBE "+cubeId);
+			logger.info("RIKI: AFTER SAVE FOR CUBE "+cubeId+" "+storagePath);
 			synchronized(resultFiles) {
 				if(storagePath != null)
 					resultFiles.add(storagePath);
@@ -755,8 +811,8 @@ public class NeighborRequestHandler implements MessageListener {
 			
 			cubesLeft--;
 			
-			//logger.info("RIKI: NUMBER OF CUBES LEFT: "+cubesLeft + " "+allCubes);
-			if(cubesLeft <= 0) {
+			logger.info("RIKI: NUMBER OF CUBES LEFT: "+cubesLeft + " "+allCubes);
+			if(cubesLeft == 0) {
 				
 				// LAUNCH CLOSE REQUEST
 				logger.log(Level.INFO, "All Joins on this node finished and saved");
@@ -765,6 +821,9 @@ public class NeighborRequestHandler implements MessageListener {
 						NeighborRequestHandler.this.closeRequest();
 					}
 				}.start();
+			} else if(cubesLeft < 0) {
+				
+				logger.info("RIKI: NEGATIVE CUBES LEFT");
 			}
 			
 		}

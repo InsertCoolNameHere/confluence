@@ -30,7 +30,7 @@ public class SelfJoinThread implements Runnable {
 	public void run() {
 		
 		MDC m = new MDC();
-		List<String> tps = m.iterativeMultiDimSelfJoin(indvARecords, indvBRecords, epsilons, betas, pathInfo, temporalType);
+		List<String> tps = m.iterativeMultiDimSelfJoinML(indvARecords, indvBRecords, epsilons, betas, pathInfo, temporalType);
 		// TODO Auto-generated method stub
 		if(tps.size() > 0) {
 			for(String tp : tps)

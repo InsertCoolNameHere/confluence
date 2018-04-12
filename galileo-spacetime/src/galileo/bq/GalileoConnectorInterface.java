@@ -38,18 +38,18 @@ abstract class GalileoConnectorInterface {
 		int tempUnc = 0;
 		if(mode == 1) {
 			
-			spUnc = 5;
-			// 1hr
-			tempUnc = 60*60*1000;
+			spUnc = 6;
+			// 5 min
+			tempUnc = 5*60*1000;
 			
 		} else if(mode == 2) {
 			
-			spUnc = 5;
+			spUnc = 6;
 			tempUnc = 60*60*1000;
 			
 		} else if (mode == 3) {
 			// For Sensor FS
-			spUnc = 5;
+			spUnc = 6;
 			
 			// 5 mins
 			tempUnc = 5*60*1000;
@@ -57,7 +57,7 @@ abstract class GalileoConnectorInterface {
 		}
 		FilesystemRequest fsRequest = new FilesystemRequest(name, FilesystemAction.CREATE, featureList, sh, spUnc, tempUnc,  false, temporalHint);
 		fsRequest.setSpatialPartitioningType(4);
-		fsRequest.setNodesPerGroup(5);
+		fsRequest.setNodesPerGroup(20);
 		//fsRequest.setPrecision(6);
 		fsRequest.setTemporalType(TemporalType.DAY_OF_MONTH);
 		

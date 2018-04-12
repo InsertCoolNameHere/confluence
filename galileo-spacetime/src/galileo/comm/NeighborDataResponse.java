@@ -46,11 +46,13 @@ public class NeighborDataResponse implements Event {
 			String reqStr = "";
 			List<Requirements> requirementsForThisCube = supercubeRequirementsMap.get(sc);
 			
-			for(Requirements r: requirementsForThisCube ) {
-				if(r.getChunks()!=null && r.getChunks().size() > 0) {
-					String temp = r.getChunks().toString();
-					reqStr+=r.getPathIndex()+"-"+temp.substring(1, temp.length() - 1)+"\n";
-					
+			if(requirementsForThisCube != null) {
+				for(Requirements r: requirementsForThisCube ) {
+					if(r.getChunks()!=null && r.getChunks().size() > 0) {
+						String temp = r.getChunks().toString();
+						reqStr+=r.getPathIndex()+"-"+temp.substring(1, temp.length() - 1)+"\n";
+						
+					}
 				}
 			}
 			

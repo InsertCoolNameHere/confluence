@@ -408,7 +408,7 @@ public class StorageNode implements RequestListener {
 		String fsName = store.getBlock().getFilesystem();
 		GeospatialFileSystem fs = fsMap.get(fsName);
 		if (fs != null) {
-			logger.log(Level.INFO, "Storing block " + store.getBlock() + " to filesystem " + fsName);
+			//logger.log(Level.INFO, "Storing block " + store.getBlock() + " to filesystem " + fsName);
 			try {
 				fs.storeBlock(store.getBlock());
 			} catch (FileSystemException | IOException e) {
@@ -1251,8 +1251,8 @@ public class StorageNode implements RequestListener {
 		String fsName2 = event.getFsname2();
 		GeospatialFileSystem fs2 = fsMap.get(fsName2);
 		
-		logger.info("RIKI: KEYSET FS: "+fsMap.keySet());
-		logger.info("RIKI: INTERPOLATOR : "+interpolatingFeature);
+		//logger.info("RIKI: KEYSET FS: "+fsMap.keySet());
+		//logger.info("RIKI: INTERPOLATOR : "+interpolatingFeature);
 		
 		int interpolatingFeaturePosn = fs2.getFeaturePosition(interpolatingFeature);
 		
@@ -1262,7 +1262,7 @@ public class StorageNode implements RequestListener {
 		
 		double[] epsilons = {event.getTimeRelaxation(), event.getLatRelax(), event.getLongRelax()};
 		
-		logger.log(Level.INFO, "RIKI: RELAXATIONS:"+Arrays.toString(epsilons));
+		//logger.log(Level.INFO, "RIKI: RELAXATIONS:"+Arrays.toString(epsilons));
 		
 		DataIntegrationResponse response = new DataIntegrationResponse(eventId);
 		response.setNodeName(hostname);
@@ -1590,10 +1590,10 @@ public class StorageNode implements RequestListener {
 		
 		//Partitioner<Metadata> fsPartitioner = reqFSystem.getPartitioner();
 		try{
-			logger.log(Level.INFO, "RIKI : QUERY TIME: "+ event.getQueryTime());
+			//logger.log(Level.INFO, "RIKI : QUERY TIME: "+ event.getQueryTime());
 			PathsAndOrientations pao = reqFSystem.listIntersectingPathsWithOrientation(superCubes, superPolygon, event.getQueryTime(), null, srcFSystem.getTemporalType());
 			
-			logger.log(Level.INFO, "RIKI : INTERSECTING PATHS CALCULATED");
+			//logger.log(Level.INFO, "RIKI : INTERSECTING PATHS CALCULATED");
 			
 			if(pao != null && pao.getPathToFragmentsMap() != null && pao.getPathToFragmentsMap().size() > 0) {
 				
@@ -1610,7 +1610,8 @@ public class StorageNode implements RequestListener {
 				
 				/* SEND BACK SUPERCUBE TO REQUIREMENTS MAP IMMEDIATELY */
 				/* THERE IS GOING TO BE ONE DATA RESPONSE PER PATH. SO THE NUMBER OF PATHS IS NECESSARY */
-				logger.log(Level.INFO, "RIKI : ABOUT TO SEND CONTROL MESSAGE");
+				//logger.log(Level.INFO, "RIKI : ABOUT TO SEND CONTROL MESSAGE");
+				
 				NeighborDataResponse controlMessage = createCubeRequirements(supercubeRequirementsMap, pathToFragmentsMap.size(), nodeString);
 				context.sendReply(controlMessage);
 				logger.log(Level.INFO, "RIKI : CONTROL MESSAGE SENT");
@@ -1624,6 +1625,10 @@ public class StorageNode implements RequestListener {
 				/* Keep track of total number of paths, so that the source knows when all the paths have been received */
 				for(Path<Feature, String> path: paths) {
 					logger.log(Level.INFO, "RIKI : FS2 PATHS + FRAGMENTS:"+path.getPayload()+" "+ pathToFragmentsMap.get(path));
+					
+					if(pathToFragmentsMap.get(path) == null)
+						continue;
+					
 					String geohash = GeospatialFileSystem.getPathInfo(path, 1);
 					int pathIndex = paths.indexOf(path);
 					/* Converts the bounds of geohash into a 1024x1024 region */
