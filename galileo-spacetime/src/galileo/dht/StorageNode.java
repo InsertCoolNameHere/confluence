@@ -1103,7 +1103,6 @@ public class StorageNode implements RequestListener {
 	@EventHandler
 	public void handleDataIntegrationRequest(DataIntegrationRequest request, EventContext context) {
 		
-		logger.info("RIKI: DATA INTEGRATION REQUEST RECEIVED AT TIME: "+System.currentTimeMillis());
 		String featureQueryString = request.getFeatureQueryString();
 		logger.log(Level.INFO, "Feature query request: {0}", featureQueryString);
 		
@@ -1274,14 +1273,15 @@ public class StorageNode implements RequestListener {
 				// fs1 is the primary and fs2 is secondary filesystem
 
 				// All blocks of fs1 on this node that match our criteria
+				logger.log(Level.INFO, "RIKI: THE ACTUAL QUERY: "+event.getTime()+" "+event.getPolygon());
 				List<Path<Feature, String>> paths1 = fs1.listPaths(event.getTime(), event.getPolygon(), null, false);
 				
 				if(paths1 != null && paths1.size() > 0) {
 					// LOGGING
-					//logger.log(Level.INFO, "PATHS FROM FS1:");
+					logger.log(Level.INFO, "PATHS FROM FS1:");
 					for (Path<Feature, String> path : paths1) {
 						List<String> blocks = new ArrayList<String>(path.getPayload());
-						//logger.log(Level.INFO, blocks.toString());
+						logger.log(Level.INFO, blocks.toString());
 					}
 	
 					List<Coordinates> queryPolygon = event.getPolygon();
@@ -1624,7 +1624,7 @@ public class StorageNode implements RequestListener {
 				/* One thread per path */
 				/* Keep track of total number of paths, so that the source knows when all the paths have been received */
 				for(Path<Feature, String> path: paths) {
-					logger.log(Level.INFO, "RIKI : FS2 PATHS + FRAGMENTS:"+path.getPayload()+" "+ pathToFragmentsMap.get(path));
+					//logger.log(Level.INFO, "RIKI : FS2 PATHS + FRAGMENTS:"+path.getPayload()+" "+ pathToFragmentsMap.get(path));
 					
 					if(pathToFragmentsMap.get(path) == null)
 						continue;

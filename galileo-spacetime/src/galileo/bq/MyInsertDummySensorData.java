@@ -63,9 +63,9 @@ public class MyInsertDummySensorData {
 		}
 		try {
 			insertData(files, gc, "sensorfsdummyfinal", 1);
-			Thread.sleep(5000);
+			Thread.sleep(1000);
 		} finally {
-			gc.disconnect();
+			
 		}
 	}
 	/**
@@ -83,6 +83,7 @@ public class MyInsertDummySensorData {
 		
 		try{
 			int count = 0;
+			System.out.println(files.length);
 			for(File f : files) {
 				count++;
 				if(count%1000 == 0)
@@ -138,8 +139,9 @@ public class MyInsertDummySensorData {
 				Block tmp = GalileoConnector.createBlockSensorDummy(firstLine, allLines.substring(0, allLines.length() - 1), fsName);
 				if (tmp != null) {
 					gc.store(tmp);
-					Thread.sleep(100);
+					Thread.sleep(5);
 				}
+				inputStream.close();
 			}
 			
 			// note that Scanner suppresses exceptions
@@ -205,9 +207,9 @@ public class MyInsertDummySensorData {
 	
 	public static void main(String[] args1) {
 		String args[] = new String[3];
-		args[0] = "lattice-21.cs.colostate.edu";
+		args[0] = "lattice-1.cs.colostate.edu";
 		args[1] = "5634";
-		args[2] = "/s/green/a/tmp/sapmitra/dummyDataSensorFinal";
+		args[2] = "/s/green/a/tmp/sapmitra/LargeSensorData";
 		
 		if (args.length != 3) {
 			System.out.println(
@@ -215,20 +217,33 @@ public class MyInsertDummySensorData {
 			System.exit(0);
 		} else {
 			try {
-				GalileoConnector gc = new GalileoConnector(args[0], Integer.valueOf(args[1]));
-				System.out.println(args[0] + "," + Integer.parseInt(args[1]));
-				File file = new File(args[2]);
-				if (file.isFile()) {
-					System.out.println("processing - " + args[2]);
-					//processFile(args[2], gc);
-				} else {
-					if (file.isDirectory()) {
-						File[] files = file.listFiles();
-						
-						processFile(files, gc);
-						
-						
-					}
+				GalileoConnector gc = null;
+				try {
+					gc = new GalileoConnector(args[0], Integer.valueOf(args[1]));
+					System.out.println(args[0] + "," + Integer.parseInt(args[1]));
+					
+					String[] dirs = {"Day1-6","Day7-12","Day13-18","Day19-24","Day25-31"};
+					
+					for(String dirName: dirs) {
+						System.out.println("processing - " + args[2]+"/"+dirName);
+						File file = new File(args[2]+"/"+dirName);
+							if (file.isFile()) {
+								
+								//processFile(args[2], gc);
+							} else {
+								if (file.isDirectory()) {
+									File[] files = file.listFiles();
+									
+									processFile(files, gc);
+									
+									
+								}
+							}
+						}
+				} catch (Exception e) {
+					e.printStackTrace();
+				} finally {
+					gc.disconnect();
 				}
 			} catch (Exception e) {
 				e.printStackTrace();

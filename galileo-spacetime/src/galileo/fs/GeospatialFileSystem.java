@@ -741,7 +741,7 @@ public class GeospatialFileSystem extends FileSystem {
 			this.earliestSpace = geohash;
 		}
 
-		this.geohashIndex.add(geohash.substring(0, spatialPartitioningType));
+		this.geohashIndex.add(geohash);
 
 		return blockPath;
 	}
@@ -1732,7 +1732,7 @@ public class GeospatialFileSystem extends FileSystem {
 			//logger.info("RIKI: MATCHING PATHS: "+hashLocations);
 			//logger.info("RIKI: HASH LOCATIONS: "+this.geohashIndex);
 			hashLocations.retainAll(this.geohashIndex);
-			//logger.info("baseLocations: " + hashLocations);
+			logger.info("RIKI: AFTER RETAINALL");
 			Query query = new Query();
 			
 			/* Builds an expression for the temporal query asking the top level temporal levels to be 

@@ -50,6 +50,7 @@ public class ClientRequestHandler implements MessageListener {
 	private RequestListener requestListener;
 	private Event response;
 	private long elapsedTime;
+	private long reqId;
 
 	public ClientRequestHandler(Collection<NetworkDestination> nodes, EventContext clientContext,
 			RequestListener listener) throws IOException {
@@ -309,7 +310,8 @@ public class ClientRequestHandler implements MessageListener {
 								+ e.getMessage(), e);
 			}
 		}
-		logger.info("RIKI: ENTIRE THING FINISHED AT: "+System.currentTimeMillis());
+		long diff = System.currentTimeMillis() - reqId;
+		logger.info("RIKI: ENTIRE THING FINISHED IN: "+ diff);
 		this.requestListener.onRequestCompleted(this.response, clientContext, this);
 	}
 
@@ -319,7 +321,7 @@ public class ClientRequestHandler implements MessageListener {
 		try {
 			event = this.eventWrapper.unwrap(message);
 			DataIntegrationResponse eventResponse = (DataIntegrationResponse) event;
-			logger.log(Level.INFO, "RIKI: ONE DATA INTEGRATION RESPONSE RECEIVED FROM "+ eventResponse.getNodeName()+" "+eventResponse.getResultPaths());
+			//logger.log(Level.INFO, "RIKI: ONE DATA INTEGRATION RESPONSE RECEIVED FROM "+ eventResponse.getNodeName()+" "+eventResponse.getResultPaths());
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -357,11 +359,13 @@ public class ClientRequestHandler implements MessageListener {
 	 */
 	public void handleRequest(Event request, Event response) {
 		try {
+			reqId = System.currentTimeMillis();
+			logger.info("RIKI: DATA INTEGRATION REQUEST RECEIVED AT TIME: "+System.currentTimeMillis());
 			this.response = response;
 			GalileoMessage mrequest = this.eventWrapper.wrap(request);
 			for (NetworkDestination node : nodes) {
 				this.router.sendMessage(node, mrequest);
-				logger.info("Request sent to " + node.toString());
+				//logger.info("Request sent to " + node.toString());
 			}
 			this.elapsedTime = System.currentTimeMillis();
 		} catch (IOException e) {

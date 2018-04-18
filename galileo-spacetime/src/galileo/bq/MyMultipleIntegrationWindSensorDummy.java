@@ -25,12 +25,18 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Scanner;
 import java.util.TimeZone;
+import java.util.concurrent.ThreadLocalRandom;
 
-public class MyIntegrationWindSensorDummy {
+public class MyMultipleIntegrationWindSensorDummy {
 
 	// [START processFile]
 	/**
 	 * read each line from the csv file and send it to galileo server
+	 * @param date 
+	 * @param c42 
+	 * @param c32 
+	 * @param c22 
+	 * @param c12 
 	 * 
 	 * @param pathtothefile
 	 *            path to the csv file
@@ -39,7 +45,7 @@ public class MyIntegrationWindSensorDummy {
 	 * @throws Exception
 	 */
 	
-	private static void processFile(GalileoConnector gc) throws Exception {
+	private static void processFile(GalileoConnector gc, Coordinates c1, Coordinates c2, Coordinates c3, Coordinates c4, int date) throws Exception {
 		
 		// CREATING FS1
 		
@@ -53,12 +59,6 @@ public class MyIntegrationWindSensorDummy {
 		Coordinates c4 = new Coordinates(31.62858f, -99.59101f);*/
 		
 		
-		// city level
-		Coordinates c1 = new Coordinates(37.45f, -109.36f);
-		Coordinates c2 = new Coordinates(37.45f, -108.95f);
-		Coordinates c3 = new Coordinates(37.239f, -108.95f);
-		Coordinates c4 = new Coordinates(37.239f, -109.36f);
-		
 		/*Coordinates c1 = new Coordinates(40.96f, -109.11f);
 		Coordinates c2 = new Coordinates(40.96f, -102.07f);
 		Coordinates c3 = new Coordinates(37.021f, -102.07f);
@@ -69,18 +69,76 @@ public class MyIntegrationWindSensorDummy {
 		cl.add(c1); cl.add(c2); cl.add(c3); cl.add(c4);
 		
 		dr.setPolygon(cl);
-		dr.setTime("2016-05-07-xx");
+		
+		
+		if(date<10) {
+			dr.setTime("2016-05-0"+ date +"-xx");
+		} else {
+			dr.setTime("2016-05-"+ date +"-xx");
+		}
+		
 		dr.setLatRelax(0.01f);
 		dr.setLongRelax(0.01f);
-		dr.setTimeRelaxation(1000*60*5);
+		dr.setTimeRelaxation(1000*60*10);
 		dr.setInterpolatingFeature("wind_speed");
 		
+		System.out.println("QUERY FOR: "+c1+" "+c2+" "+c3+" "+c4+" 2016-05-"+ date +"-xx");
 		try {
 			gc.integrate(dr);
-			Thread.sleep(10000);
+			Thread.sleep(5000);
+		} finally {
+			//gc.disconnect();
+		}
+	}
+	
+	
+	public static void individualIntegrationRequests(GalileoConnector gc) throws Exception {
+		
+		// STATE LEVEL
+		//float latLength = 3.2f;
+		//float longLength = 6f;
+		
+		//county Level
+		float latLength = 0.3f;
+		float longLength = 0.34f;
+		
+		
+		float startLat = 33.791f;
+		float endLat = 39.324f;
+		
+		float startLong = -112.175f;
+		float endLong = -90.333f;
+		
+		
+		int count = 0;
+		try {
+			while(count<1) {
+				float lowLat = (float)ThreadLocalRandom.current().nextDouble(startLat, endLat - latLength);
+				float lowLong = (float)ThreadLocalRandom.current().nextDouble(startLong, endLong - longLength);
+				int date = ThreadLocalRandom.current().nextInt(1, 30);
+				
+				if(lowLat+latLength < endLat && lowLong+longLength < endLong) {
+				
+					Coordinates c1 = new Coordinates(lowLat+latLength, lowLong);
+					Coordinates c2 = new Coordinates(lowLat+latLength, lowLong+longLength);
+					Coordinates c3 = new Coordinates(lowLat, lowLong+longLength);
+					Coordinates c4 = new Coordinates(lowLat, lowLong);
+					
+					
+					processFile(gc, c1,c2,c3,c4, date);
+					//Thread.sleep(10000);
+					
+					
+					count++;
+					
+				}
+			}
 		} finally {
 			gc.disconnect();
 		}
+		
+		
+		
 	}
 	
 	// [START Main]
@@ -104,8 +162,8 @@ public class MyIntegrationWindSensorDummy {
 			try {
 				GalileoConnector gc = new GalileoConnector(args[0], Integer.valueOf(args[1]));
 				System.out.println(args[0] + "," + Integer.parseInt(args[1]));
-				
-				processFile(gc);
+				individualIntegrationRequests(gc);
+				//processFile(gc);
 				
 			} catch (Exception e) {
 				e.printStackTrace();

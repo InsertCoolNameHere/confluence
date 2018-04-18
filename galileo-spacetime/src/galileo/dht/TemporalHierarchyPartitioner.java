@@ -57,11 +57,12 @@ public class TemporalHierarchyPartitioner extends Partitioner<Metadata> {
 				"f1", "f2", "f3", "f4", "f6", "f8", "f9", "fb", "fc", "fd", "ff" };*/
 		
 		
-		String[] geohashes_2char = {"9x", "9y", "9z", "9w"};
+		String[] geohashes_2char = { "9w", "9x", "9y", "9z"};
 		//String[] geohashes_2char = {"9r", "9x","9z", "9y", "9w", "9q", "9y","dp", "dn","9t","9v"};
+		Arrays.sort(geohashes_2char);
 		
 		if(spatialHashType == 2) {
-		// Geohashes for US region.
+			// Geohashes for US region.
 			
 			geohashes = geohashes_2char;
 		} else if(spatialHashType > 2) {
@@ -71,6 +72,7 @@ public class TemporalHierarchyPartitioner extends Partitioner<Metadata> {
 			logger.severe("GEOHASH PARTITIONING FAILED. INVALID LENGTH: "+spatialHashType);
 		}
 
+		Arrays.sort(geohashes);
 		groupHash = new TemporalHash(TemporalType.fromType(temporalHashType));
 		groupHashRing = new BalancedHashRing<>(groupHash);
 		groupPositions = new HashMap<>();
@@ -84,8 +86,10 @@ public class TemporalHierarchyPartitioner extends Partitioner<Metadata> {
 	
 	public static void main(String arg[]) {
 		
-		String[] geohashes_2char = { "8g", "8u"};
-		System.out.println(Arrays.asList(generateGeohashes(geohashes_2char, 4)));
+		String[] geohashes_2char = { "8u", "8g"};
+		String[] generateGeohashes = generateGeohashes(geohashes_2char, 3);
+		Arrays.sort(generateGeohashes);
+		System.out.println(Arrays.asList(generateGeohashes));
 	}
 
 	private static String[] generateGeohashes(String[] geohashes_2char, int spatialHashType) {

@@ -202,7 +202,7 @@ public class NeighborRequestHandler implements MessageListener {
 				
 				
 			} else {
-				logger.log(Level.SEVERE, "AN INVALID FORMAT FOUND IN CONTROL MESSAGE");
+				logger.log(Level.SEVERE, "AN INVALID FORMAT FOUND IN CONTROL MESSAGE "+lines[0]);
 				return null;
 			}
 		}
@@ -231,7 +231,7 @@ public class NeighborRequestHandler implements MessageListener {
 				
 				/* This is a node telling beforehand what is coming */
 				// CONTROL MESSAGE
-				logger.info("RIKI: SUPERCUBES TO NUMNODESMAP: "+ superCubeNumNodesMap);
+				//logger.info("RIKI: SUPERCUBES TO NUMNODESMAP: "+ superCubeNumNodesMap);
 				if(isControlMessage) {
 					
 					/* The machine this response came from */
@@ -317,7 +317,7 @@ public class NeighborRequestHandler implements MessageListener {
 					}
 					
 					String pathString = nodeName+"$"+pathIndex;
-					logger.log(Level.INFO, "RIKI : DATA MESSAGE RECEIVED FROM "+pathString + " " + ret);
+					logger.log(Level.INFO, "RIKI : DATA MESSAGE RECEIVED FROM "+pathString + " " + ret + " "+System.currentTimeMillis());
 					
 					// Taking the fragments in a path to fragments map 
 					synchronized(pathIdToFragmentDataMap) {
@@ -339,8 +339,8 @@ public class NeighborRequestHandler implements MessageListener {
 						for(int i : supercubeToExpectedPathsMap.keySet()) {
 							
 							List<String> expectedPaths = supercubeToExpectedPathsMap.get(i);
-							logger.log(Level.INFO, "RIKI : EXPECTED PATHS " + expectedPaths);
-							logger.log(Level.INFO, "RIKI : RECEIVED PATH " + pathString);
+							//logger.log(Level.INFO, "RIKI : EXPECTED PATHS " + expectedPaths);
+							//logger.log(Level.INFO, "RIKI : RECEIVED PATH " + pathString);
 							if(expectedPaths.contains(pathString)) {
 								
 								// checking if a local fetch on this supercube has finished
@@ -364,7 +364,7 @@ public class NeighborRequestHandler implements MessageListener {
 								}
 								
 								expectedPaths.remove(pathString);
-								logger.log(Level.INFO, "RIKI: SUPERCUBE " + i +" NEEDS "+expectedPaths.size() +" MORE DATA MESSAGES");
+								//logger.log(Level.INFO, "RIKI: SUPERCUBE " + i +" NEEDS "+expectedPaths.size() +" MORE DATA MESSAGES");
 								
 								if(!localFetchDone)
 									continue;
@@ -484,6 +484,7 @@ public class NeighborRequestHandler implements MessageListener {
 	 */
 	public void handleRequest(Event response) {
 		try {
+			logger.info("RIKI: SENT OUT DATA MOVEMENT REQUEST AT: " + System.currentTimeMillis());
 			this.response = response;
 			
 			/* size of individualRequests must be the same as nodes */
@@ -811,7 +812,7 @@ public class NeighborRequestHandler implements MessageListener {
 			
 			cubesLeft--;
 			
-			logger.info("RIKI: NUMBER OF CUBES LEFT: "+cubesLeft + " "+allCubes);
+			//logger.info("RIKI: NUMBER OF CUBES LEFT: "+cubesLeft + " "+allCubes);
 			if(cubesLeft == 0) {
 				
 				// LAUNCH CLOSE REQUEST

@@ -208,6 +208,7 @@ public class MDC {
 		int aLength = indvARecords.size();
 		int bLength = 0;
 	
+		long startTime = System.currentTimeMillis();
 		String[] indvBRecords = bRecords.split("\\n");
 		
 		/* splitARecords and validAEntries must always correspond */
@@ -339,7 +340,11 @@ public class MDC {
 		//System.out.println("MATCHES "+aRecordIndices.size());
 		
 		List<String> retJoinRecords = new ArrayList<String> ();
+		
+		long startTimeInterpolation  = System.currentTimeMillis();
+		logger.info("RIKI: JOIN FINISHED IN: "+(startTimeInterpolation - startTime));
 
+		
 		// create the one to many mapping between A and B entries
 		//generateNeighborSphere(pairs, aRecordIndices, bRecordIndices);
 		
@@ -389,7 +394,9 @@ public class MDC {
 			
 			count++;
 		}
-		//System.out.println("TIME: "+(System.currentTimeMillis() - tl));
+		long endTimeInterpolation  = System.currentTimeMillis();
+		logger.info("RIKI: INTERPOLATION FINISHED IN: "+(endTimeInterpolation - startTimeInterpolation));
+
 		return retJoinRecords;
 	}
 	

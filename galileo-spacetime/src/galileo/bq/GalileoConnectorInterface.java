@@ -56,8 +56,8 @@ abstract class GalileoConnectorInterface {
 			// geohash precision for storage is preset to 4
 		}
 		FilesystemRequest fsRequest = new FilesystemRequest(name, FilesystemAction.CREATE, featureList, sh, spUnc, tempUnc,  false, temporalHint);
-		fsRequest.setSpatialPartitioningType(4);
-		fsRequest.setNodesPerGroup(20);
+		fsRequest.setSpatialPartitioningType(3);
+		fsRequest.setNodesPerGroup(15);
 		//fsRequest.setPrecision(6);
 		fsRequest.setTemporalType(TemporalType.DAY_OF_MONTH);
 		
