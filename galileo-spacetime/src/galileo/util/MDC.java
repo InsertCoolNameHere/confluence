@@ -122,7 +122,99 @@ public class MDC {
 	public static void main(String arg[]) {
 		MDC m = new MDC();
 		
-		m.whyIsThisHappening();
+		m.whyIsThisHappeningSelf();
+		
+	}
+	
+	public void whyIsThisHappeningSelf() {
+		
+		BufferedReader br = null;
+		FileReader fr = null;
+		List<String[]> indvARecords = new ArrayList<>();
+		List<String[]> indvBRecords = new ArrayList<>();
+		
+		try {
+
+			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/A.txt");
+			br = new BufferedReader(fr);
+
+			String sCurrentLine;
+
+			while ((sCurrentLine = br.readLine()) != null) {
+				if(!sCurrentLine.isEmpty() && sCurrentLine.contains("[") && sCurrentLine.contains("]")) {
+					
+					sCurrentLine = sCurrentLine.substring(1, sCurrentLine.length() - 1);
+					String tokens[] = sCurrentLine.split(",");
+					
+					int count = 0;
+					for(String t : tokens) {
+						
+						t = t.trim();
+						tokens[count] = t;
+						count++;
+						
+					}
+					indvARecords.add(tokens);
+					
+				}
+			}
+			
+			br.close();
+			fr.close();
+
+		} catch (IOException e) {
+
+			e.printStackTrace();
+
+		} 
+		
+		
+		try {
+
+			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/B.txt");
+			br = new BufferedReader(fr);
+
+			String sCurrentLine;
+			
+			
+			while ((sCurrentLine = br.readLine()) != null) {
+				
+				
+				
+				sCurrentLine = sCurrentLine.substring(1, sCurrentLine.length() - 1);
+				String tokens[] = sCurrentLine.split(",");
+				
+				int count = 0;
+				for(String t : tokens) {
+					
+					t = t.trim();
+					tokens[count] = t;
+					count++;
+					
+				}
+				indvBRecords.add(tokens);
+				
+			
+					
+				
+			}
+			
+			br.close();
+			fr.close();
+
+		} catch (IOException e) {
+
+			e.printStackTrace();
+
+		} 
+		
+		double[] betas = {0,1,2};
+		double[] epsilons = {1000*60*10, 0.1, 0.1};
+		long ll1 = System.currentTimeMillis();
+		List<String> recs = iterativeMultiDimSelfJoinML(indvARecords, indvBRecords, epsilons, betas, "abc$$2016-05-12-xx$9v00", TemporalType.DAY_OF_MONTH);
+		System.out.println(recs.size());
+		System.out.println(recs);
+		
 		
 	}
 	
@@ -418,128 +510,98 @@ public class MDC {
 	public List<String> iterativeMultiDimSelfJoinML(List<String[]> indvARecords, List<String[]> indvBRecords, 
 			double[] epsilons, double[] betas, String pathInfo, TemporalType temporalType) {
 		
+		int aLength = indvARecords.size();
+		int bLength = indvBRecords.size();
+		
+		//System.out.println("TEST A: "+ Arrays.asList(indvARecords.get(0)));
+		//System.out.println("TEST B: "+ Arrays.asList(indvBRecords.get(0)));
+		
 		List<Double> mins = new ArrayList<Double>();
 		List<Double> spans = new ArrayList<Double>();
+		
+		List<Double> setA = new ArrayList<Double>();
+		List<Double> setB = new ArrayList<Double>();
 		
 		// This deals with values for standardization
 		getStandardizationParameters(pathInfo,temporalType, mins, spans);
 		
-		/* Do not modify these 2 data */
-		String doublePattern = "-?([0-9]*)\\.?([0-9]*)";
-		String intPattern = "-?([0-9])([0-9]*)";
-		
-		List<double[]> splitARecords = new ArrayList<double[]>();
-		List<double[]> splitBRecords = new ArrayList<double[]>();
-		
 		int ind = 0;
+		int i=2;
+		
+		int[] aPosns = {0,1,2};
+		int[] bPosns = {0,1,2};
 		
 		for(String[] frs: indvARecords) {
-			
-			if(Pattern.matches(doublePattern, frs[0]) && Pattern.matches(doublePattern, frs[1])
-					&& Pattern.matches(intPattern, frs[2])){
-				double[] tempArr = new double[3];
-				tempArr[0] = Double.valueOf(frs[0]);
-				tempArr[1] = Double.valueOf(frs[1]);
-				tempArr[2] = Double.valueOf(frs[2]);
-				splitARecords.add(tempArr);
-				aValidEntries.add(ind);
-			}
-			
+			aValidEntries.add(ind);
+			setA.add(Double.valueOf(frs[aPosns[i]]));
 			ind++;
 		}
 		
 		ind = 0;
+		
 		for(String[] frs: indvBRecords) {
-			
-			if(Pattern.matches(doublePattern, frs[0]) && Pattern.matches(doublePattern, frs[1])
-					&& Pattern.matches(intPattern, frs[2])){
-				double[] tempArr = new double[3];
-				tempArr[0] = Double.valueOf(frs[0]);
-				tempArr[1] = Double.valueOf(frs[1]);
-				tempArr[2] = Double.valueOf(frs[2]);
-				splitBRecords.add(tempArr);
-				bValidEntries.add(ind);
-			}
-			
+			bValidEntries.add(ind);
+			setB.add(Double.valueOf(frs[bPosns[i]]));
 			ind++;
 		}
 		
 		
+		// initializing bitmap
+		char[] finalbitmap = new char[aLength*bLength];
+		
 		/* Iterative 1D join */
 		List<String> pairs = new ArrayList<String>();
 		
-		for(int i=0 ; i < 3 ; i++) {
-			
-			//System.out.println("DIMENSION: "+(i+1)+"\n==============\n");
-			/* At all times splitEntries and valid entries should correspond */
-			
-			List<Integer> validAs = new ArrayList<Integer>(aValidEntries);
-			List<Integer> validBs = new ArrayList<Integer>(bValidEntries);
-			
-			int aPosn = i;
-			int bPosn = i;
-			
-			
-			List<Double> setA = new ArrayList<Double>();
-			List<Double> setB = new ArrayList<Double>();
-			
-			for(double[] frs: splitARecords) {
-				
-				setA.add(frs[aPosn]);
-				
-			}
-			for(double[] frs: splitBRecords) {
-				
-				setB.add(frs[bPosn]);
-				
-			}
-			
-			ListIndexComparator comparator = new ListIndexComparator(setA, validAs);
-			Collections.sort(validAs, comparator);
-			Collections.sort(setA);
-			
-			ListIndexComparator comparator1 = new ListIndexComparator(setB, validBs);
-			Collections.sort(validBs, comparator1);
-			Collections.sort(setB);
-			
-			
-			List<String> tmpPairs = oneDJoinML(setA, validAs, setB, validBs, epsilons[i], splitARecords, splitBRecords);
-			
-			if(i == 0)
-				pairs = tmpPairs;
-			else
-				pairs.retainAll(tmpPairs);
-			
-			/* At this point validAs and validBs actually contain invalid entries */
-			List<double[]> removalsA = new ArrayList<double[]>();
-			for(int in : validAs) {
-				int indx = aValidEntries.indexOf(in);
-				removalsA.add(splitARecords.get(indx));
-			}
-			splitARecords.removeAll(removalsA);
-			
-			List<double[]> removalsB = new ArrayList<double[]>();
-			for(int in : validBs) {
-				int indx = bValidEntries.indexOf(in);
-				//splitBRecords.remove(indx);
-				removalsB.add(splitBRecords.get(indx));
-			}
-			splitBRecords.removeAll(removalsB);
-			
-			aValidEntries.removeAll(validAs);
-			bValidEntries.removeAll(validBs);
-			
+		if(bValidEntries.isEmpty() || aValidEntries.isEmpty()) {
+			logger.info("GOING OUT FOR NO MATCHES");
+			//pairs = new ArrayList<String>();
+			return pairs;
 		}
 		
-		List<String> retJoinRecords = new ArrayList<String> ();
+		ListIndexComparator comparator = new ListIndexComparator(setA, aValidEntries);
+		Collections.sort(aValidEntries, comparator);
+		Collections.sort(setA);
 		
+		ListIndexComparator comparator1 = new ListIndexComparator(setB, bValidEntries);
+		Collections.sort(bValidEntries, comparator1);
+		Collections.sort(setB);
+		
+		
+		oneDSelfJoinML(i, setA, aValidEntries, setB, bValidEntries, epsilons, indvARecords, indvBRecords, finalbitmap, bLength, aPosns, bPosns);
+			
 		// all A Points
 		List<Integer> aRecordIndices = new ArrayList<Integer>();
 		// all B points list for each A point
 		List<List<Integer>> bRecordIndices = new ArrayList<List<Integer>>();
+	
+		
+		for (int ind1 = 0; ind1 < aLength; ind1++) {
+			for (int ind2 = 0; ind2 < bLength; ind2++) {
+				int bitMapIndex = ind1 * bLength + ind2;
+				if (finalbitmap[bitMapIndex] == '1') {
+					
+					int index = -1;
+					List<Integer> neighborIndices;
+
+					if (aRecordIndices.contains(ind1)) {
+						index = aRecordIndices.indexOf(ind1);
+						neighborIndices = bRecordIndices.get(index);
+					} else {
+						index = aRecordIndices.size();
+						aRecordIndices.add(ind1);
+						neighborIndices = new ArrayList<Integer>();
+						bRecordIndices.add(neighborIndices);
+					}
+					neighborIndices.add(ind2);
+				}
+			}
+		}
+		// JOIN FINISHED
+		
+		List<String> retJoinRecords = new ArrayList<String> ();
 		
 		// create the one to many mapping between A and B entries
-		generateNeighborSphere(pairs, aRecordIndices, bRecordIndices);
+		//generateNeighborSphere(pairs, aRecordIndices, bRecordIndices);
 		
 		// for each entry in aRecords and corresponding neighbors in bRecords, now
 		// apply IDW with different betas and generate training points
@@ -575,6 +637,219 @@ public class MDC {
 		}
 		
 		return retJoinRecords;
+	}
+
+	private void oneDSelfJoinML(int currentInd, List<Double> setA, List<Integer> aInd, List<Double> setB,
+			List<Integer> bInd, double[] epsilons, List<String[]> indvARecords, List<String[]> indvBRecords,
+			char[] bitMap, int roundVal, int[] aPosns, int[] bPosns) {
+		
+		double epsilon = epsilons[currentInd];
+		
+		int aLen = setA.size();
+		int bLen = setB.size();
+		
+		//System.out.println("# SET A ENTRIES "+aLen);
+		//System.out.println("# SET B ENTRIES "+bLen);
+		
+		int aCurrIndex = 0;
+		int bCurrIndex = 0;
+		
+		double aStart = setA.get(0);
+		double aEnd = setA.get(aLen-1);
+		double bStart = setB.get(0);
+		double bEnd = setB.get(bLen-1);
+		
+		double start = aStart;
+		
+		double end = aEnd;
+		
+		if(aStart > bStart) {
+			if(aStart - epsilon > bStart)
+				start = aStart - epsilon;
+			else
+				start = bStart;
+		}
+		
+		if(aEnd < bEnd) {
+			if(aEnd + epsilon < bEnd)
+				end = aEnd + epsilon;
+			else
+				end = bEnd;
+		}
+		
+		double current = start;
+		
+		// The sets and related setInd correspond
+		List<Double> setATemp;
+		List<Integer> setATempInd;
+		List<Double> setBTemp1 = new ArrayList<Double>();
+		List<Integer> setBTempInd1 = new ArrayList<Integer>();
+		List<Double> setBTemp2 = new ArrayList<Double>();
+		List<Integer> setBTempInd2 = new ArrayList<Integer>();
+		List<Double> setBTemp3 = new ArrayList<Double>();
+		List<Integer> setBTempInd3 = new ArrayList<Integer>();
+		
+		boolean firstTime = true;
+		
+		while(current < end) {
+			
+			//System.out.println("CURRENT:"+current);
+			setATemp = new ArrayList<Double>();
+			setATempInd = new ArrayList<Integer>();
+			
+			int acurrIndexBefore = aCurrIndex;
+			
+			/* load A data - 0 to e */
+			while(aCurrIndex < aLen && setA.get(aCurrIndex) <= current+epsilon) {
+				setATemp.add(setA.get(aCurrIndex));
+				setATempInd.add(aInd.get(aCurrIndex));
+				aCurrIndex++;
+			}
+			
+			/* load B data - 0 to e */
+			if(firstTime) {
+				
+				while(bCurrIndex < bLen && setB.get(bCurrIndex) <= current+epsilon) {
+					setBTemp2.add(setB.get(bCurrIndex));
+					setBTempInd2.add(bInd.get(bCurrIndex));
+					bCurrIndex++;
+				}
+			}
+			
+			/* load B data - e to 2e */
+			while(bCurrIndex < bLen && setB.get(bCurrIndex) <= current+epsilon+epsilon && setB.get(bCurrIndex) > current) {
+				
+				setBTemp3.add(setB.get(bCurrIndex));
+				setBTempInd3.add(bInd.get(bCurrIndex));
+				bCurrIndex++;
+				
+				if(firstTime)
+					firstTime = false;
+			}
+			
+			
+			current = current+epsilon;
+			
+			int indxA = 0;
+			
+			/* Actual Join*/
+			/* Only if both A and B entries are non empty */
+			if(acurrIndexBefore != aCurrIndex && (!setBTemp1.isEmpty() || !setBTemp2.isEmpty())) {
+				for(double d: setATemp) {
+					boolean found = false;
+					
+					int indxB = 0;
+					
+					for(double dd: setBTemp1) {
+						if(java.lang.Math.abs(d-dd)<=epsilon) {
+							found = true;
+							//System.out.println(setATempInd.get(indxA)+","+setBTempInd1.get(indxB));
+							
+							// PAIRS ADDING
+							int x = setATempInd.get(indxA);
+							int y = setBTempInd1.get(indxB);
+							
+							String[] tokensA = indvARecords.get(x);
+							//String line = indvBRecords[y];//
+							//line = line.replace(", ", ",");
+							String[] tokensB = indvBRecords.get(y);
+							
+							if(java.lang.Math.abs(Double.valueOf(tokensA[aPosns[0]]) - Double.valueOf(tokensB[bPosns[0]]))<= epsilons[0]
+									&& java.lang.Math.abs(Double.valueOf(tokensA[aPosns[1]]) - Double.valueOf(tokensB[bPosns[1]]))<= epsilons[1]) {
+								
+								bitMap[x*roundVal+y] = '1';
+							}
+							
+							
+							//bValids.add(setBTempInd1.get(indxB));
+							
+						}
+						indxB++;
+					}
+					
+					if(setBTempInd2.size() > 0) 
+						found = true;
+					
+					for(int i: setBTempInd2) {
+						//System.out.println(setATempInd.get(indxA)+","+i);
+						
+						// PAIRS ADDING
+						int x = setATempInd.get(indxA);
+						int y = i;
+						
+						
+						String[] tokensA = indvARecords.get(x);
+						//String line = indvBRecords[y];
+						//line = line.replace(", ", ",");
+						String[] tokensB = indvBRecords.get(y);
+						
+						if(java.lang.Math.abs(Double.valueOf(tokensA[aPosns[0]]) - Double.valueOf(tokensB[bPosns[0]]))<= epsilons[0]
+								&& java.lang.Math.abs(Double.valueOf(tokensA[aPosns[1]]) - Double.valueOf(tokensB[bPosns[1]]))<= epsilons[1]) {
+							
+							bitMap[x*roundVal+y] = '1';
+						}
+						//bitMap[x*roundVal+y] = '1';
+						
+						//bValids.add(i);	
+						
+					}
+					
+					indxB = 0;
+					if(!firstTime) {
+						for(double dd: setBTemp3) {
+							if(java.lang.Math.abs(d-dd)<=epsilon) {
+								found = true;
+								//System.out.println(setATempInd.get(indxA)+","+setBTempInd3.get(indxB));
+								
+								int x = setATempInd.get(indxA);
+								int y = setBTempInd3.get(indxB);
+								
+								
+								String[] tokensA = indvARecords.get(x);
+								//String line = indvBRecords[y];
+								//line = line.replace(", ", ",");
+								String[] tokensB = indvBRecords.get(y);
+								
+								if(java.lang.Math.abs(Double.valueOf(tokensA[aPosns[0]]) - Double.valueOf(tokensB[bPosns[0]]))<= epsilons[0]
+										&& java.lang.Math.abs(Double.valueOf(tokensA[aPosns[1]]) - Double.valueOf(tokensB[bPosns[1]]))<= epsilons[1]) {
+									
+									bitMap[x*roundVal+y] = '1';
+								}
+								
+								
+								
+								//bitMap[x*roundVal+y] = '1';
+								
+								//bValids.add(setBTempInd3.get(indxB));
+							}
+							indxB++;
+						}
+					}
+					 if(found)	
+						 //aValids.add(setATempInd.get(indxA));
+					indxA++;
+				}
+			}
+			
+			/* Swap references between b1 & b2 & b3 */
+			setBTemp1 = new ArrayList<Double>();
+			setBTemp1.addAll(setBTemp2);
+			
+			setBTempInd1 = new ArrayList<>();
+			setBTempInd1.addAll(setBTempInd2);
+			
+			setBTemp2 = new ArrayList<Double>();
+			setBTemp2.addAll(setBTemp3);
+			
+			setBTempInd2 = new ArrayList<>();
+			setBTempInd2.addAll(setBTempInd3);
+			
+			setBTemp3 = new ArrayList<Double>();
+			setBTempInd3 = new ArrayList<Integer>();
+			
+			
+		}
+		
 	}
 
 	/**

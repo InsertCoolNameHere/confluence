@@ -99,8 +99,12 @@ public class MyMultipleIntegrationWindSensorDummy {
 		//float longLength = 6f;
 		
 		//county Level
-		float latLength = 0.3f;
-		float longLength = 0.34f;
+		//float latLength = 0.3f;
+		//float longLength = 0.34f;
+		
+		//city Level
+		float latLength = 0.05f;
+		float longLength = 0.1f;
 		
 		
 		float startLat = 33.791f;
@@ -112,7 +116,7 @@ public class MyMultipleIntegrationWindSensorDummy {
 		
 		int count = 0;
 		try {
-			while(count<1) {
+			while(count<10) {
 				float lowLat = (float)ThreadLocalRandom.current().nextDouble(startLat, endLat - latLength);
 				float lowLong = (float)ThreadLocalRandom.current().nextDouble(startLong, endLong - longLength);
 				int date = ThreadLocalRandom.current().nextInt(1, 30);

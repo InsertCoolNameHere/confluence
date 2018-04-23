@@ -110,6 +110,7 @@ public class SurveyRequestHandler implements MessageListener {
 			
 			Event event = this.eventWrapper.unwrap(message);
 			
+			// SURVEY RESPONSE CAME IN
 			if(event instanceof SurveyEventResponse) {
 				
 				logger.log(Level.INFO, "RIKI: SURVEY LEVEL 1 RESPONSE RECEIVED");
@@ -174,6 +175,7 @@ public class SurveyRequestHandler implements MessageListener {
 		long totalRecordCount = 0;
 		int expectedTrainingMsgs = 0;
 		
+		// PathInfos and blocks has same number of entries
 		for (GalileoMessage gresponse : this.responses) {
 			Event event;
 			try {
@@ -205,6 +207,7 @@ public class SurveyRequestHandler implements MessageListener {
 		// BUILDING THE NODEWISE REQUEST
 		Map<NetworkDestination, TrainingRequirements> nodeWiseRequest = new HashMap<NetworkDestination, TrainingRequirements>();
 		
+		// STRATIFIED SAMPLING AND REQUEST CREATED IN ONE GO
 		// for each block in each path in each node
 		for(int i=0; i < pathInfos.size(); i++) {
 			
@@ -218,7 +221,7 @@ public class SurveyRequestHandler implements MessageListener {
 			
 			String block = blocks.get(i);
 			
-			if(numPoints > 0) {
+			if(numPoints > 1) {
 				logger.info("NUMPOINTS "+ block+" "+numPoints);
 				TrainingRequirements tr;
 				if(nodeWiseRequest.get(nd) == null) {

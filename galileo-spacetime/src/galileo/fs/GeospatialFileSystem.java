@@ -2684,6 +2684,7 @@ public class GeospatialFileSystem extends FileSystem {
 				index++;
 		}
 		int count = 0;
+		
 		for(String blockPath: blockPaths) {
 			
 			//SpatialGrid spatialGrid = spatialGridsMap.get(blockPath);
@@ -2703,10 +2704,11 @@ public class GeospatialFileSystem extends FileSystem {
 			List<String[]> featurePathsB = new ArrayList<String[]>();
 			
 			// Reading in the actual records
+			// Getting set A and B for self join
 			getFeaturePathsWithSpecificIndex(blockPath,latOrder,lonOrder,temporalOrder,featurePosn, recordsToRead,
 					featurePathsA, featurePathsB);
 			
-			// Grouping block points to path level
+			// Grouping block records into one set for each path
 			if(featurePathsA.size() > 0) {
 				List<String[]> currentEntries;
 				
@@ -2733,6 +2735,7 @@ public class GeospatialFileSystem extends FileSystem {
 			
 			count++;
 		}
+		// EVERYTHING GROUPED BY THEIR PATHS
 		
 		ExecutorService executor = Executors.newFixedThreadPool(java.lang.Math.min(pathToAsMap.keySet().size(), 2 * numCores));
 		List<SelfJoinThread> joinProcessors = new ArrayList<SelfJoinThread>();
@@ -2743,7 +2746,7 @@ public class GeospatialFileSystem extends FileSystem {
 					pathToBsMap.get(pathInfo) != null && pathToBsMap.get(pathInfo).size() > 0) {
 				
 				SelfJoinThread sjt = new SelfJoinThread(pathToAsMap.get(pathInfo), pathToBsMap.get(pathInfo),
-						latEps, lonEps, timeEps,pathInfo, DEFAULT_BETAS, temporalType);
+						latEps, lonEps, timeEps, pathInfo, DEFAULT_BETAS, temporalType);
 				
 				joinProcessors.add(sjt);
 				executor.execute(sjt);
@@ -2822,6 +2825,14 @@ public class GeospatialFileSystem extends FileSystem {
 		
 	}
 	
+	/**
+	 * 
+	 * @author sapmitra
+	 * @param range: total records in a block
+	 * @param num: number of records needed 
+	 * @param bp
+	 * @return
+	 */
 	public static List<Integer> findRandomRecordIndices(int range, int num, BorderingProperties bp) {
 		List<Integer> fringeEntries = bp.getFringeEntries();
 		List<Integer> list = new ArrayList<Integer>();

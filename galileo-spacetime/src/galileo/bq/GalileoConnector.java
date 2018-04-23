@@ -77,6 +77,10 @@ public class GalileoConnector extends GalileoConnectorInterface {
 	public void disconnect() {
 		super.disconnect();
 	}
+	
+	public String toString() {
+		return server.toString();
+	}
 	// [END disconnect]
 
 	// [START createBlock]
@@ -276,6 +280,25 @@ public class GalileoConnector extends GalileoConnectorInterface {
 		return features;
 	}
 	
+	private static FeatureSet getFeaturesSensorDummyTB(String[] values) {
+		
+		FeatureSet features = new FeatureSet();
+		
+		features.put(new Feature("epoch_time", values[0]));		
+		features.put(new Feature("gps_abs_lat", values[1]));
+		features.put(new Feature("gps_abs_lon", values[2]));
+		features.put(new Feature("cavity_pressure", values[3]));
+		features.put(new Feature("cavity_temp", values[4]));
+		features.put(new Feature("ch4", values[5]));
+		features.put(new Feature("xtravar1", values[6]));
+		features.put(new Feature("xtravar2", values[7]));
+		features.put(new Feature("xtravar3", values[8]));
+		features.put(new Feature("xtravar4", values[9]));
+		features.put(new Feature("xtravar5", values[10]));
+		
+		return features;
+	}
+	
 	/**
 	 * @param values
 	 * @return
@@ -378,6 +401,25 @@ public class GalileoConnector extends GalileoConnectorInterface {
 		SpatialProperties spatialProperties = new SpatialProperties(parseFloat(values[1]), parseFloat(values[2]));
 		
 		FeatureSet features = getFeaturesSensorDummy(values);
+		
+		Metadata metadata = new Metadata();
+		metadata.setName(GeoHash.encode(parseFloat(values[1]), parseFloat(values[2]), 4));
+		metadata.setTemporalProperties(temporalProperties);
+		metadata.setSpatialProperties(spatialProperties);
+		metadata.setAttributes(features);
+		
+		return new Block(fsName, metadata, data.getBytes("UTF-8"));
+	}
+	
+	
+	
+	public static Block createBlockSensorDummyTB(String edfRecord, String data, String fsName) throws UnsupportedEncodingException{
+		
+		String[] values = edfRecord.split(",");
+		TemporalProperties temporalProperties = new TemporalProperties(reformatDatetime(values[0]));
+		SpatialProperties spatialProperties = new SpatialProperties(parseFloat(values[1]), parseFloat(values[2]));
+		
+		FeatureSet features = getFeaturesSensorDummyTB(values);
 		
 		Metadata metadata = new Metadata();
 		metadata.setName(GeoHash.encode(parseFloat(values[1]), parseFloat(values[2]), 4));

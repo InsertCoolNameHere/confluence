@@ -19,7 +19,7 @@ import galileo.util.Pair;
 abstract class GalileoConnectorInterface {
 	private ClientMessageRouter messageRouter;
 	private EventPublisher publisher;
-	private NetworkDestination server;
+	public NetworkDestination server;
 	
 	public GalileoConnectorInterface(String serverHostName, int serverPort) throws IOException {
 		messageRouter = new ClientMessageRouter();
@@ -31,6 +31,29 @@ abstract class GalileoConnectorInterface {
 		StorageRequest store = new StorageRequest(fb);
 		publisher.publish(server, store);
 	}
+	
+	
+	
+	public void createFSTB(String name, SpatialHint sh,List<Pair<String, FeatureType>> featureList, String temporalHint, int mode) throws IOException {
+		int spUnc = 0;
+		int tempUnc = 0;
+		if(mode == 1) {
+			
+			spUnc = 6;
+			// 5 min
+			tempUnc = 5*60*1000;
+			
+		} 
+		
+		FilesystemRequest fsRequest = new FilesystemRequest(name, FilesystemAction.CREATE, featureList, sh, spUnc, tempUnc,  false, temporalHint);
+		fsRequest.setSpatialPartitioningType(3);
+		fsRequest.setNodesPerGroup(30);
+		//fsRequest.setPrecision(6);
+		fsRequest.setTemporalType(TemporalType.DAY_OF_MONTH);
+		
+		publisher.publish(server, fsRequest);
+	}
+	
 	
 	
 	public void createFS(String name, SpatialHint sh,List<Pair<String, FeatureType>> featureList, String temporalHint, int mode) throws IOException {

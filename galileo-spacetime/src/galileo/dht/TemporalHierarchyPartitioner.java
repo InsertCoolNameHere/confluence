@@ -56,7 +56,7 @@ public class TemporalHierarchyPartitioner extends Partitioner<Metadata> {
 				"d7", "dd", "de", "dh", "dj", "dk", "dm", "dn", "dp", "dq", "dr", "ds", "dt", "dw", "dx", "dz", "f0",
 				"f1", "f2", "f3", "f4", "f6", "f8", "f9", "fb", "fc", "fd", "ff" };*/
 		
-		
+		//String[] geohashes_2char = {"9q","9r","9w","9x","9y","9z","dn","dp","dq","dr"};
 		String[] geohashes_2char = { "9w", "9x", "9y", "9z"};
 		//String[] geohashes_2char = {"9r", "9x","9z", "9y", "9w", "9q", "9y","dp", "dn","9t","9v"};
 		Arrays.sort(geohashes_2char);

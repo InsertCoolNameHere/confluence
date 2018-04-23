@@ -27,7 +27,7 @@ public class SurveyTest {
 		
 		// CREATING FS1
 		
-		SurveyRequest sr = new SurveyRequest("windfs", 2000, "wind_speed", 0.1d, 0.1d, 4*60*60*1000);
+		SurveyRequest sr = new SurveyRequest("sensorfsdummytest1", 2000, "cavity_pressure", 0.1d, 0.1d, 4*60*60*1000);
 		
 		try {
 			gc.survey(sr);
@@ -46,7 +46,7 @@ public class SurveyTest {
 	 */
 	public static void main(String[] args1) {
 		String args[] = new String[3];
-		args[0] = "lattice-71.cs.colostate.edu";
+		args[0] = "lattice-1.cs.colostate.edu";
 		args[1] = "5634";
 		args[2] = "/s/green/a/tmp/sapmitra/windTrial";
 		
