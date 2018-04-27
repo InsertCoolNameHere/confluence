@@ -280,6 +280,33 @@ public class GalileoConnector extends GalileoConnectorInterface {
 		return features;
 	}
 	
+	private static FeatureSet getFeaturesNoaa(String[] values) {
+		
+		FeatureSet features = new FeatureSet();
+		
+		features.put(new Feature("gps_abs_lat", values[0]));		
+		features.put(new Feature("gps_abs_lon", values[1]));
+		features.put(new Feature("report_type", values[2]));
+		features.put(new Feature("elevation", values[3]));
+		features.put(new Feature("epoch_time", values[4]));
+		features.put(new Feature("weather_station_id", values[5]));
+		
+		features.put(new Feature("wind_dir_angle", values[6]));		
+		features.put(new Feature("wind_dir_typecode", values[7]));
+		features.put(new Feature("wind_speed", values[8]));
+		features.put(new Feature("sky_ceiling_height", values[9]));
+		features.put(new Feature("sky_ceiling_code", values[10]));
+		features.put(new Feature("sky_cavoc", values[11]));
+		
+		features.put(new Feature("visibility_dist", values[12]));		
+		features.put(new Feature("air_temp", values[13]));
+		features.put(new Feature("air_dew_point", values[14]));
+		features.put(new Feature("atm_pressure", values[15]));
+		
+		
+		return features;
+	}
+	
 	private static FeatureSet getFeaturesSensorDummyTB(String[] values) {
 		
 		FeatureSet features = new FeatureSet();
@@ -411,8 +438,110 @@ public class GalileoConnector extends GalileoConnectorInterface {
 		return new Block(fsName, metadata, data.getBytes("UTF-8"));
 	}
 	
+	public static Block createBlockNoaa(String edfRecord, String data, String fsName, int latPosn, int lonPosn, int timePosn) throws UnsupportedEncodingException{
+		
+		String[] values = edfRecord.split(",");
+		TemporalProperties temporalProperties = new TemporalProperties(reformatDatetime(values[timePosn]));
+		SpatialProperties spatialProperties = new SpatialProperties(parseFloat(values[latPosn]), parseFloat(values[lonPosn]));
+		
+		FeatureSet features = getFeaturesNoaa(values);
+		
+		Metadata metadata = new Metadata();
+		metadata.setName(GeoHash.encode(parseFloat(values[latPosn]), parseFloat(values[lonPosn]), 4));
+		metadata.setTemporalProperties(temporalProperties);
+		metadata.setSpatialProperties(spatialProperties);
+		metadata.setAttributes(features);
+		
+		return new Block(fsName, metadata, data.getBytes("UTF-8"));
+	}
+	
+	public static Block createBlockNam(String edfRecord, String data, String fsName, int latPosn, int lonPosn, int timePosn) throws UnsupportedEncodingException{
+		
+		String[] values = edfRecord.split(",");
+		TemporalProperties temporalProperties = new TemporalProperties(reformatDatetime(values[timePosn]));
+		SpatialProperties spatialProperties = new SpatialProperties(parseFloat(values[latPosn]), parseFloat(values[lonPosn]));
+		
+		FeatureSet features = getFeaturesNAM(values);
+		
+		Metadata metadata = new Metadata();
+		metadata.setName(GeoHash.encode(parseFloat(values[latPosn]), parseFloat(values[lonPosn]), 3));
+		metadata.setTemporalProperties(temporalProperties);
+		metadata.setSpatialProperties(spatialProperties);
+		metadata.setAttributes(features);
+		
+		return new Block(fsName, metadata, data.getBytes("UTF-8"));
+	}
 	
 	
+	
+	private static FeatureSet getFeaturesNAM(String[] values) {
+		
+		FeatureSet features = new FeatureSet();
+		features.put(new Feature("gps_abs_lat", values[0]));
+		features.put(new Feature("gps_abs_lon", values[1]));
+		features.put(new Feature("epoch_time", values[2]));
+		features.put(new Feature("geopotential_height_lltw", values[3]));
+		features.put(new Feature("water_equiv_of_accum_snow_depth_surface", values[4]));
+		features.put(new Feature("drag_coefficient_surface", values[5]));
+		features.put(new Feature("sensible_heat_net_flux_surface", values[6]));
+		features.put(new Feature("categorical_ice_pellets_yes1_no0_surface", values[7]));
+		features.put(new Feature("visibility_surface", values[8]));
+		features.put(new Feature("number_of_soil_layers_in_root_zone_surface", values[9]));
+		features.put(new Feature("categorical_freezing_rain_yes1_no0_surface", values[10]));
+		features.put(new Feature("pressure_reduced_to_msl_msl", values[11]));
+		features.put(new Feature("upward_short_wave_rad_flux_surface", values[12]));
+		features.put(new Feature("relative_humidity_zerodegc_isotherm", values[13]));
+		features.put(new Feature("missing_pblri", values[14]));
+		features.put(new Feature("categorical_snow_yes1_no0_surface", values[15]));
+		features.put(new Feature("u-component_of_wind_tropopause", values[16]));
+		features.put(new Feature("surface_wind_gust_surface", values[17]));
+		features.put(new Feature("total_cloud_cover_entire_atmosphere", values[18]));
+		features.put(new Feature("upward_long_wave_rad_flux_surface", values[19]));
+		features.put(new Feature("land_cover_land1_sea0_surface", values[20]));
+		features.put(new Feature("vegitation_type_as_in_sib_surface", values[21]));
+		features.put(new Feature("v-component_of_wind_pblri", values[22]));
+		features.put(new Feature("convective_precipitation_surface_1_hour_accumulation", values[23]));
+		features.put(new Feature("albedo_surface", values[24]));
+		features.put(new Feature("lightning_surface", values[25]));
+		features.put(new Feature("ice_cover_ice1_no_ice0_surface", values[26]));
+		features.put(new Feature("convective_inhibition_surface", values[27]));
+		features.put(new Feature("pressure_surface", values[28]));
+		features.put(new Feature("transpiration_stress-onset_soil_moisture_surface", values[29]));
+		features.put(new Feature("soil_porosity_surface", values[30]));
+		features.put(new Feature("vegetation_surface", values[31]));
+		features.put(new Feature("categorical_rain_yes1_no0_surface", values[32]));
+		features.put(new Feature("downward_long_wave_rad_flux_surface", values[33]));
+		features.put(new Feature("planetary_boundary_layer_height_surface", values[34]));
+		features.put(new Feature("soil_type_as_in_zobler_surface", values[35]));
+		features.put(new Feature("geopotential_height_cloud_base", values[36]));
+		features.put(new Feature("friction_velocity_surface", values[37]));
+		features.put(new Feature("maximumcomposite_radar_reflectivity_entire_atmosphere", values[38]));
+		features.put(new Feature("plant_canopy_surface_water_surface", values[39]));
+		features.put(new Feature("v-component_of_wind_maximum_wind", values[40]));
+		features.put(new Feature("geopotential_height_zerodegc_isotherm", values[41]));
+		features.put(new Feature("mean_sea_level_pressure_nam_model_reduction_msl", values[42]));
+		features.put(new Feature("total_precipitation_surface_1_hour_accumulation", values[43]));
+		features.put(new Feature("temperature_surface", values[44]));
+		features.put(new Feature("snow_cover_surface", values[45]));
+		features.put(new Feature("geopotential_height_surface", values[46]));
+		features.put(new Feature("convective_available_potential_energy_surface", values[47]));
+		features.put(new Feature("latent_heat_net_flux_surface", values[48]));
+		features.put(new Feature("surface_roughness_surface", values[49]));
+		features.put(new Feature("pressure_maximum_wind", values[50]));
+		features.put(new Feature("temperature_tropopause", values[51]));
+		features.put(new Feature("geopotential_height_pblri", values[52]));
+		features.put(new Feature("pressure_tropopause", values[53]));
+		features.put(new Feature("snow_depth_surface", values[54]));
+		features.put(new Feature("v-component_of_wind_tropopause", values[55]));
+		features.put(new Feature("downward_short_wave_rad_flux_surface", values[56]));
+		features.put(new Feature("u-component_of_wind_maximum_wind", values[57]));
+		features.put(new Feature("wilting_point_surface", values[58]));
+		features.put(new Feature("precipitable_water_entire_atmosphere", values[59]));
+		features.put(new Feature("u-component_of_wind_pblri", values[60]));
+		features.put(new Feature("direct_evaporation_cease_soil_moisture_surface", values[61]));
+		
+		return features;
+	}
 	public static Block createBlockSensorDummyTB(String edfRecord, String data, String fsName) throws UnsupportedEncodingException{
 		
 		String[] values = edfRecord.split(",");

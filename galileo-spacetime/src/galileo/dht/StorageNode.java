@@ -392,7 +392,7 @@ public class StorageNode implements RequestListener {
 				Metadata metadata = file.getMetadata();
 				Partitioner<Metadata> partitioner = gfs.getPartitioner();
 				NodeInfo node = partitioner.locateData(metadata);
-				logger.log(Level.INFO, "RIKI: DATA " + file.getMetadata().getName() +" SENT TO DESTINATION: "+node);
+				logger.log(Level.INFO, file.getMetadata().getName() +" TO "+node);
 				StorageEvent store = new StorageEvent(file);
 				sendEvent(node, store);
 			} else {
@@ -1187,7 +1187,9 @@ public class StorageNode implements RequestListener {
 		dintEvent.setPrimaryFS(request.getPrimaryFS());
 		dintEvent.setLatRelax(request.getLatRelax());
 		dintEvent.setLongRelax(request.getLongRelax());
-
+		dintEvent.setFixedBeta(request.isFixedBeta());
+		dintEvent.setModel(request.getModel());
+		
 		return dintEvent;
 	}
 
@@ -1481,7 +1483,8 @@ public class StorageNode implements RequestListener {
 					
 					/* ALSO HANDLES ACTUAL JOIN */
 					NeighborRequestHandler rikiHandler = new NeighborRequestHandler(null, individualRequests, new ArrayList<NetworkDestination>(destinations), context, this,
-							allCubes, superCubeNumNodesMap, numCores, geoQuery, fs1, eventId, queryResultsDir, aPosns, bPosns, epsilons, hostname, String.valueOf(port), interpolatingFeaturePosn);
+							allCubes, superCubeNumNodesMap, numCores, geoQuery, fs1, eventId, queryResultsDir, aPosns, bPosns, epsilons, 
+							hostname, String.valueOf(port), interpolatingFeaturePosn, event.isFixedBeta(), event.getModel());
 					rikiHandler.handleRequest(response);
 					logger.log(Level.INFO, "RIKI :FS2 REQUESTS FINISHED SENDING :"+ destinations);
 					

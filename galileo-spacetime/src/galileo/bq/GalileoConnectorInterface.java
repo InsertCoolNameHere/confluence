@@ -87,6 +87,47 @@ abstract class GalileoConnectorInterface {
 		publisher.publish(server, fsRequest);
 	}
 	
+	public void createFSNoaa(String name, SpatialHint sh,List<Pair<String, FeatureType>> featureList, String temporalHint, int mode) throws IOException {
+		int spUnc = 0;
+		int tempUnc = 0;
+		if(mode == 1) {
+			
+			spUnc = 5;
+			// 1hr
+			tempUnc = 60*60*1000 + 1;
+			
+		} 
+		FilesystemRequest fsRequest = new FilesystemRequest(name, FilesystemAction.CREATE, featureList, sh, spUnc, tempUnc,  false, temporalHint);
+		fsRequest.setSpatialPartitioningType(2);
+		fsRequest.setNodesPerGroup(30);
+		// determines spatial precision of the geohashes stored on each file in a node
+		fsRequest.setPrecision(3);
+		fsRequest.setTemporalType(TemporalType.DAY_OF_MONTH);
+		
+		publisher.publish(server, fsRequest);
+	}
+	
+	public void createFSNAM(String name, SpatialHint sh,List<Pair<String, FeatureType>> featureList, String temporalHint, int mode) throws IOException {
+		int spUnc = 0;
+		int tempUnc = 0;
+		if(mode == 1) {
+			
+			spUnc = 5;
+			// 1hr
+			tempUnc = 60*60*1000 + 1;
+			
+		} 
+		FilesystemRequest fsRequest = new FilesystemRequest(name, FilesystemAction.CREATE, featureList, sh, spUnc, tempUnc,  false, temporalHint);
+		fsRequest.setSpatialPartitioningType(2);
+		fsRequest.setNodesPerGroup(30);
+		
+		//determines spatial precision of the geohashes stored on each file in a node
+		fsRequest.setPrecision(3);
+		fsRequest.setTemporalType(TemporalType.DAY_OF_MONTH);
+		
+		publisher.publish(server, fsRequest);
+	}
+	
 	public void integrate(DataIntegrationRequest dr) throws IOException {
 		publisher.publish(server, dr);
 	}

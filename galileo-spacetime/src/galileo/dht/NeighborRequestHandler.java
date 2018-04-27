@@ -46,6 +46,7 @@ import galileo.net.RequestListener;
 import galileo.serialization.SerializationException;
 import galileo.util.GeoHash;
 import galileo.util.MDC;
+import galileo.util.MyPorter;
 import galileo.util.Requirements;
 import galileo.util.SuperCube;
 
@@ -100,12 +101,14 @@ public class NeighborRequestHandler implements MessageListener {
 	private String hostName;
 	private String port;
 	private int interpolatingFeature;
+	private MyPorter model;
+	private boolean fixedBeta;
 	
 
 	public NeighborRequestHandler(List<NeighborDataEvent> internalEvents, List<NeighborDataEvent> individualRequests, Collection<NetworkDestination> destinations, EventContext clientContext,
 			RequestListener listener, List<SuperCube> allCubes, Map<Integer, Integer> superCubeNumNodesMap, 
 			int numCores, GeoavailabilityQuery geoQuery, GeospatialFileSystem fs1, String eventId, String queryResultsDir, 
-			int[] aPosns, int[] bPosns, double[] epsilons, String hostName, String port, int interpolatingFeature2) throws IOException {
+			int[] aPosns, int[] bPosns, double[] epsilons, String hostName, String port, int interpolatingFeature2, boolean fixedBeta, String model) throws IOException {
 		
 		this.nodes = destinations;
 		this.clientContext = clientContext;
@@ -148,6 +151,8 @@ public class NeighborRequestHandler implements MessageListener {
 		
 		
 		this.interpolatingFeature = interpolatingFeature2;
+		this.fixedBeta = fixedBeta;
+		this.model = new MyPorter(model);
 	}
 
 	public void closeRequest() {

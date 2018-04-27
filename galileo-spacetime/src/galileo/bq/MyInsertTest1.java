@@ -160,7 +160,7 @@ public class MyInsertTest1 {
 	 * 
 	 * @param args
 	 */
-	public static void main(String[] args1) {
+	public static void main1(String[] args1) {
 		String args[] = new String[3];
 		args[0] = "phoenix.cs.colostate.edu";
 		args[1] = "5634";
@@ -195,6 +195,23 @@ public class MyInsertTest1 {
 		}
 		System.out.println("Data successfully inserted into galileo");
 		System.exit(0);
+	}
+	
+	
+	public static void main(String arg[]) {
+		
+		String filepath = "sftp://lattice-1/s/lattice-1/a/nobackup/galileo/sapmitra/nam/2015/2015-01-02-8g";
+		
+		//Getting date
+		String[] tokens = filepath.split("/");
+		String fileName = tokens[tokens.length - 1];
+		
+		String dateString = fileName.substring(0, fileName.length() - 3);
+		
+		System.out.println(dateString);
+		
+		String ghash = fileName.substring(fileName.length() - 2, fileName.length());
+		System.out.println(ghash);
 	}
 	// [END Main]
 }

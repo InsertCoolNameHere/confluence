@@ -81,9 +81,19 @@ public class IDW {
 			
 		}
 			
-		String trainingPt = aLatO+","+aLongO+","+aTimeO+","+bestBeta+","+bestError;
+		String trainingPt = aLatO+","+aLongO+","+aTimeO+","+bestBeta+","+bestError+"$$$"+actualParameterVal+neighborsStringRepresentation(bRecs);
 		
 		return trainingPt;
+		
+	}
+	
+	public static String neighborsStringRepresentation(List<String[]> bRecs) {
+		String rep = "$$$";
+		for(String[] brec : bRecs) {
+			rep+=Arrays.toString(brec)+"$$";
+		}
+		
+		return rep;
 		
 	}
 	

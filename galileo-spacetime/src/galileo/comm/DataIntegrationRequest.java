@@ -27,6 +27,8 @@ public class DataIntegrationRequest implements Event{
 	private Query featureQuery;
 	private double latRelax;
 	private double longRelax;
+	private boolean fixedBeta;
+	private String model;
 	
 	public boolean isSpatial() {
 		return polygon != null;
@@ -75,6 +77,10 @@ public class DataIntegrationRequest implements Event{
 		latRelax = in.readDouble();
 		longRelax = in.readDouble();
 		
+		fixedBeta = in.readBoolean();
+		if(!fixedBeta)
+			model = in.readString();
+		
 		
 		
 	}
@@ -101,6 +107,11 @@ public class DataIntegrationRequest implements Event{
 		out.writeInt(primaryFS);
 		out.writeDouble(latRelax);
 		out.writeDouble(longRelax);
+		
+		out.writeBoolean(fixedBeta);
+		if(!fixedBeta) 
+			out.writeString(model);
+		
 		
 	}
 
@@ -190,6 +201,22 @@ public class DataIntegrationRequest implements Event{
 
 	public void setInterpolatingFeature(String interpolatingFeature) {
 		this.interpolatingFeature = interpolatingFeature;
+	}
+
+	public boolean isFixedBeta() {
+		return fixedBeta;
+	}
+
+	public void setFixedBeta(boolean fixedBeta) {
+		this.fixedBeta = fixedBeta;
+	}
+
+	public String getModel() {
+		return model;
+	}
+
+	public void setModel(String model) {
+		this.model = model;
 	}
 
 }

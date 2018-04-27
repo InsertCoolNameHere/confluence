@@ -26,6 +26,8 @@ public class DataIntegrationEvent implements Event{
 	private double latRelax;
 	private double longRelax;
 	private String id;
+	private boolean fixedBeta;
+	private String model;
 	
 	
 	public boolean isSpatial() {
@@ -75,6 +77,10 @@ public class DataIntegrationEvent implements Event{
 		longRelax = in.readDouble();
 		id = in.readString();
 		
+		fixedBeta = in.readBoolean();
+		if(!fixedBeta)
+			model = in.readString();
+		
 		
 	}
 
@@ -101,6 +107,10 @@ public class DataIntegrationEvent implements Event{
 		out.writeDouble(latRelax);
 		out.writeDouble(longRelax);
 		out.writeString(id);
+		
+		out.writeBoolean(fixedBeta);
+		if(!fixedBeta) 
+			out.writeString(model);
 		
 		
 	}
@@ -199,6 +209,22 @@ public class DataIntegrationEvent implements Event{
 
 	public void setInterpolatingFeature(String interpolatingFeature) {
 		this.interpolatingFeature = interpolatingFeature;
+	}
+
+	public boolean isFixedBeta() {
+		return fixedBeta;
+	}
+
+	public void setFixedBeta(boolean fixedBeta) {
+		this.fixedBeta = fixedBeta;
+	}
+
+	public String getModel() {
+		return model;
+	}
+
+	public void setModel(String model) {
+		this.model = model;
 	}
 
 }
