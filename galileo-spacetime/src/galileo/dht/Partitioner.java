@@ -42,7 +42,8 @@ public abstract class Partitioner<T> {
 	protected StorageNode storageNode;
 	protected NetworkInfo network;
 	
-	public static final int SPATIAL_PRECISION = 3;
+	// This is the precision at which metadata is stored
+	public static final int SPATIAL_PRECISION = 2;
 
 	public Partitioner(StorageNode storageNode, NetworkInfo network) {
 		this.storageNode = storageNode;

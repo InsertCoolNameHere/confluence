@@ -118,7 +118,7 @@ public class ClientRequestHandler implements MessageListener {
 					
 					if(eventResponse.getResultPaths() != null && eventResponse.getResultPaths().size() > 0) {
 						for(String path: eventResponse.getResultPaths()) {
-							logger.info("RIKI: DATA INTEGRATION RESPONSE :"+eventResponse.getResultPaths());
+							//logger.info("RIKI: DATA INTEGRATION RESPONSE :"+eventResponse.getResultPaths());
 							String newPath = eventResponse.getNodeName()+":"+eventResponse.getNodePort()+"$$"+path;
 							actualResponse.addResultPath(newPath);
 						}

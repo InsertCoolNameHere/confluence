@@ -243,6 +243,7 @@ public class StorageNode implements RequestListener {
 			resultsDir.mkdirs();
 		
 		File qresultsDir = new File(this.queryResultsDir);
+		
 		if (!qresultsDir.exists())
 			qresultsDir.mkdirs();
 
@@ -392,7 +393,10 @@ public class StorageNode implements RequestListener {
 				Metadata metadata = file.getMetadata();
 				Partitioner<Metadata> partitioner = gfs.getPartitioner();
 				NodeInfo node = partitioner.locateData(metadata);
-				logger.log(Level.INFO, file.getMetadata().getName() +" TO "+node);
+				
+				/*if(System.currentTimeMillis() % 3 == 0)
+					logger.log(Level.INFO, file.getMetadata().getName());*/
+				
 				StorageEvent store = new StorageEvent(file);
 				sendEvent(node, store);
 			} else {
@@ -640,7 +644,7 @@ public class StorageNode implements RequestListener {
 		List<NodeInfo> allNodes = network.getAllNodes();
 		SurveyResponse rsp = new SurveyResponse();
 		
-		SurveyEvent se = new SurveyEvent(fsName);
+		SurveyEvent se = new SurveyEvent(fsName, request.getPolygon(), request.getTime());
 		
 		try {
 			SurveyRequestHandler reqHandler = new SurveyRequestHandler(new ArrayList<NetworkDestination>(allNodes),
@@ -680,7 +684,7 @@ public class StorageNode implements RequestListener {
 		List<String> blocks = new ArrayList<String>();
 		List<Long> recordCount = new ArrayList<Long>();
 		
-		fs.handleSurveyInNode(nodeString, pathInfos, blocks, recordCount);
+		fs.handleSurveyInNode(nodeString, pathInfos, blocks, recordCount, request.getPolygon(), request.getTime());
 		
 		SurveyEventResponse rsp = new SurveyEventResponse(pathInfos, blocks, recordCount);
 		try {

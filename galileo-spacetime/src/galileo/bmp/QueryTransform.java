@@ -71,6 +71,11 @@ public class QueryTransform {
 		
 		/* Puro grid e polygon ta kotota area cover koreche */
 		polygonArea.intersect(gridArea);
+		
+		/*if(polygonArea.isEmpty()) {
+			logger.info("RIKI: MY CHANGE, QUERYBITMAP SET TO NULL");
+			return null;
+		}*/
 
 		/*
 		 * Determine the minimum bounding rectangle (MBR) of the polygon.

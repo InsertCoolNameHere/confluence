@@ -59,7 +59,7 @@ public class TemporalHierarchyPartitioner extends Partitioner<Metadata> {
 		//String[] geohashes_2char = {"9q","9r","9w","9x","9y","9z","dn","dp","dq","dr"};
 		//String[] geohashes_2char = { "9w", "9x", "9y", "9z"};
 		
-		String[] geohashes_2char = {"b0","b1","b2","b3","b4","b5","b6","b7","b8","b9","c0","c1","c2","c3","c4","c5","c6","c7"
+		/*String[] geohashes_2char = {"b0","b1","b2","b3","b4","b5","b6","b7","b8","b9","c0","c1","c2","c3","c4","c5","c6","c7"
 				,"c8","c9","bb","bc","bd","be","bf","bg","bh","bk","d0","bn","d1","d2","d3","d4","d5","bs","d6","d7","bu","d8"
 				,"d9","bz","cb","cc","cd","ce","cf","cg","ch","ck","cm","e0","e1","cp","e2","cq","e3","cr","cs","e5","e6","ct"
 				,"cu","e7","cv","e9","cw","cx","cy","cz","db","dc","dd","de","df","dg","dh","dj","dk","dm","dn","f0","f1","dp"
@@ -89,14 +89,19 @@ public class TemporalHierarchyPartitioner extends Partitioner<Metadata> {
 				,"94","7r","yu","95","96","yv","7v","7w","yy","7y","7z","zb","zc","zd","8b","8c","ze","zf","8d","zg","8e","8f"
 				,"zh","8g","zj","8h","zk","8j","8k","zm","8m","8n","8p","zs","zu","8s","8t","8u","8v","8w","zy","8x","8y","8z"
 				,"9b","9d","9e","9f","9g","9h","9j","9m","9n","9p","9q","9r","9s","9t","9u","9v","9w","9x","9y","9z"};
+		*/
+		String[] geohashes_2char = {"b","c","f","g","u","v","y","z",
+									"8","9","d","e","s","t","w","x",
+									"2","3","6","7","k","m","q","r",
+									"0","1","4","5","h","j","n","p"};
 		
 		Arrays.sort(geohashes_2char);
 		
-		if(spatialHashType == 2) {
+		if(spatialHashType == 1) {
 			// Geohashes for US region.
 			
 			geohashes = geohashes_2char;
-		} else if(spatialHashType > 2) {
+		} else if(spatialHashType > 1) {
 			
 			geohashes = generateGeohashes(geohashes_2char, spatialHashType);
 		} else {

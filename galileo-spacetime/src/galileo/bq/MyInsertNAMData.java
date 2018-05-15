@@ -22,7 +22,7 @@ import galileo.util.Pair;
 
 public class MyInsertNAMData {
 	
-	public static String[] geohashes_2char = {"b0","b1","b2","b3","b4","b5","b6","b7","b8","b9","c0","c1","c2","c3","c4","c5","c6","c7"
+	/*public static String[] geohashes_2char = {"b0","b1","b2","b3","b4","b5","b6","b7","b8","b9","c0","c1","c2","c3","c4","c5","c6","c7"
 			,"c8","c9","bb","bc","bd","be","bf","bg","bh","bk","d0","bn","d1","d2","d3","d4","d5","bs","d6","d7","bu","d8"
 			,"d9","bz","cb","cc","cd","ce","cf","cg","ch","ck","cm","e0","e1","cp","e2","cq","e3","cr","cs","e5","e6","ct"
 			,"cu","e7","cv","e9","cw","cx","cy","cz","db","dc","dd","de","df","dg","dh","dj","dk","dm","dn","f0","f1","dp"
@@ -51,7 +51,12 @@ public class MyInsertNAMData {
 			,"yb","yc","yd","7b","ye","yf","yg","yh","7h","yk","7j","ym","7k","yn","7n","91","yq","7p","93","ys","7q","yt"
 			,"94","7r","yu","95","96","yv","7v","7w","yy","7y","7z","zb","zc","zd","8b","8c","ze","zf","8d","zg","8e","8f"
 			,"zh","8g","zj","8h","zk","8j","8k","zm","8m","8n","8p","zs","zu","8s","8t","8u","8v","8w","zy","8x","8y","8z"
-			,"9b","9d","9e","9f","9g","9h","9j","9m","9n","9p","9q","9r","9s","9t","9u","9v","9w","9x","9y","9z"};
+			,"9b","9d","9e","9f","9g","9h","9j","9m","9n","9p","9q","9r","9s","9t","9u","9v","9w","9x","9y","9z"};*/
+	
+	public static String[] geohashes_2char = {"b","c","f","g","u","v","y","z",
+			"8","9","d","e","s","t","w","x",
+			"2","3","6","7","k","m","q","r",
+			"0","1","4","5","h","j","n","p"};
 	
 	public static List<String> validGeoHashes = new ArrayList<String>(Arrays.asList(geohashes_2char));
 	
@@ -177,19 +182,20 @@ public class MyInsertNAMData {
 		
 		for(File f : files) {
 			count++;
-			if(count < 100 && count %10 == 0)
+			//System.out.println("\n\n============="+count+"============\n\n");
+			/*if(count < 100)
 				System.out.println("\n\n============="+count+"============\n\n");
 			if(count%100 == 0)
-				System.out.println("\n\n============="+count+"============\n\n");
+				System.out.println("\n\n============="+count+"============\n\n");*/
 			//System.out.println("processing - " + f);
 			String filepath = f.getAbsolutePath();
-			
+			System.out.println("======COUNT======"+count+" "+System.currentTimeMillis());
 			//Getting date string
 			String[] tokens = filepath.split("/");
 			String fileName = tokens[tokens.length - 1];
 			
 			String dateString = fileName.substring(0, fileName.length() - 3);
-			String ghash = fileName.substring(fileName.length() - 2, fileName.length());
+			String ghash = fileName.substring(fileName.length() - 2, fileName.length() - 1);
 			
 			if(!validGeoHashes.contains(ghash))
 				continue;
@@ -208,38 +214,31 @@ public class MyInsertNAMData {
 				
 			}
 			inputStream.close();
-			//System.out.println("TOTAL LINES: "+lines.size());
+			//System.out.println("TOTAL LINES: "+keyToLines.keySet().size());
 			
 			
 			for(String key: keyToLines.keySet()) {
 				List<String> entries = keyToLines.get(key);
-				
+				//System.out.println(entries.size());
 				String firstLine = "";
 				String data = "";
+				
+				firstLine = entries.get(0);
 				for (String line: entries) {
-					
-					if(line.trim().isEmpty())
-						continue;
 					
 					data+=line + "\n";
 					
-					if(firstLine.length() == 0) {
-						firstLine = line;
-						
-					}
-					
 				}
-				
+				//System.out.println("IS DATA EMPTY?");
 				if(data.trim().isEmpty()) {
 					continue;
 				}
-				
+				//System.out.println("BEFORE BLOCK CREATION");
 				Block tmp = GalileoConnector.createBlockNam(firstLine, data.substring(0, data.length() - 1), fsName, 0,1,2);
-				//System.out.println("BLOCK CREATED");
 				if (tmp != null) {
 					gc.store(tmp);
-					//System.out.println("BLOCK STORED");
-					Thread.sleep(100);
+					System.out.println("STORED");
+					Thread.sleep(10);
 				}
 				
 				
@@ -268,7 +267,7 @@ public class MyInsertNAMData {
 		double lng = Double.valueOf(tokens[1]);
 		
 		
-		String geohash = GeoHash.encode((float)lat, (float)lng, 3);
+		String geohash = GeoHash.encode((float)lat, (float)lng, 2);
 		//System.out.println(geohash);
 		
 		String key = dateString+"-"+geohash;

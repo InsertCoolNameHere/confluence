@@ -71,6 +71,7 @@ public class NeighborDataQueryProcessor implements Runnable{
 			this.resultRecordLists = this.gfs.queryFragments(this.blocks, this.geoQuery, this.grid, this.queryBitmap, this.pathFragments);
 			NeighborDataResponse ndr = createNeighborResponse();
 			context.sendReply(ndr);
+			logger.info("RIKI: SENT BACK BEIGHBOR DATA RESPONSE");
 		} catch (IOException | InterruptedException e) {
 			// TODO Auto-generated catch block
 			logger.log(Level.SEVERE, "Something went wrong while querying FS2 for neighbor block. No results obtained.\n" + e.getMessage());

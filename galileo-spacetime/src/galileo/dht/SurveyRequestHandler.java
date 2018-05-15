@@ -170,6 +170,13 @@ public class SurveyRequestHandler implements MessageListener {
 		}
 	}
 
+	/**
+	 * Perform stratified sampling based on number of records and send request for training data
+	 * @author sapmitra
+	 * @param pathInfos
+	 * @param blocks
+	 * @param recordCounts
+	 */
 	private void performStartifiedSamplingAndRequest(List<String> pathInfos, List<String> blocks, List<Long> recordCounts) {
 		
 		long totalRecordCount = 0;
@@ -217,7 +224,8 @@ public class SurveyRequestHandler implements MessageListener {
 			// The number of training points to be extracted from this block
 			double fraction = (double)recordCounts.get(i)/(double)totalRecordCount;
 			
-			int numPoints = (int)(Math.ceil(fraction*numTrainingPoints));
+			int numPoints = (int)(Math.floor(fraction*numTrainingPoints));
+			logger.info("FRACTION: "+ fraction+" "+numPoints);
 			
 			String block = blocks.get(i);
 			
@@ -236,7 +244,6 @@ public class SurveyRequestHandler implements MessageListener {
 				tr.addNumPoints(numPoints);
 				
 			}
-			
 			
 		}
 		this.expectedTrainingResponses = new AtomicInteger(expectedTrainingMsgs);

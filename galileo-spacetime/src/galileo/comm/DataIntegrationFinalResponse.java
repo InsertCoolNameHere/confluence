@@ -24,13 +24,23 @@ public class DataIntegrationFinalResponse implements Event{
 	@Override
 	public void serialize(SerializationOutputStream out) throws IOException {
 		out.writeString(eventId);
-		out.writeStringCollection(resultPaths);
+		boolean hasResults = false;
+		if(resultPaths !=null && resultPaths.size() > 0)
+			hasResults = true;
+		
+		out.writeBoolean(hasResults);
+		if(hasResults)
+			out.writeStringCollection(resultPaths);
 	}
 	@Deserialize
 	public DataIntegrationFinalResponse(SerializationInputStream in) throws IOException, SerializationException {
 		
 		eventId = in.readString();
-		in.readStringCollection(resultPaths);
+		
+		boolean hasResults = in.readBoolean();
+		
+		if(hasResults)
+			in.readStringCollection(resultPaths);
 		
 	}
 	

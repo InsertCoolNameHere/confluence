@@ -92,16 +92,16 @@ abstract class GalileoConnectorInterface {
 		int tempUnc = 0;
 		if(mode == 1) {
 			
-			spUnc = 5;
+			spUnc = 4;
 			// 1hr
 			tempUnc = 60*60*1000 + 1;
 			
 		} 
 		FilesystemRequest fsRequest = new FilesystemRequest(name, FilesystemAction.CREATE, featureList, sh, spUnc, tempUnc,  false, temporalHint);
-		fsRequest.setSpatialPartitioningType(2);
+		fsRequest.setSpatialPartitioningType(1);
 		fsRequest.setNodesPerGroup(30);
 		// determines spatial precision of the geohashes stored on each file in a node
-		fsRequest.setPrecision(3);
+		fsRequest.setPrecision(2);
 		fsRequest.setTemporalType(TemporalType.DAY_OF_MONTH);
 		
 		publisher.publish(server, fsRequest);
@@ -112,17 +112,17 @@ abstract class GalileoConnectorInterface {
 		int tempUnc = 0;
 		if(mode == 1) {
 			
-			spUnc = 5;
+			spUnc = 4;
 			// 1hr
 			tempUnc = 60*60*1000 + 1;
 			
 		} 
 		FilesystemRequest fsRequest = new FilesystemRequest(name, FilesystemAction.CREATE, featureList, sh, spUnc, tempUnc,  false, temporalHint);
-		fsRequest.setSpatialPartitioningType(2);
+		fsRequest.setSpatialPartitioningType(1);
 		fsRequest.setNodesPerGroup(30);
 		
 		//determines spatial precision of the geohashes stored on each file in a node
-		fsRequest.setPrecision(3);
+		fsRequest.setPrecision(2);
 		fsRequest.setTemporalType(TemporalType.DAY_OF_MONTH);
 		
 		publisher.publish(server, fsRequest);

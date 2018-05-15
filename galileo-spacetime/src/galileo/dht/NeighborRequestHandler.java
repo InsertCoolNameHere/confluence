@@ -34,6 +34,7 @@ import galileo.comm.MetadataResponse;
 import galileo.comm.NeighborDataEvent;
 import galileo.comm.NeighborDataResponse;
 import galileo.comm.QueryResponse;
+import galileo.dataset.Coordinates;
 import galileo.event.BasicEventWrapper;
 import galileo.event.Event;
 import galileo.event.EventContext;
@@ -152,7 +153,10 @@ public class NeighborRequestHandler implements MessageListener {
 		
 		this.interpolatingFeature = interpolatingFeature2;
 		this.fixedBeta = fixedBeta;
-		this.model = new MyPorter(model);
+		if(!fixedBeta)
+			this.model = new MyPorter(model);
+		else
+			this.model = null;
 	}
 
 	public void closeRequest() {
@@ -310,23 +314,13 @@ public class NeighborRequestHandler implements MessageListener {
 					String nodeName = rsp.getNodeString();
 					int pathIndex = rsp.getPathIndex();
 					
-					/*LOGGING*/
-					
-					String ret = "";
-					int ind=0;
-					for(String ss : rsp.getResultRecordLists()) {
-						if(ss != null && !ss.isEmpty()) {
-							ret += ind + "$$";
-						}
-						ind++;
-					}
-					
+			
 					String pathString = nodeName+"$"+pathIndex;
-					logger.log(Level.INFO, "RIKI : DATA MESSAGE RECEIVED FROM "+pathString + " " + ret + " "+System.currentTimeMillis());
+					logger.log(Level.INFO, "RIKI : DATA MESSAGE RECEIVED FROM "+pathString + " "+System.currentTimeMillis());
 					
 					// Taking the fragments in a path to fragments map 
 					synchronized(pathIdToFragmentDataMap) {
-						
+						//System.out.println("RIKI: WHAT CAME BACK: "+ fragmentedRecords);
 						pathIdToFragmentDataMap.put(pathString, fragmentedRecords);
 						
 					}
@@ -553,10 +547,18 @@ public class NeighborRequestHandler implements MessageListener {
 					
 					GeoavailabilityGrid blockGrid = new GeoavailabilityGrid(sc.getCentralGeohash(), GeoHash.MAX_PRECISION * 2 / 3);
 					
+					logger.info("RIKI: CG" + sc.getCentralGeohash()+ " "+ geoQuery.getPolygon());
 					Bitmap queryBitmap = null;
 					
-					if (geoQuery.getPolygon() != null)
+					if (geoQuery.getPolygon() != null) {
 						queryBitmap = QueryTransform.queryToGridBitmap(geoQuery, blockGrid);
+						
+						/*if(queryBitmap == null) {
+							
+							continue;
+						}*/
+					}
+					
 					
 					// One of these per SuperCube 
 					LocalQueryProcessor qp = new LocalQueryProcessor(fs1, sc.getFs1BlockPath(), geoQuery, blockGrid, queryBitmap, (int)sc.getId());
@@ -574,8 +576,6 @@ public class NeighborRequestHandler implements MessageListener {
 					
 					synchronized(superCubeLocalFetchCheck) {
 						synchronized(fs1SuperCubeDataMap) {
-							superCubeLocalFetchCheck.add(qp.getSuperCubeId());
-						
 						
 							if (qp.getResultRecordLists() != null && qp.getResultRecordLists().size() > 0) {
 								//logger.log(Level.INFO, "RIKI : ENTERED VALUES "+ qp.getResultRecordLists() +" FOR "+qp.getSuperCubeId());
@@ -583,6 +583,7 @@ public class NeighborRequestHandler implements MessageListener {
 							} else {
 								fs1SuperCubeDataMap.put(qp.getSuperCubeId(), null);
 							}
+							superCubeLocalFetchCheck.add(qp.getSuperCubeId());
 						}
 					}
 				}
@@ -656,7 +657,7 @@ public class NeighborRequestHandler implements MessageListener {
 										joinExecutors.shutdown();
 										boolean status;
 										try {
-											status = joinExecutors.awaitTermination(2, TimeUnit.MINUTES);
+											status = joinExecutors.awaitTermination(10, TimeUnit.MINUTES);
 											if (!status)
 												logger.log(Level.WARNING, "Executor terminated because of the specified timeout=2minutes");
 										} catch (InterruptedException e1) {
@@ -681,15 +682,22 @@ public class NeighborRequestHandler implements MessageListener {
 	
 	public static void main(String arg[]) {
 		
-		List<String> ll = new ArrayList<String>();
-		ll.add("a"); ll.add("a1"); ll.add("a2"); ll.add("b"); ll.add("a3"); ll.add("c"); 
+		GeoavailabilityGrid blockGrid = new GeoavailabilityGrid("9y", GeoHash.MAX_PRECISION * 2 / 3);
 		
-		for(String l : ll) {
-			if(l.contains("a"))
-				ll.remove(l);
-		}
+		Coordinates c1 = new Coordinates(45.17086f,-113.0457f);
+		Coordinates c2 = new Coordinates(45.17086f,-100.0457f);
+		Coordinates c3 = new Coordinates(39.37086f,-100.0457f);
+		Coordinates c4 = new Coordinates(39.37086f,-113.0457f);
+		//Coordinates c5 = new Coordinates(36.78f, -107.64f);
 		
-		System.out.println(ll);
+		List<Coordinates> cl = new ArrayList<Coordinates>();
+		cl.add(c1); cl.add(c2); cl.add(c3); cl.add(c4);
+		
+		GeoavailabilityQuery gq = new GeoavailabilityQuery(cl);
+		Bitmap queryBitmap = null;
+		
+		if (gq.getPolygon() != null)
+			queryBitmap = QueryTransform.queryToGridBitmap(gq, blockGrid);
 		
 		
 	} 
@@ -749,15 +757,13 @@ public class NeighborRequestHandler implements MessageListener {
 							
 						}
 						
-						
 						//System.out.println("EXISTING FRAGMENTS FOR PATH : "+key+" "+allFrags);
 						int cnt = 0;
 						for(int frag: frags) {
 							
 							String frg = allFrags.get(frag);
-							
-							if(cnt == frags.size() - 1)
-								continue;
+							/*if(cnt == frags.size() - 1)
+								continue;*/
 							if(frg.length() > 2) {
 								bRecords += allFrags.get(frag);
 								
@@ -785,7 +791,9 @@ public class NeighborRequestHandler implements MessageListener {
 		public void run() {
 			logger.info("RIKI: BEFORE JOIN RUN FOR CUBE "+cubeId);
 			MDC m = new MDC();
-			List<String> joinRes = m.iterativeMultiDimJoin(indvARecords, bRecords, aPosns, bPosns, epsilons, interpolatingFeature);
+			List<String> joinRes = new ArrayList<String>();
+			if(indvARecords!= null && indvARecords.size() > 0 && bRecords.length() > 0)
+				joinRes = m.iterativeMultiDimJoin(indvARecords, bRecords, aPosns, bPosns, epsilons, interpolatingFeature);
 			// TODO Auto-generated method stub
 			logger.info("RIKI: AFTER JOIN RUN FOR CUBE "+cubeId);
 			

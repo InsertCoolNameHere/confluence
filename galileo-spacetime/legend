@@ -1,0 +1,37 @@
+java -cp ~/git/lassofinal/galileo-spacetime/lib/galileo-spacetime-1.0.jar galileo.bq.MyMultipleIntegrationNOANAMThroughput <ARGUMENTS>
+
+galileo-time : checks "ENTIRE THING" line in logs
+galileo-grep: called by galileo-time. generates perf.log and checks "ENTIRE THING" in logs
+galileo-monitoring: utilization test. logs into perf.log
+galileo-qresults: removes query intermediate results
+
+
+
+
+ERROR FOR COORDINATES: (45.17086f,-113.0457f),(45.17086f,-100.0457f),(39.37086f,-100.0457f),(39.37086f,-113.0457f) DATE 2015-02-02-xx
+NeighborhoodRequestHandler 553, null query bitmap
+
+
+THROUGHPUT TEST:
+=====================
+
+java -cp ~/git/lassofinal/galileo-spacetime/lib/galileo-spacetime-1.0.jar galileo.bq.MyMultipleIntegrationNOANAMThroughput
+
+grep "ENTIRE THING" * | cut -d":" -f5 | cut -d" " -f2 | sort -n
+
+
+DATA INSERTION
+========================
+
+MyInsertNamData inserts NAM data in galileo
+ssh to lattice-1 =====>> java -cp ~/git/lassofinal/galileo-spacetime/lib/galileo-spacetime-1.0.jar galileo.bq.MyInsertNAMData /s/lattice-1/a/nobackup/galileo/sapmitra/nam/2015 lattice-37.cs.colostate.edu false
+ssh to lattice-2 =====>> java -cp ~/git/lassofinal/galileo-spacetime/lib/galileo-spacetime-1.0.jar galileo.bq.MyInsertNAMData /s/lattice-2/a/nobackup/galileo/sapmitra/nam/2015 lattice-2.cs.colostate.edu true
+ssh to lattice-3 =====>> java -cp ~/git/lassofinal/galileo-spacetime/lib/galileo-spacetime-1.0.jar galileo.bq.MyInsertNAMData /s/lattice-3/a/nobackup/galileo/sapmitra/nam/2015 lattice-3.cs.colostate.edu true
+
+
+NOAA data is on lattice-64. Run from lattice-64
+java -cp ~/git/lassofinal/galileo-spacetime/lib/galileo-spacetime-1.0.jar galileo.bq.MyInsertNoaaData lattice-12.cs.colostate.edu true 13001 14418
+
+
+
+

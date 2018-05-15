@@ -172,7 +172,7 @@ public class GeospatialFileSystem extends FileSystem {
 	private int temporalUncertaintyPrecision;
 	
 	private boolean isRasterized;
-	private double[] DEFAULT_BETAS = {2d,2,5d,3d,4d,5d};
+	private double[] DEFAULT_BETAS = {2d,3d,4d,5d};
 	
 
 	public GeospatialFileSystem(StorageNode sn, String storageDirectory, String name, int precision, int nodesPerGroup,
@@ -787,19 +787,25 @@ public class GeospatialFileSystem extends FileSystem {
 			// populating spatial grid
 			//sg.addEntry(parseFloat(fields[spatialPosn2]),parseFloat(fields[spatialPosn1]), (int)recordCount);
 			// Getting spatial border records
-			boolean fringe = populateGeoHashBorder(geoHash, borderingProperties, recordCount);
 			
 			// calculating temporal border records
+			
+			boolean fringe = false;
 			if(timestamp<=borderingProperties.getDown2() && timestamp >= borderingProperties.getDown1()) {
 				borderingProperties.addDownTimeEntries(recordCount);
-				if(!fringe)
-					borderingProperties.addFringeEntries((int)recordCount);
+				fringe = true;
+				/*if(!fringe)
+					borderingProperties.addFringeEntries((int)recordCount);*/
 				//logger.info("RIKI: ENTERED DOWN TIME ENTRY");
 			} else if(timestamp<=borderingProperties.getUp1() && timestamp >= borderingProperties.getUp2()) {
 				borderingProperties.addUpTimeEntries(recordCount);
-				if(!fringe)
-					borderingProperties.addFringeEntries((int)recordCount);
+				fringe = true;
+				/*if(!fringe)
+					borderingProperties.addFringeEntries((int)recordCount);*/
 				//logger.info("RIKI: ENTERED UP TIME ENTRY");
+			}
+			if(fringe) {
+				populateGeoHashBorder(geoHash, borderingProperties, recordCount);
 			}
 			recordCount++;
 		}
@@ -815,35 +821,35 @@ public class GeospatialFileSystem extends FileSystem {
 		boolean fringe = true;
 		if(borderingProperties.getNe().equals(geoHash)) {
 			borderingProperties.addNEEntries(recordCount);
-			borderingProperties.addFringeEntries((int)recordCount);
+			//borderingProperties.addFringeEntries((int)recordCount);
 			//logger.info("RIKI: ENTERED A NE ENTRY "+geoHash +" "+this.name);
 		} else if(borderingProperties.getSe().equals(geoHash)) {
 			borderingProperties.addSEEntries(recordCount);
-			borderingProperties.addFringeEntries((int)recordCount);
+			//borderingProperties.addFringeEntries((int)recordCount);
 			//logger.info("RIKI: ENTERED A SE ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getNw().equals(geoHash)) {
 			borderingProperties.addNWEntries(recordCount);
-			borderingProperties.addFringeEntries((int)recordCount);
+			//borderingProperties.addFringeEntries((int)recordCount);
 			//logger.info("RIKI: ENTERED A NW ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getSw().equals(geoHash)) {
 			borderingProperties.addSWEntries(recordCount);
-			borderingProperties.addFringeEntries((int)recordCount);
+			//borderingProperties.addFringeEntries((int)recordCount);
 			//logger.info("RIKI: ENTERED A SW ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getN().contains(geoHash)) {
 			borderingProperties.addNorthEntries(recordCount);
-			borderingProperties.addFringeEntries((int)recordCount);
+			//borderingProperties.addFringeEntries((int)recordCount);
 			//logger.info("RIKI: ENTERED A N ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getE().contains(geoHash)) {
 			borderingProperties.addEastEntries(recordCount);
-			borderingProperties.addFringeEntries((int)recordCount);
+			//borderingProperties.addFringeEntries((int)recordCount);
 			//logger.info("RIKI: ENTERED A E ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getW().contains(geoHash)) {
 			borderingProperties.addWestEntries(recordCount);
-			borderingProperties.addFringeEntries((int)recordCount);
+			//borderingProperties.addFringeEntries((int)recordCount);
 			//logger.info("RIKI: ENTERED A W ENTRY "+geoHash+" "+this.name);
 		} else if(borderingProperties.getS().contains(geoHash)) {
 			borderingProperties.addSouthEntries(recordCount);
-			borderingProperties.addFringeEntries((int)recordCount);
+			//borderingProperties.addFringeEntries((int)recordCount);
 			//logger.info("RIKI: ENTERED A S ENTRY "+geoHash+" "+this.name);
 		} else {
 			fringe = false;
@@ -1675,34 +1681,44 @@ public class GeospatialFileSystem extends FileSystem {
 	}
 	
 	
-	public void handleSurveyInNode(String nodeString, List<String> pathInfos, List<String> blocks, List<Long> recordCount) {
+	public void handleSurveyInNode(String nodeString, List<String> pathInfos, List<String> blocks, List<Long> recordCount, List<Coordinates> polygon, String time) {
 
-		List<Path<Feature, String>> paths = metadataGraph.getAllPaths();
+		//List<Path<Feature, String>> paths = metadataGraph.getAllPaths();
 		
-		for (Path<Feature, String> path : paths) {
-			// extract geospatial and temporal info of each path
-			String pathInfo = getPathInfo(path, 0);
-			pathInfo = nodeString+"$$"+pathInfo;
-			List<String> blocksInPath = new ArrayList<String>(path.getPayload());
-			for(String block: blocksInPath) {
-				long count = 0l;
-				BorderingProperties bp = borderMap.get(block);
-				if(bp != null) {
-					
-					count=bp.getTotalRecords();
-					if(count>0) {
+		try {
+			List<Path<Feature, String>> paths = listPaths(time, polygon, null, false);
+			
+			for (Path<Feature, String> path : paths) {
+				// extract geospatial and temporal info of each path
+				String pathInfo = getPathInfo(path, 0);
+				pathInfo = nodeString+"$$"+pathInfo;
+				List<String> blocksInPath = new ArrayList<String>(path.getPayload());
+				for(String block: blocksInPath) {
+					long count = 0l;
+					BorderingProperties bp = borderMap.get(block);
+					if(bp != null) {
 						
-						pathInfos.add(pathInfo);
-						blocks.add(block);
-						recordCount.add(count);
-						
+						count=bp.getTotalRecords();
+						if(count>0) {
+							
+							pathInfos.add(pathInfo);
+							blocks.add(block);
+							recordCount.add(count);
+							
+						}
 					}
+					
+					
 				}
 				
-				
 			}
-			
+		}  catch (Exception e) {
+			logger.log(Level.SEVERE,
+					"Something went wrong while data integration event on the filesystem. No results obtained. Sending blank list to the client. Issue details follow:",
+					e);
 		}
+		
+		
 	}
 	
 	/**
@@ -2208,7 +2224,9 @@ public class GeospatialFileSystem extends FileSystem {
 			
 			/* Gets the actual records numbers needed in a 28 length list of list representing each fragment*/
 			for(int i : chunks) {
+				//logger.log(Level.INFO, i+ "RIKI: BEFORE OM ");
 				List<Long> recordsToRead = OrientationManager.getRecordNumbersFromBlock(i, borderingProperties);
+				//logger.log(Level.INFO, i+ "RIKI: AFTER OM ");
 				//logger.log(Level.INFO, "RIKI: LINE NOS TO READ " + recordsToRead +" "+blockPaths);
 				if(recordsToRead == null || recordsToRead.size() == 0)
 					continue;
@@ -2230,15 +2248,17 @@ public class GeospatialFileSystem extends FileSystem {
 					//records.set(27, record);
 				}
 				
-				
+				//logger.log(Level.INFO, i+ "RIKI: BEFORE TOSTR ");
 				/*LOGGING*/
-				String rr = "";
+				/*String rr = "";
 				for(String[] hh : paths) {
 					rr += Arrays.toString(hh)+"$$";
-				}
+				}*/
+				//logger.log(Level.INFO, i+ "RIKI: AFTER TOSTR ");
 				//logger.log(Level.INFO, "RIKI: READ RECORDS FOR NOT FULL BLOCK "+ rr + " " +blockPaths);
 				
 			}
+			logger.log(Level.INFO, "RIKI: FINISHED READING RECORDS FOR NOT FULL BLOCK " +blockPaths);
 			
 		}
 		return records;
@@ -2709,6 +2729,7 @@ public class GeospatialFileSystem extends FileSystem {
 					featurePathsA, featurePathsB);
 			
 			// Grouping block records into one set for each path
+			// Path to As map and path to B's map should correspond
 			if(featurePathsA.size() > 0) {
 				List<String[]> currentEntries;
 				
@@ -2742,6 +2763,7 @@ public class GeospatialFileSystem extends FileSystem {
 		
 		for (String pathInfo : pathToAsMap.keySet()) {
 			
+			// If both A's and B's exist for this path
 			if(pathToAsMap.get(pathInfo) != null && pathToAsMap.get(pathInfo).size() > 0 &&
 					pathToBsMap.get(pathInfo) != null && pathToBsMap.get(pathInfo).size() > 0) {
 				
@@ -2834,10 +2856,11 @@ public class GeospatialFileSystem extends FileSystem {
 	 * @return
 	 */
 	public static List<Integer> findRandomRecordIndices(int range, int num, BorderingProperties bp) {
-		List<Integer> fringeEntries = bp.getFringeEntries();
+		
+		
 		List<Integer> list = new ArrayList<Integer>();
 		for (int i = 1; i < range; i++) {
-			if(!fringeEntries.contains(i))
+			if(!bp.getUpTimeEntries().contains((long)i) && !bp.getDownTimeEntries().contains((long)i))
 				list.add(i);
 		}
 		Collections.shuffle(list);

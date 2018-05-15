@@ -122,7 +122,7 @@ public class MDC {
 	public static void main(String arg[]) {
 		MDC m = new MDC();
 		
-		m.whyIsThisHappeningSelf();
+		m.whyIsThisHappening();
 		
 	}
 	
@@ -226,15 +226,15 @@ public class MDC {
 		
 		try {
 
-			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/A.txt");
+			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin/nam.gblock");
 			br = new BufferedReader(fr);
 
 			String sCurrentLine;
 
 			while ((sCurrentLine = br.readLine()) != null) {
-				if(!sCurrentLine.isEmpty() && sCurrentLine.contains("[") && sCurrentLine.contains("]")) {
+				if(!sCurrentLine.isEmpty()) {
 					
-					sCurrentLine = sCurrentLine.substring(1, sCurrentLine.length() - 1);
+					//sCurrentLine = sCurrentLine.substring(1, sCurrentLine.length() - 1);
 					String tokens[] = sCurrentLine.split(",");
 					
 					int count = 0;
@@ -262,7 +262,7 @@ public class MDC {
 		String bRecords="";
 		try {
 
-			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin1/B.txt");
+			fr = new FileReader("/s/chopin/b/grad/sapmitra/Documents/Conflux/testJoin/noaa.gblock");
 			br = new BufferedReader(fr);
 
 			String sCurrentLine;
@@ -285,10 +285,11 @@ public class MDC {
 		} 
 		
 		int[] aPosns = {0,1,2};
-		int[] bPosns = {0,1,2};
-		double[] epsilons = {1000*60*10, 0.01, 0.01};
+		int[] bPosns = {0,1,4};
+		double[] epsilons = {1000*60*30, 0.01, 0.01};
 		long ll1 = System.currentTimeMillis();
-		iterativeMultiDimJoin(indvARecords, bRecords, aPosns, bPosns, epsilons, 3).size();
+		int size = iterativeMultiDimJoin(indvARecords, bRecords, aPosns, bPosns, epsilons, 3).size();
+		System.out.println("SIZE "+size);
 		long ll2 = System.currentTimeMillis() - ll1;
 		System.out.println(ll2);
 		
@@ -303,6 +304,10 @@ public class MDC {
 		long startTime = System.currentTimeMillis();
 		String[] indvBRecords = bRecords.split("\\n");
 		
+		if(indvARecords.isEmpty() || bRecords.isEmpty()) {
+			logger.info("GOING OUT FOR NO MATCHES");
+			return new ArrayList<String>();
+		}
 		/* splitARecords and validAEntries must always correspond */
 		
 		/* Loading & filtering */
@@ -340,7 +345,9 @@ public class MDC {
 		}
 		bLength = ind;
 		
-		
+		//logger.info("RIKI: BRECORDS are:"+bRecords+"ZZZZ" );
+		//logger.info("RIKI: ARECORDS are "+Arrays.toString(indvARecords.get(0)));
+		//logger.info("=========================");
 		/* Iterative 1D join */
 		List<String> pairs = new ArrayList<String>();
 		
@@ -429,7 +436,7 @@ public class MDC {
 		}
 		
 		
-		//System.out.println("MATCHES "+aRecordIndices.size());
+		//logger.info("RIKI: A RECORD MATCHES "+aRecordIndices);
 		
 		List<String> retJoinRecords = new ArrayList<String> ();
 		
@@ -440,51 +447,59 @@ public class MDC {
 		// create the one to many mapping between A and B entries
 		//generateNeighborSphere(pairs, aRecordIndices, bRecordIndices);
 		
-		// for each entry in aRecords and corresponding neighbors in bRecords, now
-		// apply IDW with different betas
-		int count = 0;
-		for(int aIndex: aRecordIndices) {
-			List<Integer> bIndices = bRecordIndices.get(count);
-			
-			String[] aRec = indvARecords.get(aIndex);
-			
-			List<String[]> bRecs = new ArrayList<String[]>();
-			
-			int fullMatch = -1;
-			for(int ib : bIndices) {
-				String[] entry = indvBRecords[ib].split(",");
+		if(aRecordIndices.size() > 0) {
+			// for each entry in aRecords and corresponding neighbors in bRecords, now
+			// apply IDW with different betas
+			int count = 0;
+			for(int aIndex: aRecordIndices) {
+				List<Integer> bIndices = bRecordIndices.get(count);
 				
-				// entry with same space and time, 100% accuracy, no IDW needed
-				
-				if(entry[bPosns[0]] == aRec[aPosns[0]] && entry[bPosns[1]] == aRec[aPosns[1]] && entry[bPosns[2]] == aRec[aPosns[2]]) {
-					fullMatch = ib;
-				}
-				
-				bRecs.add(entry);
-			}
-			
-			// min and span needs to be passed here
-			if(fullMatch >= 0) {
-				
-				String bString="";
-				for(String[] brec: bRecs) {
-					bString+=Arrays.asList(brec)+"**";
-				}
-				String record = Arrays.asList(aRec)+"<SEP>"+bString+"<PRED>"+bRecs.get(fullMatch)[interpolatingFeature];
-				retJoinRecords.add(record);
-				
-			} else {
-				double[] betas = {2d};
-				if(bRecs.size() > 0) {
-					String rec = IDW.calculateIDW(aRec, bRecs, betas, interpolatingFeature, aPosns, bPosns);
+				if(bIndices.size() <= 0) {
+					count++;
+					continue;
 					
-					retJoinRecords.add(rec);
-				} 
+				}
+				
+				String[] aRec = indvARecords.get(aIndex);
+				
+				List<String[]> bRecs = new ArrayList<String[]>();
+				
+				int fullMatch = -1;
+				for(int ib : bIndices) {
+					String[] entry = indvBRecords[ib].split(",");
+					
+					// entry with same space and time, 100% accuracy, no IDW needed
+					
+					if(entry[bPosns[0]] == aRec[aPosns[0]] && entry[bPosns[1]] == aRec[aPosns[1]] && entry[bPosns[2]] == aRec[aPosns[2]]) {
+						fullMatch = ib;
+					}
+					
+					bRecs.add(entry);
+				}
+				
+				// min and span needs to be passed here
+				if(fullMatch >= 0) {
+					
+					String bString="";
+					for(String[] brec: bRecs) {
+						bString+=Arrays.asList(brec)+"**";
+					}
+					String record = Arrays.asList(aRec)+"<SEP>"+bString+"<PRED>"+bRecs.get(fullMatch)[interpolatingFeature];
+					retJoinRecords.add(record);
+					
+				} else {
+					double[] betas = {2d};
+					if(bRecs.size() > 0) {
+						String rec = IDW.calculateIDW(aRec, bRecs, betas, interpolatingFeature, aPosns, bPosns);
+						
+						retJoinRecords.add(rec);
+					} 
+				}
+				
+				//retJoinRecords.add(ret1+"$$"+ret2);
+				
+				count++;
 			}
-			
-			//retJoinRecords.add(ret1+"$$"+ret2);
-			
-			count++;
 		}
 		long endTimeInterpolation  = System.currentTimeMillis();
 		logger.info("RIKI: INTERPOLATION FINISHED IN: "+(endTimeInterpolation - startTimeInterpolation));
@@ -592,7 +607,8 @@ public class MDC {
 						neighborIndices = new ArrayList<Integer>();
 						bRecordIndices.add(neighborIndices);
 					}
-					neighborIndices.add(ind2);
+					if(ind2 != ind1)
+						neighborIndices.add(ind2);
 				}
 			}
 		}

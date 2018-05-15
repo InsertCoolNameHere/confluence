@@ -201,7 +201,11 @@ public class MyInsertTest1 {
 	public static void main(String arg[]) {
 		
 		String filepath = "sftp://lattice-1/s/lattice-1/a/nobackup/galileo/sapmitra/nam/2015/2015-01-02-8g";
+		System.out.println(filepath.substring(filepath.length() - 2, filepath.length() - 1));
 		
+		String g = "abcd";
+		
+		System.out.println(g.substring(0, g.length() - 1));
 		//Getting date
 		String[] tokens = filepath.split("/");
 		String fileName = tokens[tokens.length - 1];

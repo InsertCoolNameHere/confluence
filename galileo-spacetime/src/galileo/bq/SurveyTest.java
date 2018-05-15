@@ -8,7 +8,11 @@ package galileo.bq;
  * This program read a csv-formatted file and send each line to the galileo server
  */
 
+import java.util.ArrayList;
+import java.util.List;
+
 import galileo.comm.SurveyRequest;
+import galileo.dataset.Coordinates;
 
 public class SurveyTest {
 
@@ -25,9 +29,18 @@ public class SurveyTest {
 	
 	private static void processFile(GalileoConnector gc) throws Exception {
 		
-		// CREATING FS1
 		
-		SurveyRequest sr = new SurveyRequest("sensorfsdummytest1", 2000, "cavity_pressure", 0.1d, 0.1d, 4*60*60*1000);
+		Coordinates c1 = new Coordinates(49.58f, -130.11f);
+		Coordinates c2 = new Coordinates(49.58f, -70.07f);
+		Coordinates c3 = new Coordinates(25.841f, -70.07f);
+		Coordinates c4 = new Coordinates(25.841f, -130.11f);
+		
+		List<Coordinates> cl = new ArrayList<Coordinates>();
+		cl.add(c1); cl.add(c2); cl.add(c3); cl.add(c4);
+		
+		SurveyRequest sr = new SurveyRequest("noaafs", 20000, "sky_ceiling_height", 0.1d, 0.1d, 12*60*60*1000);
+		sr.setPolygon(cl);
+		sr.setTime("2015-01-02");
 		
 		try {
 			gc.survey(sr);
@@ -50,21 +63,17 @@ public class SurveyTest {
 		args[1] = "5634";
 		args[2] = "/s/green/a/tmp/sapmitra/windTrial";
 		
-		if (args.length != 3) {
-			System.out.println(
-					"Usage: WindInsert [galileo-hostname] [galileo-port-number] [path-to-csv-file]");
-			System.exit(0);
-		} else {
-			try {
-				GalileoConnector gc = new GalileoConnector(args[0], Integer.valueOf(args[1]));
-				System.out.println(args[0] + "," + Integer.parseInt(args[1]));
-				
-				processFile(gc);
-				
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+		
+		try {
+			GalileoConnector gc = new GalileoConnector(args[0], Integer.valueOf(args[1]));
+			System.out.println(args[0] + "," + Integer.parseInt(args[1]));
+			
+			processFile(gc);
+			
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
+		
 		System.out.println("Data Integration Finished");
 		System.exit(0);
 	}

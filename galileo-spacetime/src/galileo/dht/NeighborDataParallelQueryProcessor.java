@@ -114,6 +114,7 @@ public class NeighborDataParallelQueryProcessor implements Runnable{
 					pathIterator.remove();
 				}
 				recordsStringRepresentation = "";
+				StringBuilder sb = new StringBuilder();
 				/*each string[] is a line of record*/
 				for (List<String[]> paths : geoMap.query(queryBitmap).values()) {
 					/* No need to update featurePaths if the remaining section will not be evaluated */
@@ -123,10 +124,12 @@ public class NeighborDataParallelQueryProcessor implements Runnable{
 					} else if(paths != null && paths.size() > 0){
 						for(String[] record : paths) {
 							if(record != null) {
-								String recStr = record.toString();
-								recordsStringRepresentation += recStr.substring(1,recStr.length() - 1) + "\n";
+								String recStr = Arrays.toString(record);
+								//recordsStringRepresentation += recStr.substring(1,recStr.length() - 1) + "\n";
+								sb.append(recStr.substring(1,recStr.length() - 1) + "\n");
 							}
 						}
+						recordsStringRepresentation = sb.toString();
 					}
 						
 					
@@ -164,29 +167,34 @@ public class NeighborDataParallelQueryProcessor implements Runnable{
 					pathIterator.remove();
 				}
 				recordsStringRepresentation = "";
+				StringBuilder sb = new StringBuilder();
 				List<Path<Feature, String>> evaluatedPaths = temporaryGraph.evaluateQuery(query);
 				for (Path<Feature, String> path : evaluatedPaths) {
 					String[] featureValues = new String[path.size()];
 					int index = 0;
 					for (Feature feature : path.getLabels())
 						featureValues[index++] = feature.getString();
-					String recStr = featureValues.toString();
-					recordsStringRepresentation += recStr.substring(1,recStr.length() - 1) + "\n";
+					String recStr = Arrays.toString(featureValues);
+					//recordsStringRepresentation += recStr.substring(1,recStr.length() - 1) + "\n";
+					sb.append(recStr.substring(1,recStr.length() - 1) + "\n");
 					//this.featurePaths.add(featureValues);
 				}
+				recordsStringRepresentation = sb.toString();
 			} 
 			//logger.info("RIKI: SHOULD ENTER "+blocks + fullRequired + " "+ this.featurePaths.size() + ">>"+recordsStringRepresentation+"<<");
 			
 			if(!fullRequired && this.featurePaths.size() > 0 && (recordsStringRepresentation == null || recordsStringRepresentation.isEmpty())) {
 				
 				recordsStringRepresentation = "";
-				
+				StringBuilder sb = new StringBuilder();
 				for(String[] record : featurePaths) {
 					if(record != null) {
 						String recStr = Arrays.toString(record);
-						recordsStringRepresentation += recStr.substring(1,recStr.length() - 1) + "\n";
+						//recordsStringRepresentation += recStr.substring(1,recStr.length() - 1) + "\n";
+						sb.append(recStr.substring(1,recStr.length() - 1) + "\n");
 					}
 				}
+				recordsStringRepresentation = sb.toString();
 				
 				//logger.info("RIKI: SHOULD ENTER AFTER "+ recordsStringRepresentation + " "+blocks);
 			}

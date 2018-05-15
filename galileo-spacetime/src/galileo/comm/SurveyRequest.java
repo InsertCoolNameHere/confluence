@@ -1,7 +1,10 @@
 package galileo.comm;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
+import galileo.dataset.Coordinates;
 import galileo.event.Event;
 import galileo.serialization.SerializationException;
 import galileo.serialization.SerializationInputStream;
@@ -15,6 +18,9 @@ public class SurveyRequest implements Event {
 	private double latEps;
 	private double lonEps;
 	private double timeEps;
+	private String time;
+	private List<Coordinates> polygon;
+	
 
 	@Deserialize
 	public SurveyRequest(SerializationInputStream in) throws IOException, SerializationException {
@@ -24,6 +30,17 @@ public class SurveyRequest implements Event {
 		latEps = in.readDouble();
 		lonEps = in.readDouble();
 		timeEps = in.readDouble();
+		
+		boolean isTemporal = in.readBoolean();
+		if (isTemporal)
+			time = in.readString();
+		boolean isSpatial = in.readBoolean();
+		
+		if (isSpatial) {
+			List<Coordinates> poly = new ArrayList<Coordinates>();
+			in.readSerializableCollection(Coordinates.class, poly);
+			polygon = poly;
+		}
 	}
 
 	@Override
@@ -34,6 +51,14 @@ public class SurveyRequest implements Event {
 		out.writeDouble(latEps);
 		out.writeDouble(lonEps);
 		out.writeDouble(timeEps);
+		
+		out.writeBoolean(isTemporal());
+		if (isTemporal())
+			out.writeString(time);
+		out.writeBoolean(isSpatial());
+		if (isSpatial())
+			out.writeSerializableCollection(polygon);
+		
 	}
 
 	public SurveyRequest(String fsName, int numTrainingPoints, String featureName, 
@@ -47,6 +72,15 @@ public class SurveyRequest implements Event {
 		this.timeEps = timeEps;
 	}
 
+	
+	public boolean isSpatial() {
+		return polygon != null;
+	}
+
+	public boolean isTemporal() {
+		return time != null;
+	}
+	
 	public String getFsName() {
 		return fsName;
 	}
@@ -93,5 +127,21 @@ public class SurveyRequest implements Event {
 
 	public void setTimeEps(double timeEps) {
 		this.timeEps = timeEps;
+	}
+
+	public String getTime() {
+		return time;
+	}
+
+	public void setTime(String time) {
+		this.time = time;
+	}
+
+	public List<Coordinates> getPolygon() {
+		return polygon;
+	}
+
+	public void setPolygon(List<Coordinates> polygon) {
+		this.polygon = polygon;
 	}
 }

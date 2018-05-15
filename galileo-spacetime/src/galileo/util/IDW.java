@@ -81,7 +81,7 @@ public class IDW {
 			
 		}
 			
-		String trainingPt = aLatO+","+aLongO+","+aTimeO+","+bestBeta+","+bestError+"$$$"+actualParameterVal+neighborsStringRepresentation(bRecs);
+		String trainingPt = aLatO+","+aLongO+","+aTimeO+","+bestBeta+","+bestError+","+actualParameterVal;
 		
 		return trainingPt;
 		
