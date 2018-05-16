@@ -38,9 +38,9 @@ public class SurveyTest {
 		List<Coordinates> cl = new ArrayList<Coordinates>();
 		cl.add(c1); cl.add(c2); cl.add(c3); cl.add(c4);
 		
-		SurveyRequest sr = new SurveyRequest("noaafs", 20000, "sky_ceiling_height", 0.1d, 0.1d, 12*60*60*1000);
+		SurveyRequest sr = new SurveyRequest("noaafs", 20000, "sky_ceiling_height", 0.1d, 0.1d, 12*60*60*1000,false, null);
 		sr.setPolygon(cl);
-		sr.setTime("2015-01-02");
+		sr.setTime("2015-01-02-xx");
 		
 		try {
 			gc.survey(sr);

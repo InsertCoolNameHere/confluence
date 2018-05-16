@@ -21,6 +21,9 @@ public class SurveyRequest implements Event {
 	private String time;
 	private List<Coordinates> polygon;
 	
+	private boolean hasModel;
+	private String model;
+	
 
 	@Deserialize
 	public SurveyRequest(SerializationInputStream in) throws IOException, SerializationException {
@@ -41,6 +44,10 @@ public class SurveyRequest implements Event {
 			in.readSerializableCollection(Coordinates.class, poly);
 			polygon = poly;
 		}
+		
+		hasModel = in.readBoolean();
+		if(hasModel)
+			model = in.readString();
 	}
 
 	@Override
@@ -59,10 +66,14 @@ public class SurveyRequest implements Event {
 		if (isSpatial())
 			out.writeSerializableCollection(polygon);
 		
+		out.writeBoolean(hasModel);
+		if(hasModel)
+			out.writeString(model);
+		
 	}
 
 	public SurveyRequest(String fsName, int numTrainingPoints, String featureName, 
-			double latEps, double lonEps, double timeEps) {
+			double latEps, double lonEps, double timeEps, boolean hasModel, String model) {
 		super();
 		this.fsName = fsName;
 		this.numTrainingPoints = numTrainingPoints;
@@ -70,6 +81,8 @@ public class SurveyRequest implements Event {
 		this.latEps = latEps;
 		this.lonEps = lonEps;
 		this.timeEps = timeEps;
+		this.hasModel = hasModel;
+		this.model = model;
 	}
 
 	
@@ -143,5 +156,21 @@ public class SurveyRequest implements Event {
 
 	public void setPolygon(List<Coordinates> polygon) {
 		this.polygon = polygon;
+	}
+
+	public boolean isHasModel() {
+		return hasModel;
+	}
+
+	public void setHasModel(boolean hasModel) {
+		this.hasModel = hasModel;
+	}
+
+	public String getModel() {
+		return model;
+	}
+
+	public void setModel(String model) {
+		this.model = model;
 	}
 }

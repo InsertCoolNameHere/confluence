@@ -2683,12 +2683,15 @@ public class GeospatialFileSystem extends FileSystem {
 	 * @param e lon
 	 * @param d lat
 	 * @param pathInfos nodeString$$time$space
+	 * @param string 
+	 * @param b 
 	 * @return
 	 * @throws IOException
 	 * @throws InterruptedException 
 	 */
 	public String findTrainingPoints(List<String> blockPaths, List<Integer> numPoints, List<String> pathInfos, String featureName, double latEps,
-			double lonEps, double timeEps) throws IOException, InterruptedException {
+			double lonEps, double timeEps, boolean hasModel, String model) throws IOException, InterruptedException {
+		
 		String trainigData = "";
 		// So that we know what to feed in separate join operations
 		Map<String, List<String[]>> pathToAsMap = new HashMap<String, List<String[]>>();
@@ -2766,12 +2769,17 @@ public class GeospatialFileSystem extends FileSystem {
 			// If both A's and B's exist for this path
 			if(pathToAsMap.get(pathInfo) != null && pathToAsMap.get(pathInfo).size() > 0 &&
 					pathToBsMap.get(pathInfo) != null && pathToBsMap.get(pathInfo).size() > 0) {
-				
-				SelfJoinThread sjt = new SelfJoinThread(pathToAsMap.get(pathInfo), pathToBsMap.get(pathInfo),
-						latEps, lonEps, timeEps, pathInfo, DEFAULT_BETAS, temporalType);
-				
-				joinProcessors.add(sjt);
-				executor.execute(sjt);
+				if(!hasModel) {
+					SelfJoinThread sjt = new SelfJoinThread(pathToAsMap.get(pathInfo), pathToBsMap.get(pathInfo),
+							latEps, lonEps, timeEps, pathInfo, DEFAULT_BETAS, temporalType);
+					
+					joinProcessors.add(sjt);
+					executor.execute(sjt);
+				} else {
+					
+					
+					// Model testing to be done here
+				}
 			}
 			
 		}
@@ -2781,13 +2789,14 @@ public class GeospatialFileSystem extends FileSystem {
 		if (!status)
 			logger.log(Level.WARNING, "Executor terminated because of the specified timeout=10minutes");
 		
+		StringBuilder sb = new StringBuilder();
 		for (SelfJoinThread sjt : joinProcessors) {
 			if(sjt.getTrainingPoints().length() > 0){
 				//logger.info("RIKI: INDIVIDUAL: "+sjt.getTrainingPoints());
-				trainigData+=sjt.getTrainingPoints();
+				sb.append(sjt.getTrainingPoints());
 			}
 		}
-		
+		trainigData = sb.toString();
 		
 		return trainigData;
 	}

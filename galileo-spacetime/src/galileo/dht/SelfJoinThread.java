@@ -32,11 +32,16 @@ public class SelfJoinThread implements Runnable {
 		MDC m = new MDC();
 		List<String> tps = m.iterativeMultiDimSelfJoinML(indvARecords, indvBRecords, epsilons, betas, pathInfo, temporalType);
 		// TODO Auto-generated method stub
+		
+		
+		StringBuilder sb = new StringBuilder();
 		if(tps.size() > 0) {
 			for(String tp : tps)
 				if(tp.length() > 0)
-					this.trainingPoints += (tp+"\n");
+					sb.append(tp+"\n");
 		}
+		
+		this.trainingPoints = sb.toString();
 		
 	}
 

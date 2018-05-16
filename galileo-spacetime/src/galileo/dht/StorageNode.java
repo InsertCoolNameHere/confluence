@@ -638,23 +638,53 @@ public class StorageNode implements RequestListener {
 	public void handleSurveyRequest(SurveyRequest request, EventContext context) {
 		
 		String fsName = request.getFsName();
+		GeospatialFileSystem gfs = this.fsMap.get(fsName);
+		
+		Metadata data = null;
+		if (request.isTemporal() && request.isSpatial()) {
+			data  = new Metadata();
+			
+			/* Time in request if a - separated string */
+			String[] timeSplit = request.getTime().split("-");
+			int timeIndex = Arrays.asList(TemporalType.values()).indexOf(gfs.getTemporalType());
+			if (!timeSplit[timeIndex].contains("x")) {
+				logger.log(Level.INFO, "Temporal query: {0}", request.getTime());
+				Calendar c = Calendar.getInstance();
+				c.setTimeZone(TemporalHash.TIMEZONE);
+				int year = timeSplit[0].charAt(0) == 'x' ? c.get(Calendar.YEAR) : Integer.parseInt(timeSplit[0]);
+				int month = timeSplit[1].charAt(0) == 'x' ? c.get(Calendar.MONTH)
+						: Integer.parseInt(timeSplit[1]) - 1;
+				int day = timeSplit[2].charAt(0) == 'x' ? c.get(Calendar.DAY_OF_MONTH)
+						: Integer.parseInt(timeSplit[2]);
+				int hour = timeSplit[3].charAt(0) == 'x' ? c.get(Calendar.HOUR_OF_DAY)
+						: Integer.parseInt(timeSplit[3]);
+				c.set(year, month, day, hour, 0);
+				data.setTemporalProperties(new TemporalProperties(c.getTimeInMillis()));
+			}
+			
+			data.setSpatialProperties(new SpatialProperties(new SpatialRange(request.getPolygon())));
+		}
+		
+		Partitioner<Metadata> partitioner = gfs.getPartitioner();
+		
+		SurveyResponse rsp = new SurveyResponse();
 		String trainingResultsDir = queryResultsDir;
 		String nodeString = hostname + "-" + port;
 		
-		List<NodeInfo> allNodes = network.getAllNodes();
-		SurveyResponse rsp = new SurveyResponse();
-		
-		SurveyEvent se = new SurveyEvent(fsName, request.getPolygon(), request.getTime());
-		
+		//List<NodeInfo> allNodes = network.getAllNodes();
 		try {
+			List<NodeInfo> allNodes = partitioner.findDestinations(data);
+			
+			SurveyEvent se = new SurveyEvent(fsName, request.getPolygon(), request.getTime());
+		
 			SurveyRequestHandler reqHandler = new SurveyRequestHandler(new ArrayList<NetworkDestination>(allNodes),
 					context, request.getNumTrainingPoints(), fsName, request.getFeatureName(),request.getLatEps(), request.getLonEps()
-					, request.getTimeEps(),trainingResultsDir, nodeString, this);
+					, request.getTimeEps(),trainingResultsDir, nodeString, this, request.isHasModel(), request.getModel());
 			
 			/* Sending out query to all nodes */
 			reqHandler.handleRequest(se, rsp);
 			this.surveyHandlers.add(reqHandler);
-		} catch (IOException ioe) {
+		} catch (Exception ioe) {
 			logger.log(Level.SEVERE,
 					"Failed to initialize a ClientRequestHandler. Sending unfinished response back to client",
 					ioe);
@@ -718,7 +748,7 @@ public class StorageNode implements RequestListener {
 			// A string representation of each training point separated by \n
 			
 			String dataPoints = fs.findTrainingPoints(blockPaths, numPoints, pathInfos, request.getFeatureName(),
-					request.getLatEps(), request.getLonEps(), request.getTimeEps());
+					request.getLatEps(), request.getLonEps(), request.getTimeEps(), request.isHasModel(), request.getModel());
 			String nodeString = hostname + ":" + port;
 			String featureNames = "";
 			TrainingDataResponse rsp = new TrainingDataResponse(dataPoints, nodeString);

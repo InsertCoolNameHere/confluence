@@ -27,6 +27,7 @@ import galileo.net.MessageListener;
 import galileo.net.NetworkDestination;
 import galileo.net.RequestListener;
 import galileo.serialization.SerializationException;
+import galileo.util.MyPorter;
 
 /**
  * This class will collect the responses from all the nodes of galileo and then
@@ -55,9 +56,14 @@ public class SurveyRequestHandler implements MessageListener {
 	private double latEps,lonEps,timeEps;
 	private String storagePath;
 	private String currentNode;
+	private boolean hasModel;
+	private String model;
+	
+	
 
 	public SurveyRequestHandler(Collection<NetworkDestination> nodes, EventContext clientContext,
-			int numTrainingPoints, String fsName, String featureName, double d, double e, double f, String trainingResultsDir, String nodeString, RequestListener listener) throws IOException {
+			int numTrainingPoints, String fsName, String featureName, double d, double e, double f, 
+			String trainingResultsDir, String nodeString, RequestListener listener, boolean hasModel, String model) throws IOException {
 		this.nodes = nodes;
 		this.clientContext = clientContext;
 		this.requestListener = listener;
@@ -79,6 +85,10 @@ public class SurveyRequestHandler implements MessageListener {
 		String eventId = String.valueOf(System.currentTimeMillis());
 		this.storagePath = trainingResultsDir + "/trainingData" + eventId;
 		this.currentNode = nodeString;
+		
+		this.hasModel = hasModel;
+		
+		this.model = model;
 		
 	}
 
@@ -130,9 +140,11 @@ public class SurveyRequestHandler implements MessageListener {
 				}
 				
 			} else if (event instanceof TrainingDataResponse) {
-				logger.log(Level.INFO, "RIKI: TRAINING DATA RESPONSE RECEIVED");
+				
 				int awaitedResponses = this.expectedTrainingResponses.decrementAndGet();
 				TrainingDataResponse rsp = (TrainingDataResponse)event;
+				
+				logger.log(Level.INFO, "RIKI: TRAINING DATA RESPONSE RECEIVED");
 				if(rsp.getDataPoints() != null && rsp.getDataPoints().length() > 0)
 					allTrainingData+= rsp.getDataPoints();
 				
@@ -219,6 +231,7 @@ public class SurveyRequestHandler implements MessageListener {
 		for(int i=0; i < pathInfos.size(); i++) {
 			
 			String pathInfo = pathInfos.get(i);
+			System.out.println("RIKI:PATH RECV "+pathInfo);
 			NetworkDestination nd = extractNodeInfo(pathInfo);
 			
 			// The number of training points to be extracted from this block
@@ -252,7 +265,7 @@ public class SurveyRequestHandler implements MessageListener {
 		for(NetworkDestination nd : nodeWiseRequest.keySet()) {
 			
 			TrainingRequirements tr = nodeWiseRequest.get(nd);
-			TrainingDataEvent tde = new TrainingDataEvent(tr, fsName, featureName, latEps, lonEps, timeEps);
+			TrainingDataEvent tde = new TrainingDataEvent(tr, fsName, featureName, latEps, lonEps, timeEps, hasModel, model);
 			GalileoMessage mrequest;
 			
 			try {

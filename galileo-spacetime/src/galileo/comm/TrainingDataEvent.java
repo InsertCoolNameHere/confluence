@@ -18,8 +18,10 @@ public class TrainingDataEvent implements Event{
 	private String featureName;
 	private List<String> pathInfo;
 	private double latEps,lonEps,timeEps;
+	private boolean hasModel;
+	private String model;
 	
-	public TrainingDataEvent(TrainingRequirements tr, String fsName, String featureName, double latEps, double lonEps, double timeEps) {
+	public TrainingDataEvent(TrainingRequirements tr, String fsName, String featureName, double latEps, double lonEps, double timeEps, boolean hasModel, String model) {
 		
 		this.blockPath = tr.getBlockPath();
 		this.numPoints = tr.getNumPoints();
@@ -29,6 +31,9 @@ public class TrainingDataEvent implements Event{
 		this.latEps = latEps;
 		this.lonEps = lonEps;
 		this.timeEps = timeEps;
+		this.hasModel = hasModel;
+		this.model = model;
+		
 	}
 	
 	@Override
@@ -42,6 +47,9 @@ public class TrainingDataEvent implements Event{
 		out.writeDouble(latEps);
 		out.writeDouble(lonEps);
 		out.writeDouble(timeEps);
+		out.writeBoolean(hasModel);
+		if(hasModel)
+			out.writeString(model);
 		
 	}
 	
@@ -59,6 +67,9 @@ public class TrainingDataEvent implements Event{
 		latEps = in.readDouble();
 		lonEps = in.readDouble();
 		timeEps = in.readDouble();
+		hasModel = in.readBoolean();
+		if(hasModel)
+			model = in.readString();
 		
 	}
 
@@ -124,6 +135,22 @@ public class TrainingDataEvent implements Event{
 
 	public void setTimeEps(double timeEps) {
 		this.timeEps = timeEps;
+	}
+
+	public boolean isHasModel() {
+		return hasModel;
+	}
+
+	public void setHasModel(boolean hasModel) {
+		this.hasModel = hasModel;
+	}
+
+	public String getModel() {
+		return model;
+	}
+
+	public void setModel(String model) {
+		this.model = model;
 	}
 
 }

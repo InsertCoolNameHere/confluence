@@ -737,6 +737,8 @@ public class NeighborRequestHandler implements MessageListener {
 				List<LocalRequirements> listReq = supercubeToRequirementsMap.get(i);
 				
 				String bRecords = "";
+				StringBuffer sb = new StringBuffer();
+				
 				for(LocalRequirements lr: listReq) {
 					int pi = lr.getPathIndex();
 					String key = lr.getNodeName()+"$"+pi;
@@ -759,21 +761,26 @@ public class NeighborRequestHandler implements MessageListener {
 						
 						//System.out.println("EXISTING FRAGMENTS FOR PATH : "+key+" "+allFrags);
 						int cnt = 0;
+						
+						
 						for(int frag: frags) {
 							
 							String frg = allFrags.get(frag);
 							/*if(cnt == frags.size() - 1)
 								continue;*/
 							if(frg.length() > 2) {
-								bRecords += allFrags.get(frag);
+								//bRecords += allFrags.get(frag);
 								
-								bRecords+="\n";
+								//bRecords+="\n";
+								sb.append(allFrags.get(frag)+"\n");
 							}
 							cnt++;
 						}
 					}
 					
 				}
+				
+				bRecords = sb.toString();
 				this.cubeId = i;
 				this.bRecords = bRecords;
 				
