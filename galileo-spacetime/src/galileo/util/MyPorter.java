@@ -131,7 +131,7 @@ public class MyPorter {
 		
 	}
 	
-	public void predict(double[] input) {
+	public double predict(double[] input) {
 		
 		double[][] new_input = new double[1][input.length];
 		
@@ -154,6 +154,7 @@ public class MyPorter {
 			
 		}
 		System.out.println(new_input[0][0]);
+		return new_input[0][0];
 		
 	}
 	

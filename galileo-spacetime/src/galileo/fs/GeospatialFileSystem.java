@@ -2777,7 +2777,8 @@ public class GeospatialFileSystem extends FileSystem {
 					executor.execute(sjt);
 				} else {
 					
-					
+					SelfJoinThread sjt = new SelfJoinThread(pathToAsMap.get(pathInfo), pathToBsMap.get(pathInfo),
+							latEps, lonEps, timeEps, pathInfo, model, temporalType, DEFAULT_BETAS);
 					// Model testing to be done here
 				}
 			}

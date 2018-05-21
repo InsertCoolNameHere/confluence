@@ -211,7 +211,7 @@ public class MDC {
 		double[] betas = {0,1,2};
 		double[] epsilons = {1000*60*10, 0.1, 0.1};
 		long ll1 = System.currentTimeMillis();
-		List<String> recs = iterativeMultiDimSelfJoinML(indvARecords, indvBRecords, epsilons, betas, "abc$$2016-05-12-xx$9v00", TemporalType.DAY_OF_MONTH);
+		List<String> recs = iterativeMultiDimSelfJoinML(indvARecords, indvBRecords, epsilons, betas, "abc$$2016-05-12-xx$9v00", TemporalType.DAY_OF_MONTH, false);
 		System.out.println(recs.size());
 		System.out.println(recs);
 		
@@ -523,7 +523,7 @@ public class MDC {
 	 * @return
 	 */
 	public List<String> iterativeMultiDimSelfJoinML(List<String[]> indvARecords, List<String[]> indvBRecords, 
-			double[] epsilons, double[] betas, String pathInfo, TemporalType temporalType) {
+			double[] epsilons, double[] betas, String pathInfo, TemporalType temporalType, boolean hasModel) {
 		
 		int aLength = indvARecords.size();
 		int bLength = indvBRecords.size();
@@ -639,13 +639,22 @@ public class MDC {
 			}
 			
 			// min and span needs to be passed here
-			
-			if(bRecs.size() > 0) {
-				String tp = IDW.getOneTrainingPoint(aRec, bRecs, betas, mins.get(0), spans.get(0),
-						mins.get(1), spans.get(1),mins.get(2), spans.get(2));
+			if(!hasModel) {
+				if(bRecs.size() > 0) {
+					String tp = IDW.getOneTrainingPoint(aRec, bRecs, betas, mins.get(0), spans.get(0),
+							mins.get(1), spans.get(1),mins.get(2), spans.get(2));
+					
+					retJoinRecords.add(tp);
+				} 
+			} else {
+				if(bRecs.size() > 0) {
+					String tp = IDW.getOneComparison(aRec, bRecs, betas, mins.get(0), spans.get(0),
+							mins.get(1), spans.get(1),mins.get(2), spans.get(2));
+					
+					retJoinRecords.add(tp);
+				} 
 				
-				retJoinRecords.add(tp);
-			} 
+			}
 			
 			//retJoinRecords.add(ret1+"$$"+ret2);
 			

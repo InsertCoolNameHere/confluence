@@ -547,7 +547,7 @@ public class NeighborRequestHandler implements MessageListener {
 					
 					GeoavailabilityGrid blockGrid = new GeoavailabilityGrid(sc.getCentralGeohash(), GeoHash.MAX_PRECISION * 2 / 3);
 					
-					logger.info("RIKI: CG" + sc.getCentralGeohash()+ " "+ geoQuery.getPolygon());
+					//logger.info("RIKI: CG" + sc.getCentralGeohash()+ " "+ geoQuery.getPolygon());
 					Bitmap queryBitmap = null;
 					
 					if (geoQuery.getPolygon() != null) {
