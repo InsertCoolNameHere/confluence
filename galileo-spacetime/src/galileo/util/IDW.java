@@ -2,6 +2,7 @@ package galileo.util;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * @author sapmitra
@@ -22,6 +23,7 @@ public class IDW {
 	 * @param latMin 
 	 * @return
 	 */
+	private static final Logger logger = Logger.getLogger("galileo");
 	
 	public static String getOneTrainingPoint(String[] aRec, List<String[]> bRecs, double[] betas,
 			double latMin, double latSpan, double lonMin, double lonSpan, double timeMin, double timeSpan) {
@@ -51,6 +53,7 @@ public class IDW {
 			double euclideanDist = java.lang.Math.pow((aLat-bLat), 2)
 					+java.lang.Math.pow((aLong-bLong), 2) + java.lang.Math.pow((aTime-bTime), 2);
 			
+			euclideanDist = java.lang.Math.pow(euclideanDist, 0.5);
 			bDists[count] = euclideanDist;
 			count++;
 		}
@@ -70,6 +73,7 @@ public class IDW {
 				double weight = 1 / java.lang.Math.pow(dist, beta);;
 				sumWeights += weight;
 				prediction += bParameterVal*weight;
+				cnt++;
 			}
 			
 			prediction = prediction/sumWeights;
@@ -109,12 +113,17 @@ public class IDW {
 			double euclideanDist = java.lang.Math.pow((aLat-bLat), 2)
 					+java.lang.Math.pow((aLong-bLong), 2) + java.lang.Math.pow((aTime-bTime), 2);
 			
+			euclideanDist = java.lang.Math.pow(euclideanDist, 0.5);
+			
 			bDists[count] = euclideanDist;
 			count++;
 		}
 		
 		// Generating training Points
 		String recordString = "";
+		
+		
+		//logger.info("RIKI: BETAS "+betas[0]+" "+betas[1]+" "+betas[2]+" "+betas[3]+" "+betas[4]+" ");
 		
 		int c = 0;
 		for(double beta : betas) {
@@ -131,6 +140,7 @@ public class IDW {
 				double weight = 1 / java.lang.Math.pow(dist, beta);;
 				sumWeights += weight;
 				prediction += bParameterVal*weight;
+				cnt++;
 			}
 			
 			prediction = prediction/sumWeights;

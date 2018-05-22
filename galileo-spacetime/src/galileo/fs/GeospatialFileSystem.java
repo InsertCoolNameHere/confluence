@@ -172,7 +172,7 @@ public class GeospatialFileSystem extends FileSystem {
 	private int temporalUncertaintyPrecision;
 	
 	private boolean isRasterized;
-	private double[] DEFAULT_BETAS = {2d,3d,4d,5d};
+	private double[] DEFAULT_BETAS = {2d,2.5d,3d,3.5d,4d,5d};
 	
 
 	public GeospatialFileSystem(StorageNode sn, String storageDirectory, String name, int precision, int nodesPerGroup,
@@ -2759,6 +2759,8 @@ public class GeospatialFileSystem extends FileSystem {
 			
 			count++;
 		}
+		//logger.info("RIKI: Sizes "+pathToAsMap.size() + " " +pathToBsMap.size());
+		
 		// EVERYTHING GROUPED BY THEIR PATHS
 		
 		ExecutorService executor = Executors.newFixedThreadPool(java.lang.Math.min(pathToAsMap.keySet().size(), 2 * numCores));
@@ -2780,6 +2782,8 @@ public class GeospatialFileSystem extends FileSystem {
 					SelfJoinThread sjt = new SelfJoinThread(pathToAsMap.get(pathInfo), pathToBsMap.get(pathInfo),
 							latEps, lonEps, timeEps, pathInfo, model, temporalType, DEFAULT_BETAS);
 					// Model testing to be done here
+					joinProcessors.add(sjt);
+					executor.execute(sjt);
 				}
 			}
 			

@@ -155,6 +155,7 @@ public class SurveyRequestHandler implements MessageListener {
 					FileOutputStream fos = null;
 					try {
 						fos = new FileOutputStream(this.storagePath+".blk");
+						fos.write("lat,long,epoch,beta,err,actval\n".getBytes());
 						fos.write(allTrainingData.getBytes("UTF-8"));
 						fos.close();
 						

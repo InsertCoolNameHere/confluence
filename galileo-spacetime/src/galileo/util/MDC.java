@@ -21,6 +21,9 @@ public class MDC {
 	
 	List<Integer> aValidEntries = new ArrayList<Integer>();
 	List<Integer> bValidEntries = new ArrayList<Integer>();
+	
+	double INVALID_VAL = 90000d;
+	
 	private static final Logger logger = Logger.getLogger("galileo");
 	private int mode = 7;
 	
@@ -211,7 +214,7 @@ public class MDC {
 		double[] betas = {0,1,2};
 		double[] epsilons = {1000*60*10, 0.1, 0.1};
 		long ll1 = System.currentTimeMillis();
-		List<String> recs = iterativeMultiDimSelfJoinML(indvARecords, indvBRecords, epsilons, betas, "abc$$2016-05-12-xx$9v00", TemporalType.DAY_OF_MONTH, false);
+		List<String> recs = iterativeMultiDimSelfJoinML(indvARecords, indvBRecords, epsilons, betas, "abc$$2016-05-12-xx$9v00", TemporalType.DAY_OF_MONTH, false, null);
 		System.out.println(recs.size());
 		System.out.println(recs);
 		
@@ -520,10 +523,11 @@ public class MDC {
 	 * @param betas 
 	 * @param pathInfo nodestring$$time$space
 	 * @param temporalType 
+	 * @param model 
 	 * @return
 	 */
 	public List<String> iterativeMultiDimSelfJoinML(List<String[]> indvARecords, List<String[]> indvBRecords, 
-			double[] epsilons, double[] betas, String pathInfo, TemporalType temporalType, boolean hasModel) {
+			double[] epsilons, double[] betas, String pathInfo, TemporalType temporalType, boolean hasModel, MyPorter model) {
 		
 		int aLength = indvARecords.size();
 		int bLength = indvBRecords.size();
@@ -632,7 +636,8 @@ public class MDC {
 				String[] entry = indvBRecords.get(ib);
 				
 				// ignore entry with same space and time, if any
-				if(entry[0] == aRec[0] && entry[1] == aRec[1] && entry[2] == aRec[2])
+				if(entry[0] == aRec[0] && entry[1] == aRec[1] && entry[2] == aRec[2] || Double.valueOf(entry[3]) >= INVALID_VAL 
+						|| Double.valueOf(aRec[3]) >= INVALID_VAL)
 					continue;
 				
 				bRecs.add(entry);
@@ -640,15 +645,29 @@ public class MDC {
 			
 			// min and span needs to be passed here
 			if(!hasModel) {
-				if(bRecs.size() > 0) {
+				// only if multiple neighbors are there
+				if(bRecs.size() > 1) {
 					String tp = IDW.getOneTrainingPoint(aRec, bRecs, betas, mins.get(0), spans.get(0),
 							mins.get(1), spans.get(1),mins.get(2), spans.get(2));
 					
 					retJoinRecords.add(tp);
 				} 
 			} else {
-				if(bRecs.size() > 0) {
-					String tp = IDW.getOneComparison(aRec, bRecs, betas, mins.get(0), spans.get(0),
+				
+				double[] ip = {Double.valueOf(aRec[0]), Double.valueOf(aRec[1]), Double.valueOf(aRec[2])};
+				double beta = model.predict(ip);
+				
+				double[] appendedBetas = new double[betas.length+1];
+				appendedBetas[0] = beta;
+				int c=1;
+				for(double b : betas) {
+					appendedBetas[c] = b;
+					c++;
+				}
+				
+				// only if multiple neighbors are there
+				if(bRecs.size() > 1 && Double.valueOf(aRec[3]) < INVALID_VAL) {
+					String tp = IDW.getOneComparison(aRec, bRecs, appendedBetas, mins.get(0), spans.get(0),
 							mins.get(1), spans.get(1),mins.get(2), spans.get(2));
 					
 					retJoinRecords.add(tp);
@@ -660,7 +679,7 @@ public class MDC {
 			
 			count++;
 		}
-		
+		logger.info("RIKI:COUNT "+count);
 		return retJoinRecords;
 	}
 

@@ -9,6 +9,7 @@ import galileo.util.MDC;
 import galileo.util.MyPorter;
 
 public class SelfJoinThread implements Runnable {
+	// lat,lon,time,feature
 	private List<String[]> indvARecords;
 	private List<String[]> indvBRecords;
 	private double[] epsilons;
@@ -54,7 +55,7 @@ public class SelfJoinThread implements Runnable {
 			if(!hasModel) {
 			
 				MDC m = new MDC();
-				List<String> tps = m.iterativeMultiDimSelfJoinML(indvARecords, indvBRecords, epsilons, betas, pathInfo, temporalType, hasModel);
+				List<String> tps = m.iterativeMultiDimSelfJoinML(indvARecords, indvBRecords, epsilons, betas, pathInfo, temporalType, hasModel, null);
 				// TODO Auto-generated method stub
 				
 				StringBuilder sb = new StringBuilder();
@@ -67,7 +68,7 @@ public class SelfJoinThread implements Runnable {
 				this.trainingPoints = sb.toString();
 				
 			} else {
-				int randIndex = ThreadLocalRandom.current().nextInt(0, indvBRecords.size());
+				/*int randIndex = ThreadLocalRandom.current().nextInt(0, indvBRecords.size());
 				
 				String[] rec = indvBRecords.get(randIndex);
 				
@@ -82,11 +83,11 @@ public class SelfJoinThread implements Runnable {
 				for(double b : betas) {
 					appendedBetas[c] = b;
 					c++;
-				}
+				}*/
 				
 				MDC m = new MDC();
 				
-				List<String> tps = m.iterativeMultiDimSelfJoinML(indvARecords, indvBRecords, epsilons, appendedBetas, pathInfo, temporalType, hasModel);
+				List<String> tps = m.iterativeMultiDimSelfJoinML(indvARecords, indvBRecords, epsilons, betas, pathInfo, temporalType, hasModel, model);
 				// TODO Auto-generated method stub
 				
 				StringBuilder sb = new StringBuilder();

@@ -752,6 +752,8 @@ public class StorageNode implements RequestListener {
 			String nodeString = hostname + ":" + port;
 			String featureNames = "";
 			TrainingDataResponse rsp = new TrainingDataResponse(dataPoints, nodeString);
+			
+			//logger.info("RIKI: TRAINING DATA "+dataPoints);
 			context.sendReply(rsp);
 		} catch (Exception e) {
 			
