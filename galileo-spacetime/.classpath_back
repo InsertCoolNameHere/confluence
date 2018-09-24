@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
+	<classpathentry kind="lib" path="/s/chopin/b/grad/sapmitra/git/lassofinal/galileo-spacetime/lib/org.json.jar"/>
+	<classpathentry kind="lib" path="/s/chopin/b/grad/sapmitra/git/lassofinal/galileo-spacetime/lib/netcdfAll-4.6.jar"/>
+	<classpathentry kind="lib" path="/s/chopin/b/grad/sapmitra/git/lassofinal/galileo-spacetime/lib/JavaEWAH-0.8.4-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="/s/chopin/b/grad/sapmitra/git/lassofinal/galileo-spacetime/lib/galileo-spacetime-1.0.jar"/>
+	<classpathentry kind="lib" path="/s/chopin/b/grad/sapmitra/git/lassofinal/galileo-spacetime/lib/commons-math3-3.3.jar"/>
+	<classpathentry kind="output" path="classes"/>
+</classpath>

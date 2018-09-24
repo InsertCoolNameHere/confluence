@@ -30,15 +30,15 @@ public class SurveyTest {
 	private static void processFile(GalileoConnector gc) throws Exception {
 		
 		
-		Coordinates c1 = new Coordinates(49.58f, -130.11f);
-		Coordinates c2 = new Coordinates(49.58f, -70.07f);
-		Coordinates c3 = new Coordinates(25.841f, -70.07f);
-		Coordinates c4 = new Coordinates(25.841f, -130.11f);
+		Coordinates c1 = new Coordinates(39.58f, -112.11f);
+		Coordinates c2 = new Coordinates(39.58f, -101.07f);
+		Coordinates c3 = new Coordinates(33.841f, -101.07f);
+		Coordinates c4 = new Coordinates(33.841f, -112.11f);
 		
 		List<Coordinates> cl = new ArrayList<Coordinates>();
 		cl.add(c1); cl.add(c2); cl.add(c3); cl.add(c4);
 		
-		SurveyRequest sr = new SurveyRequest("noaafs", 20000, "sky_ceiling_height", 0.1d, 0.1d, 12*60*60*1000,false, null);
+		SurveyRequest sr = new SurveyRequest("noaafs", 500, "sky_ceiling_height", 0.1d, 0.1d, 12*60*60*1000,false, null);
 		sr.setPolygon(cl);
 		sr.setTime("2015-01-02-xx");
 		

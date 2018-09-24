@@ -1,3 +1,5 @@
 #!/bin/bash
-top -b -n 2000 -d 0.1 | grep java > /s/$HOSTNAME/a/tmp/galileo-sapmitra/perf.log
-date +"%s" >> /s/$HOSTNAME/a/tmp/galileo-sapmitra/perf.log
+date +"%s" > /s/chopin/b/grad/sapmitra/Documents/Conflux/systemPerf/$HOSTNAME.log
+date >> /s/chopin/b/grad/sapmitra/Documents/Conflux/systemPerf/$HOSTNAME.log
+top -b -n 2000 -d 0.01 | grep java >> /s/chopin/b/grad/sapmitra/Documents/Conflux/systemPerf/$HOSTNAME.log
+date +"%s" >> /s/chopin/b/grad/sapmitra/Documents/Conflux/systemPerf/$HOSTNAME.log

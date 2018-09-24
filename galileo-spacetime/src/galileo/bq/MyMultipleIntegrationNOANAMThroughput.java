@@ -44,7 +44,7 @@ public class MyMultipleIntegrationNOANAMThroughput {
 	 *            GalileoConnector instance
 	 * @throws Exception
 	 */
-	public static int numRequests = 1;
+	public static int numRequests = 1000;
 	private static void processFile(GalileoConnector gc, Coordinates c1, Coordinates c2, Coordinates c3, Coordinates c4, int date, int month) throws Exception {
 		
 		// CREATING FS1
@@ -94,7 +94,7 @@ public class MyMultipleIntegrationNOANAMThroughput {
 		System.out.println("QUERY FOR: "+c1+" "+c2+" "+c3+" "+c4+" 2015-"+month+"-"+ date +"-xx");
 		try {
 			gc.integrate(dr);
-			//Thread.sleep(1000);
+			Thread.sleep(100);
 		} finally {
 			//gc.disconnect();
 		}

@@ -172,7 +172,7 @@ public class GeospatialFileSystem extends FileSystem {
 	private int temporalUncertaintyPrecision;
 	
 	private boolean isRasterized;
-	private double[] DEFAULT_BETAS = {2d,2.5d,3d,3.5d,4d,5d};
+	private double[] DEFAULT_BETAS = {2d,2.5d,3d,3.5d,4d,4.5d,5d,5.5d,6d,7d};
 	
 
 	public GeospatialFileSystem(StorageNode sn, String storageDirectory, String name, int precision, int nodesPerGroup,
@@ -2001,6 +2001,8 @@ public class GeospatialFileSystem extends FileSystem {
 		int splitLimit = this.featureList.size();
 		for (String line : lines)
 			paths.add(line.split(",", splitLimit));
+		blockBytes = null;
+		blockData = null;
 		return paths;
 	}
 	
@@ -2021,6 +2023,8 @@ public class GeospatialFileSystem extends FileSystem {
 				featurePathsB.add(choppedFeatures);
 			lineNum++;
 		}
+		blockBytes = null;
+		blockData = null;
 	}
 
 	private boolean isGridInsidePolygon(GeoavailabilityGrid grid, GeoavailabilityQuery geoQuery) {
@@ -2580,6 +2584,7 @@ public class GeospatialFileSystem extends FileSystem {
 			//logger.log(Level.INFO, "RIKI: THIS HAPPENED");
 			parallelism = 1;
 		}
+		
 		if (parallelism > 0) {
 			
 			ExecutorService executor = Executors.newFixedThreadPool(parallelism);
@@ -2891,7 +2896,7 @@ public class GeospatialFileSystem extends FileSystem {
 		return listN;
 	}
 	
-	public static void main(String arg[]) throws FileSystemException, IOException, SerializationException, PartitionException, HashException, HashTopologyException, ParseException {
+	public static void main1(String arg[]) throws FileSystemException, IOException, SerializationException, PartitionException, HashException, HashTopologyException, ParseException {
 		Coordinates c1 = new Coordinates(39.711308f, -94.14132f);
 		Coordinates c2 = new Coordinates(39.135788f, -94.06672f);
 		Coordinates c3 = new Coordinates(39.101475f, -95.56087f);

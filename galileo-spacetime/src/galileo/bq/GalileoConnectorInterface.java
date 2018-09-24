@@ -80,8 +80,8 @@ abstract class GalileoConnectorInterface {
 		}
 		FilesystemRequest fsRequest = new FilesystemRequest(name, FilesystemAction.CREATE, featureList, sh, spUnc, tempUnc,  false, temporalHint);
 		fsRequest.setSpatialPartitioningType(3);
-		fsRequest.setNodesPerGroup(15);
-		//fsRequest.setPrecision(6);
+		fsRequest.setNodesPerGroup(30);
+		fsRequest.setPrecision(4);
 		fsRequest.setTemporalType(TemporalType.DAY_OF_MONTH);
 		
 		publisher.publish(server, fsRequest);

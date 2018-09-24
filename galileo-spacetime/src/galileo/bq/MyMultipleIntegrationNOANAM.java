@@ -44,7 +44,7 @@ public class MyMultipleIntegrationNOANAM {
 	 *            GalileoConnector instance
 	 * @throws Exception
 	 */
-	public static int numRequests = 200;
+	public static int numRequests = 1;
 	private static void processFile(GalileoConnector gc, Coordinates c1, Coordinates c2, Coordinates c3, Coordinates c4, int date) throws Exception {
 		
 		// CREATING FS1
@@ -69,7 +69,7 @@ public class MyMultipleIntegrationNOANAM {
 		cl.add(c1); cl.add(c2); cl.add(c3); cl.add(c4);
 		
 		dr.setPolygon(cl);
-		
+		date = 11;
 		if(date<10) {
 			dr.setTime("2015-01-0"+ date +"-xx");
 		} else {
@@ -94,7 +94,7 @@ public class MyMultipleIntegrationNOANAM {
 		System.out.println("QUERY FOR: "+c1+" "+c2+" "+c3+" "+c4+" 2016-05-"+ date +"-xx");
 		try {
 			gc.integrate(dr);
-			Thread.sleep(500);
+			Thread.sleep(20000);
 		} finally {
 			//gc.disconnect();
 		}
@@ -105,8 +105,8 @@ public class MyMultipleIntegrationNOANAM {
 		
 		
 		// Country Wide
-		//float latLength = 12f;
-		//float longLength = 6f;
+		float latLength = 12f;
+		float longLength = 6f;
 		
 		
 		// STATE LEVEL
@@ -114,12 +114,12 @@ public class MyMultipleIntegrationNOANAM {
 		//float longLength = 7f;
 		
 		//COUNTY LEVEL
-		float latLength = 0.3f;
-		float longLength = 0.34f;
+		//float latLength = 0.3f;
+		//float longLength = 0.34f;
 		
 		//city Level
-		/*float latLength = 0.05f;
-		float longLength = 0.1f;*/
+		//float latLength = 0.05f;
+		//float longLength = 0.1f;
 		
 		
 		float startLat = 27f;
@@ -141,7 +141,7 @@ public class MyMultipleIntegrationNOANAM {
 				while(lowLong+longLength > endLong) {
 					lowLong = (float)ThreadLocalRandom.current().nextDouble(startLong, endLong - longLength);
 				}
-				int date = ThreadLocalRandom.current().nextInt(2, 15);
+				int date = ThreadLocalRandom.current().nextInt(1, 15);
 				
 				if(lowLat+latLength < endLat && lowLong+longLength < endLong) {
 				

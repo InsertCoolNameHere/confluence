@@ -165,6 +165,7 @@ public class NeighborRequestHandler implements MessageListener {
 						// are added.
 
 		if (this.response instanceof DataIntegrationResponse) {
+			joinExecutors = null;
 			logger.info("RIKI: THESE ARE THE FINAL PATHS BEING SENT OUT: "+resultFiles);
 			DataIntegrationResponse actualResponse = (DataIntegrationResponse) this.response;
 			actualResponse.setResultPaths(resultFiles);
@@ -172,6 +173,7 @@ public class NeighborRequestHandler implements MessageListener {
 			actualResponse.setNodePort(port);
 			
 		} 
+		System.gc();
 		this.requestListener.onRequestCompleted(this.response, clientContext, this);
 	}
 	
@@ -290,6 +292,11 @@ public class NeighborRequestHandler implements MessageListener {
 											
 											// LAUNCH CLOSE REQUEST
 											logger.log(Level.INFO, "All Joins on this node finished and saved");
+											
+											pathIdToFragmentDataMap = null;
+											superCubeLocalFetchCheck = null;
+											fs1SuperCubeDataMap = null;
+											
 											new Thread() {
 												public void run() {
 													NeighborRequestHandler.this.closeRequest();
@@ -381,6 +388,8 @@ public class NeighborRequestHandler implements MessageListener {
 									logger.log(Level.INFO, "RIKI: READY TO LAUNCH SUPERCUBE" + i);
 									
 									//JoiningThread jt = new JoiningThread(fs1SuperCubeDataMap.get(i), bRecords, aPosns, bPosns, epsilons, cubeId);
+									
+									//I commented
 									JoiningThread jt = new JoiningThread(i);
 									joinExecutors.execute(jt);
 									
@@ -500,12 +509,27 @@ public class NeighborRequestHandler implements MessageListener {
 			for (NetworkDestination node : nodes) {
 				Event request = individualRequests.get(count);
 				GalileoMessage mrequest = this.eventWrapper.wrap(request);
-				this.router.sendMessage(node, mrequest);
+				//this.router.sendMessage(node, mrequest);
 				logger.info("Request sent to " + node.toString());
 				count++;
 			}
 				
 			this.elapsedTime = System.currentTimeMillis();
+			// My code
+			try {
+				Thread.sleep(3000);
+				
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			logger.log(Level.INFO,"DONE SLEEPING");
+			new Thread() {
+				public void run() {
+					NeighborRequestHandler.this.closeRequest();
+				}
+			}.start();
 		} catch (IOException e) {
 			logger.log(Level.INFO,
 					"Failed to send request to other nodes in the network. Details follow: " + e.getMessage());
@@ -579,6 +603,7 @@ public class NeighborRequestHandler implements MessageListener {
 						
 							if (qp.getResultRecordLists() != null && qp.getResultRecordLists().size() > 0) {
 								//logger.log(Level.INFO, "RIKI : ENTERED VALUES "+ qp.getResultRecordLists() +" FOR "+qp.getSuperCubeId());
+								
 								fs1SuperCubeDataMap.put(qp.getSuperCubeId(), qp.getResultRecordLists());
 							} else {
 								fs1SuperCubeDataMap.put(qp.getSuperCubeId(), null);
@@ -587,6 +612,8 @@ public class NeighborRequestHandler implements MessageListener {
 						}
 					}
 				}
+				
+				logger.info("FINISHED READING LOCALLY...");
 			} catch (Exception e) {
 				logger.log(Level.SEVERE, "Something went wrong while querying FS1 at NeighborRequestHandler", e);
 			}
@@ -648,9 +675,11 @@ public class NeighborRequestHandler implements MessageListener {
 									// This cube is ready to be launched
 									int indx = cleanupCandidateCubes.indexOf(c);
 									cleanupCandidateCubes.remove(indx);
+									
+									//I commented
 									JoiningThread jt = new JoiningThread(c);
 									joinExecutors.execute(jt);
-									//cubesLeft--;
+									
 									
 									if(cubesLeft == 1) {
 										logger.info("RIKI: ETA HOYCHE");
@@ -823,6 +852,8 @@ public class NeighborRequestHandler implements MessageListener {
 			} else {
 				this.storagePath = null;
 			}
+			indvARecords = null;
+			bRecords = null;
 			
 			logger.info("RIKI: AFTER SAVE FOR CUBE "+cubeId+" "+storagePath);
 			synchronized(resultFiles) {
@@ -834,6 +865,9 @@ public class NeighborRequestHandler implements MessageListener {
 			
 			//logger.info("RIKI: NUMBER OF CUBES LEFT: "+cubesLeft + " "+allCubes);
 			if(cubesLeft == 0) {
+				pathIdToFragmentDataMap = null;
+				superCubeLocalFetchCheck = null;
+				fs1SuperCubeDataMap = null;
 				
 				// LAUNCH CLOSE REQUEST
 				logger.log(Level.INFO, "All Joins on this node finished and saved");

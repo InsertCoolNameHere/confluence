@@ -91,7 +91,7 @@ public class MyInsertSensorData {
 		SpatialHint sp = new SpatialHint("gps_abs_lat", "gps_abs_lon");
 		String temporalHint = "epoch_time";
 		if(!FS_CREATED){
-			gc.createFS("sensorfsnew", sp, featureList, temporalHint,3);
+			gc.createFS("sensorfs", sp, featureList, temporalHint,3);
 			//FS_CREATED = true;
 		}
 		
@@ -135,8 +135,8 @@ public class MyInsertSensorData {
 				// DOING FOR ONE DAY AT A TIME
 				if (previousDay != null && !currentDay.equals(previousDay)) {
 					String allLines = data.toString();
-					System.out.println("Creating a block for " + previousDay + " GMT having " + rowCount + " rows");
-					System.out.println(lastLine);
+					//System.out.println("Creating a block for " + previousDay + " GMT having " + rowCount + " rows");
+					//System.out.println(lastLine);
 					
 					/*Using the lastline to create metadata */
 					Block tmp = GalileoConnector.createBlock(lastLine, allLines.substring(0, allLines.length() - 1));
@@ -150,6 +150,9 @@ public class MyInsertSensorData {
 				data.append(line + "\n");
 				lastLine = line;
 				rowCount++;
+				
+				if(rowCount % 10000 == 0)
+					System.out.println(rowCount);
 			}
 			/* END---- THIS PART JUST VARIFIES IF THE DATA FORMAT IS CORRECT */
 			
@@ -185,9 +188,9 @@ public class MyInsertSensorData {
 	 */
 	public static void main(String[] args1) {
 		String args[] = new String[3];
-		args[0] = "lattice-21.cs.colostate.edu";
+		args[0] = "lattice-1.cs.colostate.edu";
 		args[1] = "5634";
-		args[2] = "/s/green/a/tmp/sapmitra/finalDatasets/sensor/part-r-00000";
+		args[2] = "/s/lattice-64/a/nobackup/galileo/sapmitra/sensor/part-r-00000";
 		
 		
 		if (args.length != 3) {

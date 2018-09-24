@@ -200,7 +200,7 @@ public class MyInsertWindData {
 	
 	public static void main(String[] args1) {
 		String args[] = new String[3];
-		args[0] = "lattice-21.cs.colostate.edu";
+		args[0] = "lattice-1.cs.colostate.edu";
 		args[1] = "5634";
 		args[2] = "/s/green/a/tmp/sapmitra/finalDatasets/windDataRemastered";
 		

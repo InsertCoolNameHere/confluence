@@ -1,7 +1,13 @@
+./initiate.sh allmachines
+
+gstart
+
+cd ~/git/lassofinal/galileo-spacetime
+
 java -cp ~/git/lassofinal/galileo-spacetime/lib/galileo-spacetime-1.0.jar galileo.bq.MyMultipleIntegrationNOANAMThroughput <ARGUMENTS>
 
 galileo-time : checks "ENTIRE THING" line in logs
-galileo-grep: called by galileo-time. generates perf.log and checks "ENTIRE THING" in logs
+galileo-grep: called by galileo-time. generates perf.log5 and checks "ENTIRE THING" in logs
 galileo-monitoring: utilization test. logs into perf.log
 galileo-qresults: removes query intermediate results
 

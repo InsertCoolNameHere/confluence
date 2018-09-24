@@ -145,7 +145,10 @@ public class IDW {
 			
 			prediction = prediction/sumWeights;
 			
-			double error = java.lang.Math.abs(actualParameterVal - prediction) / actualParameterVal;
+			//double error = java.lang.Math.abs(actualParameterVal - prediction) / actualParameterVal;
+			
+			double error = actualParameterVal - prediction;
+			error = error*error;
 			
 			if(c == betas.length - 1)
 				recordString+=error;
@@ -227,6 +230,11 @@ public class IDW {
 		
 		
 		return 0;
+	}
+	
+	public static void main(String arg[]) {
+		
+		System.out.println(Runtime.getRuntime().availableProcessors());
 	}
 
 }

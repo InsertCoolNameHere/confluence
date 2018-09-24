@@ -148,7 +148,7 @@ public class GalileoConnector extends GalileoConnectorInterface {
 		//metadata.setSpatialHint(new SpatialHint("gps_abs_lat", "gps_abs_lon"));
 		metadata.setAttributes(features);
 		
-		return new Block("sensorfsnew", metadata, data.getBytes("UTF-8"));
+		return new Block("sensorfs", metadata, data.getBytes("UTF-8"));
 	}
 	
 	

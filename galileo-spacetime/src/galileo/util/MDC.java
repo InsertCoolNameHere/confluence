@@ -19,10 +19,10 @@ import galileo.dataset.SpatialRange;
 
 public class MDC {
 	
-	List<Integer> aValidEntries = new ArrayList<Integer>();
-	List<Integer> bValidEntries = new ArrayList<Integer>();
+	public List<Integer> aValidEntries = new ArrayList<Integer>();
+	public List<Integer> bValidEntries = new ArrayList<Integer>();
 	
-	double INVALID_VAL = 90000d;
+	public static double INVALID_VAL = 9990d;
 	
 	private static final Logger logger = Logger.getLogger("galileo");
 	private int mode = 7;
@@ -507,6 +507,8 @@ public class MDC {
 		long endTimeInterpolation  = System.currentTimeMillis();
 		logger.info("RIKI: INTERPOLATION FINISHED IN: "+(endTimeInterpolation - startTimeInterpolation));
 
+		aValidEntries = null;
+		bValidEntries = null;
 		return retJoinRecords;
 	}
 	
@@ -636,7 +638,7 @@ public class MDC {
 				String[] entry = indvBRecords.get(ib);
 				
 				// ignore entry with same space and time, if any
-				if(entry[0] == aRec[0] && entry[1] == aRec[1] && entry[2] == aRec[2] || Double.valueOf(entry[3]) >= INVALID_VAL 
+				if((entry[0] == aRec[0] && entry[1] == aRec[1] && entry[2] == aRec[2]) || Double.valueOf(entry[3]) >= INVALID_VAL 
 						|| Double.valueOf(aRec[3]) >= INVALID_VAL)
 					continue;
 				
@@ -655,7 +657,9 @@ public class MDC {
 			} else {
 				
 				double[] ip = {Double.valueOf(aRec[0]), Double.valueOf(aRec[1]), Double.valueOf(aRec[2])};
+				//double beta = java.lang.Math.floor(model.predict(ip));
 				double beta = model.predict(ip);
+				
 				
 				double[] appendedBetas = new double[betas.length+1];
 				appendedBetas[0] = beta;
@@ -679,7 +683,7 @@ public class MDC {
 			
 			count++;
 		}
-		logger.info("RIKI:COUNT "+count);
+		//logger.info("RIKI:COUNT "+count);
 		return retJoinRecords;
 	}
 

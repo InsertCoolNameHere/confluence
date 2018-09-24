@@ -52,8 +52,6 @@ public class MyIntegrationNOANAM {
 		Coordinates c3 = new Coordinates(31.45682f, -95.209f);
 		Coordinates c4 = new Coordinates(31.62858f, -99.59101f);*/
 		
-		
-		
 		/*Coordinates c1 = new Coordinates(45.22f, -112.9f);
 		Coordinates c2 = new Coordinates(45.22f, -100.77f);
 		Coordinates c3 = new Coordinates(39.121f, -100.77f);
@@ -62,10 +60,10 @@ public class MyIntegrationNOANAM {
 		// City Level
 		
 		//(47.17086f,-87.0457f) (47.17086f,-80.0457f) (43.37086f,-80.0457f) (43.37086f,-87.0457f) 2015-2-24-xx
-		Coordinates c1 = new Coordinates(47.17086f,-92.0457f);
-		Coordinates c2 = new Coordinates(47.17086f,-67.0457f);
-		Coordinates c3 = new Coordinates(38.37086f,-67.0457f);
-		Coordinates c4 = new Coordinates(38.37086f,-92.0457f);
+		Coordinates c1 = new Coordinates(37.79265f,-92.3252f);
+		Coordinates c2 = new Coordinates(37.79265f,-88.3252f);
+		Coordinates c3 = new Coordinates(27.792648f,-88.3252f);
+		Coordinates c4 = new Coordinates(27.792648f,-92.3252f);
 		
 		/*Coordinates c1 = new Coordinates(44.17086f,-111.0457f);
 		Coordinates c2 = new Coordinates(44.17086f,-104.0457f);
@@ -77,16 +75,20 @@ public class MyIntegrationNOANAM {
 		cl.add(c1); cl.add(c2); cl.add(c3); cl.add(c4);
 		
 		dr.setPolygon(cl);
-		dr.setTime("2015-02-04-xx");
-		dr.setLatRelax(0.025f);
-		dr.setLongRelax(0.025f);
-		dr.setTimeRelaxation(1000*60*60*6);
+		dr.setTime("2015-01-15-xx");
+		dr.setLatRelax(0.1f);
+		dr.setLongRelax(0.1f);
+		dr.setTimeRelaxation(1000*60*60*12);
 		dr.setInterpolatingFeature("sky_ceiling_height");
 		dr.setFixedBeta(true);
 		
 		try {
-			gc.integrate(dr);
-			Thread.sleep(10000);
+			for(int i=0; i< 20; i++) {
+				
+				gc.integrate(dr);
+				System.out.println(i);
+				Thread.sleep(4000);
+			}
 		} finally {
 			gc.disconnect();
 		}

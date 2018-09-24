@@ -1070,6 +1070,7 @@ public class StorageNode implements RequestListener {
 				this.requestHandlers.remove(requestHandler);
 			} else if (requestHandler instanceof NeighborRequestHandler) {
 				this.rikiHandlers.remove(requestHandler);
+				requestHandler = null;
 			} else if (requestHandler instanceof SurveyRequestHandler) {
 				this.surveyHandlers.remove(requestHandler);
 			}
@@ -1521,6 +1522,7 @@ public class StorageNode implements RequestListener {
 					NeighborRequestHandler rikiHandler = new NeighborRequestHandler(null, individualRequests, new ArrayList<NetworkDestination>(destinations), context, this,
 							allCubes, superCubeNumNodesMap, numCores, geoQuery, fs1, eventId, queryResultsDir, aPosns, bPosns, epsilons, 
 							hostname, String.valueOf(port), interpolatingFeaturePosn, event.isFixedBeta(), event.getModel());
+					this.rikiHandlers.add(rikiHandler);
 					rikiHandler.handleRequest(response);
 					logger.log(Level.INFO, "RIKI :FS2 REQUESTS FINISHED SENDING :"+ destinations);
 					
@@ -1544,7 +1546,7 @@ public class StorageNode implements RequestListener {
 			} catch (IOException ioe) {
 				logger.log(Level.SEVERE, "Failed to send response back to main requester", ioe);
 			}
-		}
+		} 
 
 	}
 	
@@ -1704,7 +1706,7 @@ public class StorageNode implements RequestListener {
 			logger.log(Level.SEVERE,
 					"Something went wrong while data integration event on the filesystem. No results obtained. Sending blank list to the client. Issue details follow:",
 					e);
-		}
+		} 
 		
 		// For each supercube, find out what paths are needed
 		// Check orientation
